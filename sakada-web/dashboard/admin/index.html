@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard — Sakada Logistics</title>
+    <meta name="robots" content="noindex" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Public+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../css/style.css" />
+  </head>
+  <body>
+    <header class="dash-topbar">
+      <a class="logo" href="../../index.html"
+        >SAKA<span class="mark">DA</span></a
+      >
+      <div class="dash-user">
+        <span class="role-badge">Admin</span>
+        <span id="userName">Loading…</span>
+        <button class="btn-ghost" id="signOutBtn" type="button">Log Out</button>
+      </div>
+    </header>
+
+    <main class="dash-body wide">
+      <h1 id="greeting">Welcome.</h1>
+      <p>
+        Admin portal — separate from the farmer/vendor/driver system, exactly as
+        planned.
+      </p>
+
+      <div id="formMessage" class="form-message" role="alert"></div>
+
+      <div class="admin-stats" id="statsGrid">
+        <div class="admin-stat-card">
+          <span class="admin-stat-number" id="statFarmers">—</span>
+          <div class="admin-stat-label">Farmers</div>
+        </div>
+        <div class="admin-stat-card">
+          <span class="admin-stat-number" id="statVendors">—</span>
+          <div class="admin-stat-label">Vendors</div>
+        </div>
+        <div class="admin-stat-card">
+          <span class="admin-stat-number" id="statDrivers">—</span>
+          <div class="admin-stat-label">Drivers</div>
+        </div>
+        <div class="admin-stat-card">
+          <span class="admin-stat-number" id="statPending">—</span>
+          <div class="admin-stat-label">Pending</div>
+        </div>
+        <div class="admin-stat-card">
+          <span class="admin-stat-number" id="statActive">—</span>
+          <div class="admin-stat-label">Active</div>
+        </div>
+        <div class="admin-stat-card">
+          <span class="admin-stat-number" id="statCompleted">—</span>
+          <div class="admin-stat-label">Completed</div>
+        </div>
+      </div>
+
+      <div class="admin-tabs">
+        <button type="button" class="active" data-tab="deliveries">
+          Deliveries
+        </button>
+        <button type="button" data-tab="users">Users</button>
+        <button type="button" data-tab="feedback">Feedback</button>
+      </div>
+
+      <div class="admin-panel active" id="panel-deliveries">
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Route</th>
+                <th>Requester</th>
+                <th>Driver</th>
+                <th>Status</th>
+                <th>Cost</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="deliveriesTableBody">
+              <tr>
+                <td colspan="7">Loading…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="admin-panel" id="panel-users">
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Phone</th>
+                <th>Joined</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr>
+                <td colspan="4">Loading…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="admin-panel" id="panel-feedback">
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Delivery</th>
+                <th>Rated by</th>
+                <th>About</th>
+                <th>Rating</th>
+                <th>Comment</th>
+              </tr>
+            </thead>
+            <tbody id="feedbackTableBody">
+              <tr>
+                <td colspan="5">Loading…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <script type="module">
+      import { requireRole, signOut } from "../../js/auth.js";
+      import {
+        getAllProfiles,
+        getAllDeliveries,
+        getAllRatings,
+        adminCancelDelivery,
+      } from "../../js/admin-data.js";
+
+      const profile = await requireRole(
+        "admin",
+        "../../auth/admin-login.html",
+        "../../index.html",
+      );
+      if (!profile) throw new Error("redirecting");
+
+      document.getElementById("userName").textContent = profile.full_name;
+      document.getElementById("greeting").textContent =
+        `Welcome, ${profile.full_name.split(" ")[0]}.`;
+      document
+        .getElementById("signOutBtn")
+        .addEventListener("click", () => signOut("../../index.html"));
+
+      const messageEl = document.getElementById("formMessage");
+      function showMessage(text, type) {
+        messageEl.textContent = text;
+        messageEl.className = `form-message visible ${type}`;
+      }
+
+      const ACTIVE_STATUSES = ["driver_assigned", "picked_up", "in_transit"];
+      const CANCELLABLE_STATUSES = ["pending", "driver_assigned"];
+
+      function statusLabel(status) {
+        return (
+          {
+            pending: "Pending",
+            driver_assigned: "Driver Assigned",
+            picked_up: "Picked Up",
+            in_transit: "In Transit",
+            delivered: "Delivered",
+            cancelled: "Cancelled",
+          }[status] || status
+        );
+      }
+
+      // ---------- Tabs ----------
+      document.querySelectorAll(".admin-tabs button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".admin-tabs button")
+            .forEach((b) => b.classList.remove("active"));
+          document
+            .querySelectorAll(".admin-panel")
+            .forEach((p) => p.classList.remove("active"));
+          btn.classList.add("active");
+          document
+            .getElementById(`panel-${btn.dataset.tab}`)
+            .classList.add("active");
+        });
+      });
+
+      let profilesById = new Map();
+
+      async function loadStatsAndUsers() {
+        const { data: profiles, error } = await getAllProfiles();
+        if (error) {
+          showMessage(`Couldn't load users: ${error.message}`, "error");
+          return;
+        }
+
+        profilesById = new Map(profiles.map((p) => [p.id, p]));
+
+        document.getElementById("statFarmers").textContent = profiles.filter(
+          (p) => p.role === "farmer",
+        ).length;
+        document.getElementById("statVendors").textContent = profiles.filter(
+          (p) => p.role === "vendor",
+        ).length;
+        document.getElementById("statDrivers").textContent = profiles.filter(
+          (p) => p.role === "driver",
+        ).length;
+
+        document.getElementById("usersTableBody").innerHTML = profiles
+          .map(
+            (p) => `
+      <tr>
+        <td>${p.full_name}</td>
+        <td><span class="role-badge">${p.role}</span></td>
+        <td>${p.phone || "—"}</td>
+        <td>${new Date(p.created_at).toLocaleDateString()}</td>
+      </tr>
+    `,
+          )
+          .join("");
+      }
+
+      async function loadDeliveries() {
+        const { data, error } = await getAllDeliveries();
+        if (error) {
+          showMessage(`Couldn't load deliveries: ${error.message}`, "error");
+          return;
+        }
+
+        document.getElementById("statPending").textContent = data.filter(
+          (d) => d.status === "pending",
+        ).length;
+        document.getElementById("statActive").textContent = data.filter((d) =>
+          ACTIVE_STATUSES.includes(d.status),
+        ).length;
+        document.getElementById("statCompleted").textContent = data.filter(
+          (d) => d.status === "delivered",
+        ).length;
+
+        document.getElementById("deliveriesTableBody").innerHTML = data
+          .map((d) => {
+            const requesterName =
+              profilesById.get(d.requester_id)?.full_name || "—";
+            const driverName = d.driver_id
+              ? profilesById.get(d.driver_id)?.full_name || "—"
+              : "Unassigned";
+            const canCancel = CANCELLABLE_STATUSES.includes(d.status);
+            return `
+        <tr>
+          <td>${d.delivery_code}</td>
+          <td>${d.pickup_address} → ${d.dropoff_address}</td>
+          <td>${requesterName}</td>
+          <td>${driverName}</td>
+          <td><span class="status-pill" data-status="${d.status}">${statusLabel(d.status)}</span></td>
+          <td>₱${Number(d.estimated_cost).toLocaleString()}</td>
+          <td>${canCancel ? `<button class="btn-small danger" data-cancel-id="${d.id}">Cancel</button>` : ""}</td>
+        </tr>
+      `;
+          })
+          .join("");
+
+        document
+          .getElementById("deliveriesTableBody")
+          .querySelectorAll("[data-cancel-id]")
+          .forEach((btn) => {
+            btn.addEventListener("click", async () => {
+              if (!confirm("Cancel this delivery? This can't be undone."))
+                return;
+              btn.disabled = true;
+              btn.textContent = "Cancelling...";
+              const { error } = await adminCancelDelivery(btn.dataset.cancelId);
+              if (error) {
+                showMessage(`Couldn't cancel: ${error.message}`, "error");
+                btn.disabled = false;
+                btn.textContent = "Cancel";
+                return;
+              }
+              showMessage("Delivery cancelled.", "success");
+              loadDeliveries();
+            });
+          });
+      }
+
+      async function loadFeedback() {
+        const { data, error } = await getAllRatings();
+        if (error) {
+          showMessage(`Couldn't load feedback: ${error.message}`, "error");
+          return;
+        }
+
+        const { data: deliveries } = await getAllDeliveries();
+        const deliveryCodeById = new Map(
+          (deliveries || []).map((d) => [d.id, d.delivery_code]),
+        );
+
+        document.getElementById("feedbackTableBody").innerHTML = data.length
+          ? data
+              .map(
+                (r) => `
+          <tr>
+            <td>${deliveryCodeById.get(r.delivery_id) || "—"}</td>
+            <td>${profilesById.get(r.rated_by)?.full_name || "—"}</td>
+            <td>${profilesById.get(r.rated_user_id)?.full_name || "—"}</td>
+            <td>${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</td>
+            <td>${r.comment || "—"}</td>
+          </tr>
+        `,
+              )
+              .join("")
+          : `<tr><td colspan="5">No feedback yet.</td></tr>`;
+      }
+
+      await loadStatsAndUsers();
+      await loadDeliveries();
+      await loadFeedback();
+    </script>
+  </body>
+</html>

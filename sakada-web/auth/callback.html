@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signing you in — Sakada Logistics</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body>
+    <main class="auth-page">
+      <div class="auth-card" style="text-align: center">
+        <p style="color: var(--text-muted); font-size: 14px">Signing you in…</p>
+      </div>
+    </main>
+
+    <script type="module">
+      import { supabase } from "../js/supabase-client.js";
+      import { getCurrentProfile } from "../js/auth.js";
+
+      const DASHBOARD_PATHS = {
+        farmer: "../dashboard/farmer/index.html",
+        vendor: "../dashboard/vendor/index.html",
+        driver: "../dashboard/driver/index.html",
+        admin: "../dashboard/admin/index.html",
+      };
+
+      // supabase-js parses the OAuth redirect and establishes the session
+      // automatically on load. onAuthStateChange fires once that's done —
+      // that's the reliable moment to look up the profile and redirect.
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          const profile = await getCurrentProfile();
+          window.location.href =
+            DASHBOARD_PATHS[profile?.role] || "../index.html";
+        }
+      });
+
+      // Fallback in case the event already fired before this listener attached.
+      setTimeout(async () => {
+        const profile = await getCurrentProfile();
+        if (profile) {
+          window.location.href =
+            DASHBOARD_PATHS[profile.role] || "../index.html";
+        }
+      }, 2500);
+    </script>
+  </body>
+</html>

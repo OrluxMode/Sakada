@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Driver Dashboard — Sakada Logistics</title>
+    <meta name="robots" content="noindex" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Public+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../css/style.css" />
+  </head>
+  <body>
+    <header class="dash-topbar">
+      <a class="logo" href="../../index.html"
+        >SAKA<span class="mark">DA</span></a
+      >
+      <div class="dash-user">
+        <span class="role-badge">Driver</span>
+        <span id="userName">Loading…</span>
+        <div class="notif-wrap">
+          <button
+            class="notif-bell"
+            id="notifBell"
+            type="button"
+            aria-label="Notifications"
+          >
+            🔔<span class="notif-badge" id="notifBadge">0</span>
+          </button>
+          <div class="notif-panel" id="notifPanel">
+            <div class="notif-empty" id="notifEmpty">No notifications yet.</div>
+          </div>
+        </div>
+        <button class="btn-ghost" id="signOutBtn" type="button">Log Out</button>
+      </div>
+    </header>
+
+    <main class="dash-body">
+      <h1 id="greeting">Welcome.</h1>
+      <p>
+        Browse available deliveries and accept the ones that fit your route.
+      </p>
+
+      <div id="formMessage" class="form-message" role="alert"></div>
+
+      <div
+        class="dash-section"
+        style="margin-top: 24px; padding-top: 0; border-top: none"
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+          "
+        >
+          <h2 style="margin: 0">Available Deliveries</h2>
+          <button class="btn-ghost" id="refreshBtn" type="button">
+            Refresh
+          </button>
+        </div>
+        <div id="availableList" class="delivery-list">
+          <p class="delivery-empty">Loading available deliveries…</p>
+        </div>
+      </div>
+
+      <div class="dash-section">
+        <h2>My Assigned Deliveries</h2>
+        <p class="section-subheading">Active</p>
+        <div id="assignedActiveList" class="delivery-list">
+          <p class="delivery-empty">Loading…</p>
+        </div>
+        <p class="section-subheading">Delivery History</p>
+        <div id="assignedHistoryList" class="delivery-list">
+          <p class="delivery-empty">Loading…</p>
+        </div>
+      </div>
+    </main>
+
+    <script type="module">
+      import { requireRole, signOut } from "../../js/auth.js";
+      import {
+        getAvailableDeliveries,
+        acceptDelivery,
+        getMyAssignedDeliveries,
+        updateDeliveryStatus,
+        updateDeliveryLocation,
+      } from "../../js/deliveries.js";
+      import {
+        getMyNotifications,
+        markNotificationRead,
+        subscribeToNotifications,
+      } from "../../js/notifications.js";
+      import {
+        getMyRatingsForDeliveries,
+        submitRating,
+      } from "../../js/ratings.js";
+
+      const STATUS_FLOW = {
+        driver_assigned: { next: "picked_up", label: "Mark Picked Up" },
+        picked_up: { next: "in_transit", label: "Mark In Transit" },
+        in_transit: { next: "delivered", label: "Mark Delivered" },
+      };
+
+      const profile = await requireRole(
+        "driver",
+        "../../auth/login.html",
+        "../../index.html",
+      );
+      if (!profile) throw new Error("redirecting");
+
+      document.getElementById("userName").textContent = profile.full_name;
+      document.getElementById("greeting").textContent =
+        `Welcome, ${profile.full_name.split(" ")[0]}.`;
+
+      document
+        .getElementById("signOutBtn")
+        .addEventListener("click", () => signOut("../../index.html"));
+
+      const messageEl = document.getElementById("formMessage");
+      function showMessage(text, type) {
+        messageEl.textContent = text;
+        messageEl.className = `form-message visible ${type}`;
+      }
+
+      function statusLabel(status) {
+        return (
+          {
+            pending: "Pending",
+            driver_assigned: "Driver Assigned",
+            picked_up: "Picked Up",
+            in_transit: "In Transit",
+            delivered: "Delivered",
+            cancelled: "Cancelled",
+          }[status] || status
+        );
+      }
+
+      async function loadAvailable() {
+        const listEl = document.getElementById("availableList");
+        const { data, error } = await getAvailableDeliveries();
+
+        if (error) {
+          listEl.innerHTML = `<p class="delivery-empty">Couldn't load available deliveries: ${error.message}</p>`;
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          listEl.innerHTML = `<p class="delivery-empty">No available deliveries right now. Check back soon.</p>`;
+          return;
+        }
+
+        listEl.innerHTML = data
+          .map(
+            (d) => `
+      <div class="delivery-card" data-id="${d.id}">
+        <div class="delivery-card-top">
+          <span class="delivery-code">${d.delivery_code}</span>
+          <span class="status-pill" data-status="${d.status}">${statusLabel(d.status)}</span>
+        </div>
+        <div class="delivery-route">${d.pickup_address} → ${d.dropoff_address}</div>
+        <div class="delivery-meta">${d.goods_description} · ${d.quantity_kg} kg · Est. ₱${Number(d.estimated_cost).toLocaleString()}</div>
+        <button class="btn-accept" data-accept-id="${d.id}">Accept Delivery</button>
+      </div>
+    `,
+          )
+          .join("");
+
+        listEl.querySelectorAll("[data-accept-id]").forEach((btn) => {
+          btn.addEventListener("click", () =>
+            handleAccept(btn.dataset.acceptId, btn),
+          );
+        });
+      }
+
+      async function handleAccept(deliveryId, btn) {
+        btn.disabled = true;
+        btn.textContent = "Accepting...";
+
+        const { error } = await acceptDelivery(deliveryId, profile.id);
+
+        if (error) {
+          // Most likely someone else accepted it first — the RLS/filter
+          // conditions make that fail cleanly rather than double-assign it.
+          showMessage(
+            "That delivery was just taken by another driver, or is no longer available.",
+            "error",
+          );
+          btn.disabled = false;
+          btn.textContent = "Accept Delivery";
+          loadAvailable();
+          return;
+        }
+
+        showMessage(
+          "Delivery accepted — check My Assigned Deliveries below.",
+          "success",
+        );
+        loadAvailable();
+        loadAssigned();
+      }
+
+      const HISTORY_STATUSES = ["delivered", "cancelled"];
+
+      function renderRatingBlock(d, existingRating) {
+        if (d.status !== "delivered") return "";
+
+        if (existingRating) {
+          return `
+        <div class="rating-box">
+          <div class="rating-given">
+            You rated the requester: <span class="stars-display">${"★".repeat(existingRating.rating)}${"☆".repeat(5 - existingRating.rating)}</span>
+            ${existingRating.comment ? `<br>"${existingRating.comment}"` : ""}
+          </div>
+        </div>
+      `;
+        }
+
+        return `
+      <div class="rating-box">
+        <div class="star-picker" data-delivery-id="${d.id}">
+          ${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-star="${n}">★</button>`).join("")}
+        </div>
+        <textarea class="rating-comment" data-comment-for="${d.id}" rows="2" placeholder="How was this pickup/delivery? (optional)"></textarea>
+        <button class="btn-small" data-submit-rating="${d.id}" data-requester-id="${d.requester_id}" disabled>Submit Rating</button>
+      </div>
+    `;
+      }
+
+      function wireRatingControls(container) {
+        container.querySelectorAll(".star-picker").forEach((picker) => {
+          const stars = picker.querySelectorAll("button");
+          stars.forEach((star) => {
+            star.addEventListener("click", () => {
+              const value = parseInt(star.dataset.star, 10);
+              picker.dataset.selected = value;
+              stars.forEach((s) =>
+                s.classList.toggle(
+                  "selected",
+                  parseInt(s.dataset.star, 10) <= value,
+                ),
+              );
+              const submitBtn = container.querySelector(
+                `[data-submit-rating="${picker.dataset.deliveryId}"]`,
+              );
+              if (submitBtn) submitBtn.disabled = false;
+            });
+          });
+        });
+
+        container.querySelectorAll("[data-submit-rating]").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const deliveryId = btn.dataset.submitRating;
+            const requesterId = btn.dataset.requesterId;
+            const picker = container.querySelector(
+              `.star-picker[data-delivery-id="${deliveryId}"]`,
+            );
+            const comment = container
+              .querySelector(`[data-comment-for="${deliveryId}"]`)
+              .value.trim();
+            const rating = parseInt(picker?.dataset.selected || "0", 10);
+            if (!rating) return;
+
+            btn.disabled = true;
+            btn.textContent = "Submitting...";
+
+            const { error } = await submitRating(
+              deliveryId,
+              profile.id,
+              requesterId,
+              rating,
+              comment,
+            );
+
+            if (error) {
+              showMessage(`Couldn't submit rating: ${error.message}`, "error");
+              btn.disabled = false;
+              btn.textContent = "Submit Rating";
+              return;
+            }
+
+            showMessage("Rating submitted.", "success");
+            loadAssigned();
+          });
+        });
+      }
+
+      async function loadAssigned() {
+        const activeEl = document.getElementById("assignedActiveList");
+        const historyEl = document.getElementById("assignedHistoryList");
+        const { data, error } = await getMyAssignedDeliveries(profile.id);
+
+        if (error) {
+          activeEl.innerHTML = `<p class="delivery-empty">Couldn't load your assigned deliveries: ${error.message}</p>`;
+          historyEl.innerHTML = "";
+          return;
+        }
+
+        const active = (data || []).filter(
+          (d) => !HISTORY_STATUSES.includes(d.status),
+        );
+        const history = (data || []).filter((d) =>
+          HISTORY_STATUSES.includes(d.status),
+        );
+
+        activeEl.innerHTML = active.length
+          ? active
+              .map((d) => {
+                const action = STATUS_FLOW[d.status];
+                const actionBtn = action
+                  ? `<button class="btn-accept" data-status-id="${d.id}" data-current="${d.status}" data-next="${action.next}">${action.label}</button>`
+                  : "";
+                const isTrackable =
+                  d.status === "picked_up" || d.status === "in_transit";
+                const trackingBadge = isTrackable
+                  ? `<div class="tracking-badge" id="tracking-badge-${d.id}">📍 Sharing your location…</div>`
+                  : "";
+                return `
+            <div class="delivery-card">
+              <div class="delivery-card-top">
+                <span class="delivery-code">${d.delivery_code}</span>
+                <span class="status-pill" data-status="${d.status}">${statusLabel(d.status)}</span>
+              </div>
+              <div class="delivery-route">${d.pickup_address} → ${d.dropoff_address}</div>
+              <div class="delivery-meta">${d.goods_description} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
+              ${trackingBadge}
+              ${actionBtn}
+            </div>
+          `;
+              })
+              .join("")
+          : `<p class="delivery-empty">Nothing active right now.</p>`;
+
+        activeEl.querySelectorAll("[data-status-id]").forEach((btn) => {
+          btn.addEventListener("click", () => handleStatusUpdate(btn));
+        });
+
+        const ratingsMap = await getMyRatingsForDeliveries(
+          history.map((d) => d.id),
+          profile.id,
+        );
+
+        historyEl.innerHTML = history.length
+          ? history
+              .map(
+                (d) => `
+          <div class="delivery-card">
+            <div class="delivery-card-top">
+              <span class="delivery-code">${d.delivery_code}</span>
+              <span class="status-pill" data-status="${d.status}">${statusLabel(d.status)}</span>
+            </div>
+            <div class="delivery-route">${d.pickup_address} → ${d.dropoff_address}</div>
+            <div class="delivery-meta">${d.goods_description} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
+            ${renderRatingBlock(d, ratingsMap.get(d.id))}
+          </div>
+        `,
+              )
+              .join("")
+          : `<p class="delivery-empty">No completed deliveries yet.</p>`;
+
+        wireRatingControls(historyEl);
+
+        updateTrackingTargets(active);
+      }
+
+      async function handleStatusUpdate(btn) {
+        const deliveryId = btn.dataset.statusId;
+        const currentStatus = btn.dataset.current;
+        const nextStatus = btn.dataset.next;
+
+        btn.disabled = true;
+        btn.textContent = "Updating...";
+
+        const { error } = await updateDeliveryStatus(
+          deliveryId,
+          profile.id,
+          currentStatus,
+          nextStatus,
+        );
+
+        if (error) {
+          showMessage(`Couldn't update status: ${error.message}`, "error");
+          btn.disabled = false;
+          btn.textContent = STATUS_FLOW[currentStatus]?.label || "Update";
+          return;
+        }
+
+        showMessage(`Marked ${statusLabel(nextStatus)}.`, "success");
+        loadAssigned();
+      }
+
+      // ---------- Phase 7: location broadcasting ----------
+      // While a delivery is Picked Up or In Transit, push this driver's
+      // current position onto that delivery roughly every 20 seconds. Stops
+      // automatically once nothing is trackable (delivered, or not yet
+      // picked up), and adapts live if the driver has more than one active
+      // delivery — unlikely in practice, but handled rather than assumed away.
+      let trackingIds = [];
+      let trackingInterval = null;
+      let locationErrorShown = false;
+
+      function updateTrackingTargets(deliveries) {
+        trackingIds = deliveries
+          .filter((d) => d.status === "picked_up" || d.status === "in_transit")
+          .map((d) => d.id);
+
+        if (trackingIds.length > 0 && !trackingInterval) {
+          pushLocation(); // send one immediately rather than waiting 20s
+          trackingInterval = setInterval(pushLocation, 20000);
+        } else if (trackingIds.length === 0 && trackingInterval) {
+          clearInterval(trackingInterval);
+          trackingInterval = null;
+        }
+      }
+
+      function getBrowserPosition() {
+        return new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error("This browser doesn't support location sharing."));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+          });
+        });
+      }
+
+      async function pushLocation() {
+        if (trackingIds.length === 0) return;
+
+        try {
+          const position = await getBrowserPosition();
+          const { latitude, longitude } = position.coords;
+
+          await Promise.all(
+            trackingIds.map((id) =>
+              updateDeliveryLocation(id, profile.id, latitude, longitude),
+            ),
+          );
+
+          trackingIds.forEach((id) => {
+            const badge = document.getElementById(`tracking-badge-${id}`);
+            if (badge) badge.textContent = "📍 Sharing your location…";
+          });
+        } catch (err) {
+          // Most common cause: the browser/OS denied location permission.
+          // Show this once rather than every 20 seconds.
+          if (!locationErrorShown) {
+            showMessage(
+              "Couldn't get your location — check that this site has permission to use it in your browser settings.",
+              "error",
+            );
+            locationErrorShown = true;
+          }
+        }
+      }
+
+      loadAvailable();
+      loadAssigned();
+      document.getElementById("refreshBtn").addEventListener("click", () => {
+        loadAvailable();
+        loadAssigned();
+      });
+
+      // ---------- Phase 8: notifications ----------
+      // Drivers now get notified when a new delivery is posted (see
+      // 0009_notify_drivers_new_delivery.sql). Same bell component as the
+      // farmer/vendor dashboards — no driver-specific code needed here, it
+      // just reads whatever's in the notifications table for this user.
+      const notifBell = document.getElementById("notifBell");
+      const notifPanel = document.getElementById("notifPanel");
+      const notifBadge = document.getElementById("notifBadge");
+
+      function timeAgo(dateString) {
+        const seconds = Math.floor((Date.now() - new Date(dateString)) / 1000);
+        if (seconds < 60) return "just now";
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        return `${Math.floor(hours / 24)}d ago`;
+      }
+
+      function renderNotifications(list) {
+        const unreadCount = list.filter((n) => !n.is_read).length;
+        notifBadge.textContent = unreadCount > 9 ? "9+" : String(unreadCount);
+        notifBadge.classList.toggle("visible", unreadCount > 0);
+
+        if (list.length === 0) {
+          notifPanel.innerHTML = `<div class="notif-empty">No notifications yet.</div>`;
+          return;
+        }
+
+        notifPanel.innerHTML = list
+          .map(
+            (n) => `
+      <div class="notif-item ${n.is_read ? "" : "unread"}" data-notif-id="${n.id}" data-read="${n.is_read}">
+        ${n.message}
+        <span class="notif-time">${timeAgo(n.created_at)}</span>
+      </div>
+    `,
+          )
+          .join("");
+
+        notifPanel.querySelectorAll("[data-notif-id]").forEach((item) => {
+          item.addEventListener("click", async () => {
+            if (item.dataset.read === "true") return;
+            await markNotificationRead(item.dataset.notifId);
+            loadNotifications();
+          });
+        });
+      }
+
+      async function loadNotifications() {
+        const { data, error } = await getMyNotifications(profile.id);
+        if (!error && data) renderNotifications(data);
+      }
+
+      notifBell.addEventListener("click", () => {
+        notifPanel.classList.toggle("open");
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".notif-wrap"))
+          notifPanel.classList.remove("open");
+      });
+
+      loadNotifications();
+      subscribeToNotifications(profile.id, () => loadNotifications());
+    </script>
+  </body>
+</html>

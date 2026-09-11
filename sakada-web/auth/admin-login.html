@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Login — Sakada Logistics</title>
+    <meta name="robots" content="noindex" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Public+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body>
+    <main class="auth-page">
+      <div class="auth-card">
+        <a class="logo" href="../index.html"
+          >SAKA<span class="mark">DA</span></a
+        >
+        <h1>Admin Portal</h1>
+        <p class="auth-sub">
+          Restricted access. Admin accounts are not self-registered.
+        </p>
+
+        <div id="formMessage" class="form-message" role="alert"></div>
+
+        <form id="adminLoginForm">
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" type="email" required autocomplete="email" />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+          <button class="btn-primary" type="submit" id="submitBtn">
+            Log In
+          </button>
+        </form>
+
+        <p class="auth-footer-link">
+          <a href="login.html">Back to regular login</a>
+        </p>
+      </div>
+    </main>
+
+    <script type="module">
+      import {
+        loginWithEmail,
+        getCurrentProfile,
+        signOut,
+      } from "../js/auth.js";
+
+      const messageEl = document.getElementById("formMessage");
+      function showMessage(text, type) {
+        messageEl.textContent = text;
+        messageEl.className = `form-message visible ${type}`;
+      }
+
+      const form = document.getElementById("adminLoginForm");
+      const submitBtn = document.getElementById("submitBtn");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Logging in...";
+
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+
+        const { error } = await loginWithEmail({ email, password });
+
+        if (error) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Log In";
+          showMessage(error.message, "error");
+          return;
+        }
+
+        const profile = await getCurrentProfile();
+
+        if (profile?.role !== "admin") {
+          // Not an admin account — sign them back out rather than leaving a
+          // logged-in session for a role that doesn't belong on this page.
+          showMessage("This account doesn't have admin access.", "error");
+          await signOut("../index.html");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Log In";
+          return;
+        }
+
+        window.location.href = "../dashboard/admin/index.html";
+      });
+    </script>
+  </body>
+</html>

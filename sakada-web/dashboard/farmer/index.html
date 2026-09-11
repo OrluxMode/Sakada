@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Farmer Dashboard — Sakada Logistics</title>
+    <meta name="robots" content="noindex" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Public+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../css/style.css" />
+  </head>
+  <body>
+    <header class="dash-topbar">
+      <a class="logo" href="../../index.html"
+        >SAKA<span class="mark">DA</span></a
+      >
+      <div class="dash-user">
+        <span class="role-badge">Farmer</span>
+        <span id="userName">Loading…</span>
+        <div class="notif-wrap">
+          <button
+            class="notif-bell"
+            id="notifBell"
+            type="button"
+            aria-label="Notifications"
+          >
+            🔔<span class="notif-badge" id="notifBadge">0</span>
+          </button>
+          <div class="notif-panel" id="notifPanel">
+            <div class="notif-empty" id="notifEmpty">No notifications yet.</div>
+          </div>
+        </div>
+        <button class="btn-ghost" id="signOutBtn" type="button">Log Out</button>
+      </div>
+    </header>
+
+    <main class="dash-body">
+      <h1 id="greeting">Welcome.</h1>
+      <p>
+        Create a delivery, get a real cost estimate, and see it move once a
+        driver accepts.
+      </p>
+
+      <div class="dash-section">
+        <h2>Create a Delivery</h2>
+        <div id="formMessage" class="form-message" role="alert"></div>
+
+        <form id="deliveryForm" class="delivery-form">
+          <div class="field">
+            <label for="pickupAddress">Pickup address</label>
+            <input
+              id="pickupAddress"
+              type="text"
+              placeholder="e.g. Barangay San Roque, La Trinidad, Benguet"
+              required
+            />
+          </div>
+          <div class="field">
+            <label for="dropoffAddress">Destination address</label>
+            <input
+              id="dropoffAddress"
+              type="text"
+              placeholder="e.g. Marikina Public Market, Marikina City"
+              required
+            />
+          </div>
+          <div class="field">
+            <label for="goodsDescription">What are you sending?</label>
+            <input
+              id="goodsDescription"
+              type="text"
+              placeholder="e.g. Fresh vegetables"
+              required
+            />
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label for="quantityKg">Quantity (kg)</label>
+              <input id="quantityKg" type="number" min="1" step="1" required />
+            </div>
+            <div class="field">
+              <label for="scheduledPickup">Pickup date</label>
+              <input id="scheduledPickup" type="date" required />
+            </div>
+          </div>
+          <div class="field">
+            <label for="notes">Notes (optional)</label>
+            <textarea
+              id="notes"
+              rows="3"
+              placeholder="Anything the driver should know"
+            ></textarea>
+          </div>
+
+          <button class="btn-primary" type="submit" id="estimateBtn">
+            Get Estimated Cost
+          </button>
+        </form>
+
+        <div id="costPreview" class="cost-preview">
+          <span class="cost-detail" id="costDistance"></span>
+          <span class="amount" id="costAmount"></span>
+          <span class="cost-detail"
+            >Estimated cost — confirm below to book this delivery.</span
+          >
+          <br /><br />
+          <button class="btn-primary" type="button" id="confirmBtn">
+            Confirm Delivery
+          </button>
+        </div>
+      </div>
+
+      <div class="dash-section">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+          "
+        >
+          <h2 style="margin: 0">My Deliveries</h2>
+          <button class="btn-ghost" id="refreshBtn" type="button">
+            Refresh
+          </button>
+        </div>
+        <p class="section-subheading">Active</p>
+        <div id="activeDeliveryList" class="delivery-list">
+          <p class="delivery-empty">Loading…</p>
+        </div>
+        <p class="section-subheading">Delivery History</p>
+        <div id="historyDeliveryList" class="delivery-list">
+          <p class="delivery-empty">Loading…</p>
+        </div>
+      </div>
+
+      <div class="dash-placeholder-card" style="margin-top: 48px">
+        <strong>Coming in Phase 9:</strong> ratings and feedback once a delivery
+        is marked Delivered.
+      </div>
+    </main>
+
+    <script type="module">
+      import { requireRole, signOut } from "../../js/auth.js";
+      import {
+        geocodeAddress,
+        getDrivingDistanceKm,
+        estimateCost,
+        staticMapUrl,
+      } from "../../js/mapbox-client.js";
+      import {
+        createDelivery,
+        getMyDeliveries,
+        subscribeToDeliveryUpdates,
+      } from "../../js/deliveries.js";
+      import {
+        getMyNotifications,
+        markNotificationRead,
+        subscribeToNotifications,
+      } from "../../js/notifications.js";
+      import {
+        getMyRatingsForDeliveries,
+        submitRating,
+      } from "../../js/ratings.js";
+
+      const profile = await requireRole(
+        "farmer",
+        "../../auth/login.html",
+        "../../index.html",
+      );
+      if (!profile) throw new Error("redirecting");
+
+      document.getElementById("userName").textContent = profile.full_name;
+      document.getElementById("greeting").textContent =
+        `Welcome, ${profile.full_name.split(" ")[0]}.`;
+
+      document
+        .getElementById("signOutBtn")
+        .addEventListener("click", () => signOut("../../index.html"));
+
+      const messageEl = document.getElementById("formMessage");
+      function showMessage(text, type) {
+        messageEl.textContent = text;
+        messageEl.className = `form-message visible ${type}`;
+      }
+      function clearMessage() {
+        messageEl.className = "form-message";
+      }
+
+      const form = document.getElementById("deliveryForm");
+      const estimateBtn = document.getElementById("estimateBtn");
+      const costPreview = document.getElementById("costPreview");
+      const confirmBtn = document.getElementById("confirmBtn");
+
+      let pendingQuote = null; // holds geocoded points + cost until confirmed
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        clearMessage();
+        costPreview.classList.remove("visible");
+        estimateBtn.disabled = true;
+        estimateBtn.textContent = "Calculating...";
+
+        try {
+          const pickupAddress = document
+            .getElementById("pickupAddress")
+            .value.trim();
+          const dropoffAddress = document
+            .getElementById("dropoffAddress")
+            .value.trim();
+          const quantityKg = parseFloat(
+            document.getElementById("quantityKg").value,
+          );
+
+          const [pickup, dropoff] = await Promise.all([
+            geocodeAddress(pickupAddress),
+            geocodeAddress(dropoffAddress),
+          ]);
+
+          const distanceKm = await getDrivingDistanceKm(pickup, dropoff);
+          const cost = estimateCost(distanceKm, quantityKg);
+
+          pendingQuote = {
+            pickupAddress,
+            dropoffAddress,
+            pickup,
+            dropoff,
+            distanceKm,
+            quantityKg,
+            cost,
+          };
+
+          document.getElementById("costDistance").textContent =
+            `${distanceKm.toFixed(1)} km driving distance`;
+          document.getElementById("costAmount").textContent =
+            `₱${cost.toLocaleString()}`;
+          costPreview.classList.add("visible");
+        } catch (err) {
+          showMessage(err.message, "error");
+        } finally {
+          estimateBtn.disabled = false;
+          estimateBtn.textContent = "Get Estimated Cost";
+        }
+      });
+
+      confirmBtn.addEventListener("click", async () => {
+        if (!pendingQuote) return;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = "Booking...";
+
+        const goodsDescription = document
+          .getElementById("goodsDescription")
+          .value.trim();
+        const scheduledPickup =
+          document.getElementById("scheduledPickup").value;
+        const notes = document.getElementById("notes").value.trim();
+
+        const { error } = await createDelivery({
+          requester_id: profile.id,
+          pickup_address: pendingQuote.pickupAddress,
+          pickup_lat: pendingQuote.pickup.lat,
+          pickup_lng: pendingQuote.pickup.lng,
+          dropoff_address: pendingQuote.dropoffAddress,
+          dropoff_lat: pendingQuote.dropoff.lat,
+          dropoff_lng: pendingQuote.dropoff.lng,
+          goods_description: goodsDescription,
+          quantity_kg: pendingQuote.quantityKg,
+          scheduled_pickup_at: scheduledPickup
+            ? new Date(scheduledPickup).toISOString()
+            : null,
+          notes: notes || null,
+          estimated_cost: pendingQuote.cost,
+        });
+
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = "Confirm Delivery";
+
+        if (error) {
+          showMessage(error.message, "error");
+          return;
+        }
+
+        showMessage(
+          "Delivery booked! Waiting for a driver to accept.",
+          "success",
+        );
+        form.reset();
+        costPreview.classList.remove("visible");
+        pendingQuote = null;
+        loadDeliveries();
+      });
+
+      function statusLabel(status) {
+        return (
+          {
+            pending: "Pending",
+            driver_assigned: "Driver Assigned",
+            picked_up: "Picked Up",
+            in_transit: "In Transit",
+            delivered: "Delivered",
+            cancelled: "Cancelled",
+          }[status] || status
+        );
+      }
+
+      const activeSubscriptions = new Map(); // deliveryId -> realtime channel
+      const HISTORY_STATUSES = ["delivered", "cancelled"];
+
+      function renderMapBlock(d) {
+        const isTrackable =
+          (d.status === "picked_up" || d.status === "in_transit") &&
+          d.current_lat &&
+          d.current_lng;
+        if (!isTrackable) return "";
+        return `
+      <div class="tracking-map-wrap">
+        <img id="map-${d.id}" src="${staticMapUrl(d.current_lat, d.current_lng)}" alt="Current driver location" />
+      </div>
+      <div class="tracking-map-caption" id="map-caption-${d.id}">Live location — updates automatically</div>
+    `;
+      }
+
+      function renderRatingBlock(d, existingRating) {
+        if (d.status !== "delivered") return "";
+
+        if (existingRating) {
+          return `
+        <div class="rating-box">
+          <div class="rating-given">
+            You rated this delivery: <span class="stars-display">${"★".repeat(existingRating.rating)}${"☆".repeat(5 - existingRating.rating)}</span>
+            ${existingRating.comment ? `<br>"${existingRating.comment}"` : ""}
+          </div>
+        </div>
+      `;
+        }
+
+        return `
+      <div class="rating-box">
+        <div class="star-picker" data-delivery-id="${d.id}">
+          ${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-star="${n}">★</button>`).join("")}
+        </div>
+        <textarea class="rating-comment" data-comment-for="${d.id}" rows="2" placeholder="How was your driver? (optional)"></textarea>
+        <button class="btn-small" data-submit-rating="${d.id}" data-driver-id="${d.driver_id}" disabled>Submit Rating</button>
+      </div>
+    `;
+      }
+
+      function wireRatingControls(container) {
+        container.querySelectorAll(".star-picker").forEach((picker) => {
+          const stars = picker.querySelectorAll("button");
+          stars.forEach((star) => {
+            star.addEventListener("click", () => {
+              const value = parseInt(star.dataset.star, 10);
+              picker.dataset.selected = value;
+              stars.forEach((s) =>
+                s.classList.toggle(
+                  "selected",
+                  parseInt(s.dataset.star, 10) <= value,
+                ),
+              );
+              const submitBtn = container.querySelector(
+                `[data-submit-rating="${picker.dataset.deliveryId}"]`,
+              );
+              if (submitBtn) submitBtn.disabled = false;
+            });
+          });
+        });
+
+        container.querySelectorAll("[data-submit-rating]").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const deliveryId = btn.dataset.submitRating;
+            const driverId = btn.dataset.driverId;
+            const picker = container.querySelector(
+              `.star-picker[data-delivery-id="${deliveryId}"]`,
+            );
+            const comment = container
+              .querySelector(`[data-comment-for="${deliveryId}"]`)
+              .value.trim();
+            const rating = parseInt(picker?.dataset.selected || "0", 10);
+            if (!rating) return;
+
+            btn.disabled = true;
+            btn.textContent = "Submitting...";
+
+            const { error } = await submitRating(
+              deliveryId,
+              profile.id,
+              driverId,
+              rating,
+              comment,
+            );
+
+            if (error) {
+              showMessage(`Couldn't submit rating: ${error.message}`, "error");
+              btn.disabled = false;
+              btn.textContent = "Submit Rating";
+              return;
+            }
+
+            showMessage("Thanks for rating your driver!", "success");
+            loadDeliveries();
+          });
+        });
+      }
+
+      async function loadDeliveries() {
+        const activeEl = document.getElementById("activeDeliveryList");
+        const historyEl = document.getElementById("historyDeliveryList");
+        const { data, error } = await getMyDeliveries(profile.id);
+
+        if (error) {
+          activeEl.innerHTML = `<p class="delivery-empty">Couldn't load your deliveries: ${error.message}</p>`;
+          historyEl.innerHTML = "";
+          return;
+        }
+
+        const active = (data || []).filter(
+          (d) => !HISTORY_STATUSES.includes(d.status),
+        );
+        const history = (data || []).filter((d) =>
+          HISTORY_STATUSES.includes(d.status),
+        );
+
+        activeEl.innerHTML = active.length
+          ? active
+              .map(
+                (d) => `
+          <div class="delivery-card">
+            <div class="delivery-card-top">
+              <span class="delivery-code">${d.delivery_code}</span>
+              <span class="status-pill" data-status="${d.status}">${statusLabel(d.status)}</span>
+            </div>
+            <div class="delivery-route">${d.pickup_address} → ${d.dropoff_address}</div>
+            <div class="delivery-meta">${d.goods_description} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
+            ${renderMapBlock(d)}
+          </div>
+        `,
+              )
+              .join("")
+          : `<p class="delivery-empty">Nothing active right now.</p>`;
+
+        const ratingsMap = await getMyRatingsForDeliveries(
+          history.map((d) => d.id),
+          profile.id,
+        );
+
+        historyEl.innerHTML = history.length
+          ? history
+              .map(
+                (d) => `
+          <div class="delivery-card">
+            <div class="delivery-card-top">
+              <span class="delivery-code">${d.delivery_code}</span>
+              <span class="status-pill" data-status="${d.status}">${statusLabel(d.status)}</span>
+            </div>
+            <div class="delivery-route">${d.pickup_address} → ${d.dropoff_address}</div>
+            <div class="delivery-meta">${d.goods_description} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
+            ${renderRatingBlock(d, ratingsMap.get(d.id))}
+          </div>
+        `,
+              )
+              .join("")
+          : `<p class="delivery-empty">No completed deliveries yet.</p>`;
+
+        wireRatingControls(historyEl);
+
+        // Reset tracking subscriptions to match exactly what's trackable right now.
+        activeSubscriptions.forEach((channel) => channel.unsubscribe());
+        activeSubscriptions.clear();
+
+        active
+          .filter((d) => d.status === "picked_up" || d.status === "in_transit")
+          .forEach((d) => {
+            const channel = subscribeToDeliveryUpdates(d.id, (updated) => {
+              const img = document.getElementById(`map-${d.id}`);
+              if (img && updated.current_lat && updated.current_lng) {
+                img.src = staticMapUrl(
+                  updated.current_lat,
+                  updated.current_lng,
+                );
+              }
+              const caption = document.getElementById(`map-caption-${d.id}`);
+              if (caption)
+                caption.textContent = `Live location — last updated ${new Date().toLocaleTimeString()}`;
+            });
+            activeSubscriptions.set(d.id, channel);
+          });
+      }
+
+      loadDeliveries();
+      document
+        .getElementById("refreshBtn")
+        .addEventListener("click", loadDeliveries);
+
+      // ---------- Phase 8: notifications ----------
+      const notifBell = document.getElementById("notifBell");
+      const notifPanel = document.getElementById("notifPanel");
+      const notifBadge = document.getElementById("notifBadge");
+
+      function timeAgo(dateString) {
+        const seconds = Math.floor((Date.now() - new Date(dateString)) / 1000);
+        if (seconds < 60) return "just now";
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        return `${Math.floor(hours / 24)}d ago`;
+      }
+
+      function renderNotifications(list) {
+        const unreadCount = list.filter((n) => !n.is_read).length;
+        notifBadge.textContent = unreadCount > 9 ? "9+" : String(unreadCount);
+        notifBadge.classList.toggle("visible", unreadCount > 0);
+
+        if (list.length === 0) {
+          notifPanel.innerHTML = `<div class="notif-empty">No notifications yet.</div>`;
+          return;
+        }
+
+        notifPanel.innerHTML = list
+          .map(
+            (n) => `
+      <div class="notif-item ${n.is_read ? "" : "unread"}" data-notif-id="${n.id}" data-read="${n.is_read}">
+        ${n.message}
+        <span class="notif-time">${timeAgo(n.created_at)}</span>
+      </div>
+    `,
+          )
+          .join("");
+
+        notifPanel.querySelectorAll("[data-notif-id]").forEach((item) => {
+          item.addEventListener("click", async () => {
+            if (item.dataset.read === "true") return;
+            await markNotificationRead(item.dataset.notifId);
+            loadNotifications();
+          });
+        });
+      }
+
+      async function loadNotifications() {
+        const { data, error } = await getMyNotifications(profile.id);
+        if (!error && data) renderNotifications(data);
+      }
+
+      notifBell.addEventListener("click", () => {
+        notifPanel.classList.toggle("open");
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".notif-wrap"))
+          notifPanel.classList.remove("open");
+      });
+
+      loadNotifications();
+      subscribeToNotifications(profile.id, () => loadNotifications());
+    </script>
+  </body>
+</html>

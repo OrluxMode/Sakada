@@ -1,0 +1,12 @@
+# Real secrets — never commit. Only .env.example (the template) is tracked.
+.env
+sakada-backend/.env
+
+# Editor / OS clutter
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
+
+# Live Server / local tooling
+.history/
