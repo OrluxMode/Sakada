@@ -5,7 +5,7 @@
 // browser code, same as the Supabase publishable key. If you ever need to
 // change it, update it here and nowhere else.
 
-const MAPBOX_TOKEN = "pk.eyJ1IjoicWFkcmlhbmNhcmxvIiwiYSI6ImNtdHdqbnZvMjBhbW0yeHF5NG0wZ3R2b3AifQ.OSXP4y8LRK6GvGjfkaiU8g";
+const MAPBOX_TOKEN = "pk.eyJ1IjoicWFkcmlhbmNhcmxvIiwiYSI6ImNtdTJpMW5iYzA3MHMyeXNlcW1oYnpsODkifQ.eIvugh9G7UAa-sTCkJmZ7g";
 
 /**
  * Turns a typed address into coordinates. Biased to the Philippines so

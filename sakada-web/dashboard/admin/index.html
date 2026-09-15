@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Dashboard — Sakada Logistics</title>
     <meta name="robots" content="noindex" />
+    <meta http-equiv="Content-Security-Policy-Report-Only" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://api.mapbox.com data:; connect-src 'self' https://*.supabase.co https://api.mapbox.com; frame-src 'none';" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,6 +13,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../css/style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
   </head>
   <body>
     <header class="dash-topbar">
@@ -135,6 +137,7 @@
     </main>
 
     <script type="module">
+      import { sanitizeHTML, sanitizeText } from "../../js/sanitize.js";
       import { requireRole, signOut } from "../../js/auth.js";
       import {
         getAllProfiles,
@@ -220,9 +223,9 @@
           .map(
             (p) => `
       <tr>
-        <td>${p.full_name}</td>
-        <td><span class="role-badge">${p.role}</span></td>
-        <td>${p.phone || "—"}</td>
+        <td>${sanitizeText(p.full_name)}</td>
+        <td><span class="role-badge">${sanitizeText(p.role)}</span></td>
+        <td>${sanitizeText(p.phone) || "—"}</td>
         <td>${new Date(p.created_at).toLocaleDateString()}</td>
       </tr>
     `,
@@ -257,13 +260,13 @@
             const canCancel = CANCELLABLE_STATUSES.includes(d.status);
             return `
         <tr>
-          <td>${d.delivery_code}</td>
-          <td>${d.pickup_address} → ${d.dropoff_address}</td>
-          <td>${requesterName}</td>
-          <td>${driverName}</td>
-          <td><span class="status-pill" data-status="${d.status}">${statusLabel(d.status)}</span></td>
+          <td>${sanitizeText(d.delivery_code)}</td>
+          <td>${sanitizeText(d.pickup_address)} → ${sanitizeText(d.dropoff_address)}</td>
+          <td>${sanitizeText(requesterName)}</td>
+          <td>${sanitizeText(driverName)}</td>
+          <td><span class="status-pill" data-status="${sanitizeText(d.status)}">${statusLabel(d.status)}</span></td>
           <td>₱${Number(d.estimated_cost).toLocaleString()}</td>
-          <td>${canCancel ? `<button class="btn-small danger" data-cancel-id="${d.id}">Cancel</button>` : ""}</td>
+          <td>${canCancel ? `<button class="btn-small danger" data-cancel-id="${sanitizeText(d.id)}">Cancel</button>` : ""}</td>
         </tr>
       `;
           })
@@ -308,11 +311,11 @@
               .map(
                 (r) => `
           <tr>
-            <td>${deliveryCodeById.get(r.delivery_id) || "—"}</td>
-            <td>${profilesById.get(r.rated_by)?.full_name || "—"}</td>
-            <td>${profilesById.get(r.rated_user_id)?.full_name || "—"}</td>
+            <td>${sanitizeText(deliveryCodeById.get(r.delivery_id)) || "—"}</td>
+            <td>${sanitizeText(profilesById.get(r.rated_by)?.full_name) || "—"}</td>
+            <td>${sanitizeText(profilesById.get(r.rated_user_id)?.full_name) || "—"}</td>
             <td>${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</td>
-            <td>${r.comment || "—"}</td>
+            <td>${sanitizeText(r.comment) || "—"}</td>
           </tr>
         `,
               )
