@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Farmer Dashboard — Sakada Logistics</title>
     <meta name="robots" content="noindex" />
+    <meta http-equiv="Content-Security-Policy-Report-Only" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://api.mapbox.com data:; connect-src 'self' https://*.supabase.co https://api.mapbox.com; frame-src 'none';" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,6 +13,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../css/style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
   </head>
   <body>
     <header class="dash-topbar">
@@ -145,6 +147,7 @@
     </main>
 
     <script type="module">
+      import { sanitizeHTML, sanitizeText } from "../../js/sanitize.js";
       import { requireRole, signOut } from "../../js/auth.js";
       import {
         geocodeAddress,
@@ -329,10 +332,10 @@
 
         if (existingRating) {
           return `
-        <div class="rating-box">
+          <div class="rating-box">
           <div class="rating-given">
             You rated this delivery: <span class="stars-display">${"★".repeat(existingRating.rating)}${"☆".repeat(5 - existingRating.rating)}</span>
-            ${existingRating.comment ? `<br>"${existingRating.comment}"` : ""}
+            ${existingRating.comment ? `<br>"${sanitizeText(existingRating.comment)}"` : ""}
           </div>
         </div>
       `;
@@ -340,11 +343,11 @@
 
         return `
       <div class="rating-box">
-        <div class="star-picker" data-delivery-id="${d.id}">
+        <div class="star-picker" data-delivery-id="${sanitizeText(d.id)}">
           ${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-star="${n}">★</button>`).join("")}
         </div>
-        <textarea class="rating-comment" data-comment-for="${d.id}" rows="2" placeholder="How was your driver? (optional)"></textarea>
-        <button class="btn-small" data-submit-rating="${d.id}" data-driver-id="${d.driver_id}" disabled>Submit Rating</button>
+        <textarea class="rating-comment" data-comment-for="${sanitizeText(d.id)}" rows="2" placeholder="How was your driver? (optional)"></textarea>
+        <button class="btn-small" data-submit-rating="${sanitizeText(d.id)}" data-driver-id="${sanitizeText(d.driver_id)}" disabled>Submit Rating</button>
       </div>
     `;
       }
@@ -431,11 +434,11 @@
                 (d) => `
           <div class="delivery-card">
             <div class="delivery-card-top">
-              <span class="delivery-code">${d.delivery_code}</span>
-              <span class="status-pill" data-status="${d.status}">${statusLabel(d.status)}</span>
+              <span class="delivery-code">${sanitizeText(d.delivery_code)}</span>
+              <span class="status-pill" data-status="${sanitizeText(d.status)}">${statusLabel(d.status)}</span>
             </div>
-            <div class="delivery-route">${d.pickup_address} → ${d.dropoff_address}</div>
-            <div class="delivery-meta">${d.goods_description} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
+            <div class="delivery-route">${sanitizeText(d.pickup_address)} → ${sanitizeText(d.dropoff_address)}</div>
+            <div class="delivery-meta">${sanitizeText(d.goods_description)} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
             ${renderMapBlock(d)}
           </div>
         `,
@@ -454,11 +457,11 @@
                 (d) => `
           <div class="delivery-card">
             <div class="delivery-card-top">
-              <span class="delivery-code">${d.delivery_code}</span>
-              <span class="status-pill" data-status="${d.status}">${statusLabel(d.status)}</span>
+              <span class="delivery-code">${sanitizeText(d.delivery_code)}</span>
+              <span class="status-pill" data-status="${sanitizeText(d.status)}">${statusLabel(d.status)}</span>
             </div>
-            <div class="delivery-route">${d.pickup_address} → ${d.dropoff_address}</div>
-            <div class="delivery-meta">${d.goods_description} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
+            <div class="delivery-route">${sanitizeText(d.pickup_address)} → ${sanitizeText(d.dropoff_address)}</div>
+            <div class="delivery-meta">${sanitizeText(d.goods_description)} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
             ${renderRatingBlock(d, ratingsMap.get(d.id))}
           </div>
         `,
@@ -524,8 +527,8 @@
         notifPanel.innerHTML = list
           .map(
             (n) => `
-      <div class="notif-item ${n.is_read ? "" : "unread"}" data-notif-id="${n.id}" data-read="${n.is_read}">
-        ${n.message}
+      <div class="notif-item ${n.is_read ? "" : "unread"}" data-notif-id="${sanitizeText(n.id)}" data-read="${n.is_read}">
+        ${sanitizeHTML(n.message)}
         <span class="notif-time">${timeAgo(n.created_at)}</span>
       </div>
     `,
