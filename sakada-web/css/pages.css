@@ -1,0 +1,211 @@
+/* ================================================
+   Inner page components (how it works, for-farmers,
+   for-vendors, for-drivers, contact)
+   ================================================ */
+
+.nav--static {
+  position: static;
+  background: var(--panel-dark);
+  border-bottom: 1px solid var(--line);
+}
+
+/* ---------- Compact page hero ---------- */
+.page-hero {
+  padding: 96px clamp(20px, 5vw, 64px) 56px;
+  border-bottom: 1px solid var(--line);
+}
+
+.page-hero .eyebrow-role {
+  display: inline-block;
+  color: var(--accent-amber);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.page-hero h1 {
+  font-size: clamp(38px, 5.5vw, 64px);
+  max-width: 16ch;
+}
+
+.page-hero p {
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 56ch;
+  margin: 20px 0 0;
+}
+
+/* ---------- Generic section ---------- */
+.section {
+  padding: 72px clamp(20px, 5vw, 64px);
+  border-bottom: 1px solid var(--line);
+}
+
+.section h2 {
+  font-size: clamp(28px, 3.4vw, 40px);
+  max-width: 20ch;
+  margin-bottom: 36px;
+}
+
+/* ---------- Step list ---------- */
+.step-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.step-list li {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 24px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.step-list .step-num {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 800;
+  font-size: 28px;
+  color: var(--accent-amber);
+}
+
+.step-list h3 {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  margin: 0 0 6px;
+}
+
+.step-list p {
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 60ch;
+}
+
+/* ---------- Two-column feature grid ---------- */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 32px;
+}
+
+.feature-grid h3 {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  margin: 0 0 8px;
+}
+
+.feature-grid p {
+  color: var(--text-muted);
+  font-size: 14.5px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ---------- CTA band ---------- */
+.cta-band {
+  padding: 64px clamp(20px, 5vw, 64px);
+  background: var(--panel-dark);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.cta-band h2 {
+  font-size: clamp(24px, 3vw, 34px);
+  max-width: 18ch;
+  margin: 0;
+}
+
+/* ---------- Contact form ---------- */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+}
+
+@media (max-width: 760px) {
+  .contact-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.field label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.field input,
+.field textarea {
+  background: var(--panel-dark);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 14px;
+  color: var(--text-cream);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: 1px;
+}
+
+.contact-info dt {
+  color: var(--accent-amber);
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 20px;
+}
+.contact-info dt:first-child {
+  margin-top: 0;
+}
+.contact-info dd {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+/* ---------- Footer ---------- */
+.site-footer {
+  padding: 40px clamp(20px, 5vw, 64px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.site-footer a {
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-left: 20px;
+}
+.site-footer a:hover {
+  color: var(--text-cream);
+}
+
+@media (max-width: 600px) {
+  .step-list li {
+    grid-template-columns: 40px 1fr;
+  }
+}

@@ -1,0 +1,65 @@
+/* ================================================
+   Star picker + rating display
+   ================================================ */
+
+.rating-box {
+  margin-top: 12px;
+  border-top: 1px dashed var(--line);
+  padding-top: 12px;
+}
+
+.star-picker {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.star-picker button {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+.star-picker button.selected {
+  color: var(--accent-amber);
+}
+
+.rating-comment {
+  width: 100%;
+  background: var(--bg-black);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text-cream);
+  font-family: inherit;
+  font-size: 13px;
+  margin-bottom: 10px;
+  resize: vertical;
+}
+
+.btn-small {
+  background: var(--accent-amber);
+  color: #17150c;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-small:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rating-given {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.rating-given .stars-display {
+  color: var(--accent-amber);
+  letter-spacing: 1px;
+}

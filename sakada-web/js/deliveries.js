@@ -4,7 +4,17 @@
 
 import { supabase } from "./supabase-client.js";
 
+async function enforceRateLimit(operation, maxPerWindow = 3, windowSeconds = 60) {
+  const { error } = await supabase.rpc("check_rate_limit", {
+    p_operation: operation,
+    p_max_per_window: maxPerWindow,
+    p_window_seconds: windowSeconds,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function createDelivery(payload) {
+  await enforceRateLimit("create_delivery", 3, 60);
   return await supabase.from("deliveries").insert(payload).select().single();
 }
 
@@ -36,6 +46,7 @@ export async function getAvailableDeliveries() {
  * cleanly instead of silently overwriting the first driver's assignment.
  */
 export async function acceptDelivery(deliveryId, driverId) {
+  await enforceRateLimit("accept_delivery", 3, 60);
   return await supabase
     .from("deliveries")
     .update({ driver_id: driverId, status: "driver_assigned" })
@@ -61,6 +72,7 @@ export async function updateDeliveryStatus(
   currentStatus,
   newStatus,
 ) {
+  await enforceRateLimit("update_status", 5, 60);
   return await supabase
     .from("deliveries")
     .update({ status: newStatus })

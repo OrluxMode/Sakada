@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Register — Sakada Logistics</title>
-    <meta http-equiv="Content-Security-Policy-Report-Only" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co https://api.mapbox.com; frame-src 'none';" />
+    <meta http-equiv="Content-Security-Policy-Report-Only" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co https://api.mapbox.com; frame-src 'none';" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -86,76 +86,6 @@
       </div>
     </main>
 
-    <script type="module">
-      import { registerWithEmail, loginWithGoogle } from "../js/auth.js";
-
-      const tabs = document.querySelectorAll(".role-tabs button");
-      const params = new URLSearchParams(window.location.search);
-      const presetRole = params.get("role");
-      let selectedRole = "farmer";
-
-      if (presetRole && ["farmer", "vendor", "driver"].includes(presetRole)) {
-        selectedRole = presetRole;
-      }
-
-      function setActiveTab(role) {
-        selectedRole = role;
-        tabs.forEach((btn) =>
-          btn.classList.toggle("active", btn.dataset.role === role),
-        );
-      }
-      setActiveTab(selectedRole);
-
-      tabs.forEach((btn) =>
-        btn.addEventListener("click", () => setActiveTab(btn.dataset.role)),
-      );
-
-      const messageEl = document.getElementById("formMessage");
-      function showMessage(text, type) {
-        messageEl.textContent = text;
-        messageEl.className = `form-message visible ${type}`;
-      }
-
-      const form = document.getElementById("registerForm");
-      const submitBtn = document.getElementById("submitBtn");
-
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Creating account...";
-
-        const fullName = document.getElementById("fullName").value.trim();
-        const email = document.getElementById("email").value.trim();
-        const password = document.getElementById("password").value;
-
-        const { error } = await registerWithEmail({
-          email,
-          password,
-          fullName,
-          role: selectedRole,
-        });
-
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Create Account";
-
-        if (error) {
-          showMessage(error.message, "error");
-          return;
-        }
-
-        showMessage(
-          "Account created. Check your email to confirm, then log in.",
-          "success",
-        );
-        form.reset();
-      });
-
-      document
-        .getElementById("googleBtn")
-        .addEventListener("click", async () => {
-          const { error } = await loginWithGoogle(selectedRole);
-          if (error) showMessage(error.message, "error");
-        });
-    </script>
+    <script type="module" src="../js/register.js"></script>
   </body>
 </html>

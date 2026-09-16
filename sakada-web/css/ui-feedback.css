@@ -1,0 +1,342 @@
+/* ================================================
+   UI Feedback: Toasts, Skeletons, Offline Banner,
+   Empty States, Micro-interactions
+   ================================================ */
+
+/* ---------- Toast ---------- */
+
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 380px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--panel-dark);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-cream);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  pointer-events: all;
+  opacity: 0;
+  transform: translateX(20px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+.toast--visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.toast--hiding {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.toast__icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.toast--success .toast__icon {
+  background: rgba(46, 125, 50, 0.2);
+  color: #a9d18f;
+}
+.toast--error .toast__icon {
+  background: rgba(198, 40, 40, 0.2);
+  color: #f2a98a;
+}
+.toast--warning .toast__icon {
+  background: rgba(245, 127, 23, 0.2);
+  color: var(--accent-amber);
+}
+.toast--info .toast__icon {
+  background: rgba(91, 155, 213, 0.2);
+  color: #8ab8e6;
+}
+
+.toast--success {
+  border-left: 3px solid #7ab05c;
+}
+.toast--error {
+  border-left: 3px solid #e0542f;
+}
+.toast--warning {
+  border-left: 3px solid var(--accent-amber);
+}
+.toast--info {
+  border-left: 3px solid #5b9bd5;
+}
+
+.toast__msg {
+  flex: 1;
+  word-break: break-word;
+}
+
+.toast__close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  margin-top: -1px;
+}
+.toast__close:hover {
+  color: var(--text-cream);
+}
+
+/* ---------- Skeleton ---------- */
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
+.skeleton {
+  background: var(--panel-dark);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton--card {
+  padding: 16px 18px;
+}
+
+.skeleton__line {
+  height: 12px;
+  border-radius: 4px;
+  background: rgba(243, 239, 228, 0.08);
+  animation: skeleton-pulse 1.8s ease-in-out infinite;
+}
+.skeleton__line--title {
+  width: 40%;
+  height: 16px;
+  margin-bottom: 12px;
+}
+.skeleton__line--text {
+  width: 80%;
+  margin-bottom: 8px;
+}
+.skeleton__line--text:last-child {
+  width: 55%;
+  margin-bottom: 0;
+}
+.skeleton__line--badge {
+  width: 60px;
+  height: 20px;
+  border-radius: 999px;
+  margin-left: auto;
+}
+.skeleton__line--row {
+  width: 100%;
+  height: 44px;
+  margin-bottom: 0;
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 620px;
+}
+
+/* ---------- Spinner (inline button) ---------- */
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Full-page loader ---------- */
+
+.page-loader {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  transition: opacity 0.3s ease;
+}
+.page-loader--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.page-loader__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--line);
+  border-top-color: var(--accent-amber);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ---------- Offline Banner ---------- */
+
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  background: #2a1a0a;
+  border-bottom: 1px solid rgba(224, 151, 47, 0.3);
+  color: var(--accent-amber);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  padding: 10px 20px;
+  transform: translateY(-100%);
+  transition: transform 0.3s ease;
+}
+.offline-banner--visible {
+  transform: translateY(0);
+}
+
+.offline-banner__icon {
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+/* ---------- Empty State ---------- */
+
+.empty-state {
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 28px 24px;
+  text-align: center;
+  max-width: 480px;
+}
+
+.empty-state__icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+  line-height: 1;
+}
+
+.empty-state__title {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--text-cream);
+  margin: 0 0 6px;
+}
+
+.empty-state__desc {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+  max-width: 38ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ---------- Micro-interactions ---------- */
+
+.delivery-card {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.delivery-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary,
+.btn-ghost,
+.btn-accept,
+.btn-small {
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
+}
+.btn-primary:active:not(:disabled),
+.btn-ghost:active:not(:disabled),
+.btn-accept:active:not(:disabled),
+.btn-small:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.notif-bell {
+  transition: transform 0.15s ease;
+}
+.notif-bell:hover {
+  transform: scale(1.05);
+}
+
+.status-pill {
+  transition: transform 0.1s ease;
+}
+
+.field input,
+.field textarea {
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.field input:focus-visible,
+.field textarea:focus-visible {
+  box-shadow: 0 0 0 2px rgba(224, 151, 47, 0.15);
+}
+
+/* ---------- Responsive toast ---------- */
+
+@media (max-width: 480px) {
+  .toast-container {
+    top: auto;
+    bottom: 16px;
+    right: 16px;
+    left: 16px;
+    max-width: none;
+  }
+}

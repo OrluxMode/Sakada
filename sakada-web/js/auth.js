@@ -50,6 +50,14 @@ export async function signOut(homePath) {
   window.location.href = homePath;
 }
 
+/**
+ * Update the user's last_login_at timestamp (used by 0011 to only
+ * notify active drivers). Safe to call on every page load — it's idempotent.
+ */
+export async function updateLastLogin() {
+  await supabase.rpc("update_my_last_login");
+}
+
 /** Returns the signed-in user's profile row, or null if not logged in. */
 export async function getCurrentProfile() {
   const {

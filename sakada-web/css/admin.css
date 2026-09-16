@@ -1,0 +1,105 @@
+/* ================================================
+   Admin dashboard: stats, tabs, tables
+   ================================================ */
+
+.dash-body.wide {
+  max-width: 1100px;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 14px;
+  margin: 28px 0 8px;
+}
+
+.admin-stat-card {
+  background: var(--panel-dark);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px 18px;
+}
+
+.admin-stat-number {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 800;
+  font-size: 30px;
+  color: var(--accent-amber);
+  display: block;
+}
+
+.admin-stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 40px 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-tabs button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 4px;
+  margin-right: 20px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.admin-tabs button.active {
+  color: var(--text-cream);
+  border-bottom-color: var(--accent-amber);
+}
+
+.admin-panel {
+  display: none;
+}
+.admin-panel.active {
+  display: block;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 640px;
+}
+
+.data-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-dark);
+}
+
+.data-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-cream);
+  vertical-align: top;
+}
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table .btn-small.danger {
+  background: transparent;
+  border: 1px solid #e0542f;
+  color: #f2a98a;
+}
