@@ -7,11 +7,20 @@
 //
 // If you ever create a new Supabase project, update these two values —
 // see sakada-backend/docs/SETUP.md step 3.
+//
+// CDN pinned: @supabase/supabase-js@2.45.4 (last checked 2026-09-16)
 
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
 
 const SUPABASE_URL = "https://aeeniueayubeugvooyqj.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY =
   "sb_publishable_1Y6nsjO_nS0j2Vz6xKqfmA_VpCpPs82";
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    lock: false,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+});

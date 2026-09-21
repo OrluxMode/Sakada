@@ -10,7 +10,7 @@
       name="description"
       content="Sakada connects farmers and vendors directly with available trucks for agricultural delivery — book, track, and manage every shipment in one place."
     />
-    <meta http-equiv="Content-Security-Policy-Report-Only" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://images.unsplash.com https://api.mapbox.com data:; connect-src 'self' https://*.supabase.co https://api.mapbox.com; frame-src 'none';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://api.mapbox.com data:; connect-src 'self' https://*.supabase.co https://api.mapbox.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com wss://*.supabase.co; frame-src 'none';" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,6 +18,17 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="css/style.css" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <meta property="og:title" content="Sakada Logistics — Book Agricultural Delivery" />
+    <meta property="og:description" content="Connect farmers and vendors directly with available trucks. Book, track, and manage every shipment in one place." />
+    <meta property="og:image" content="https://sakadalogistics.ph/assets/hero.jpg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sakadalogistics.ph/" />
+    <meta property="og:site_name" content="Sakada Logistics" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sakada Logistics — Book Agricultural Delivery" />
+    <meta name="twitter:description" content="Connect farmers and vendors directly with available trucks. Book, track, and manage every shipment in one place." />
+    <meta name="twitter:image" content="https://sakadalogistics.ph/assets/hero.jpg" />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -45,9 +56,7 @@
         </a>
       </nav>
 
-      <!-- Hero photo: placeholder, Unsplash License, photo by Mateusz Niezgoda (@mniezgoda).
-       Replace with commissioned Philippine agricultural photography before launch —
-       see docs/DESIGN-SYSTEM.md. -->
+      <!-- Hero photo: rural road at sunset, local asset -->
       <div
         class="hero-photo"
         role="img"

@@ -53,9 +53,11 @@ export async function signOut(homePath) {
 /**
  * Update the user's last_login_at timestamp (used by 0011 to only
  * notify active drivers). Safe to call on every page load — it's idempotent.
+ * Silently ignores 404 if migration 0011 hasn't been run yet.
  */
 export async function updateLastLogin() {
-  await supabase.rpc("update_my_last_login");
+  const { error } = await supabase.rpc("update_my_last_login");
+  if (error && error.code !== "42P01") console.warn("updateLastLogin:", error.message);
 }
 
 /** Returns the signed-in user's profile row, or null if not logged in. */

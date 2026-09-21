@@ -275,77 +275,114 @@ A logistics platform (farmer/vendor ↔ driver delivery matching) built on **Sup
 
 ---
 
-### Phase 5 — Frontend Polish
+### Phase 5 — Frontend Polish ✅ DONE
 
-**5a. Replace hotlinked Unsplash hero image**
-- Download the image, save to `assets/hero.jpg` (or `assets/hero.webp`)
-- Update `css/style.css` `.hero-photo` to reference local file
-- Add responsive `<img>` with `srcset` for different viewport sizes, or use CSS `image-set()`
+**5a. Replace hotlinked Unsplash hero image** ✅ Done
+- Downloaded hero image to `assets/hero.jpg` (719KB) + `assets/hero-mobile.jpg` (204KB)
+- Updated `css/nav.css` `.hero-photo` to reference local `../assets/hero.jpg`
+- Removed `https://images.unsplash.com` from CSP `img-src` in `index.html`
+- Mobile-responsive: smaller image served via CSS media query
 
-**5b. Add favicon + Open Graph tags**
-- Create `assets/favicon.ico` and `assets/favicon.png` (use a truck/agriculture icon)
-- Add `<link rel="icon">` to all HTML files
-- Add `og:title`, `og:description`, `og:image`, `og:url` to `index.html` and key pages
-- Add Twitter card meta tags
+**5b. Add favicon + Open Graph tags** ✅ Done
+- Created `assets/favicon.svg` (amber "S" on dark background)
+- Added `<link rel="icon">` to all 16 HTML files
+- Added OG tags to `index.html`: `og:title`, `og:description`, `og:image`, `og:type`
+- Added Twitter card meta tags (`twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`)
 
-**5c. Create a 404 page**
-- Create `404.html` with the same nav/footer styling
-- Show "Page not found" with a link back to home
-- Configure hosting (Netlify/Vercel) to serve it for unknown routes
+**5c. Create a 404 page** ✅ Done
+- Created `404.html` with same nav/footer styling as other pages
+- Shows "404 — Page not found" with descriptive text and "Back to Home" button
+- `noindex` meta tag to prevent indexing
+- Configure hosting (Netlify/Vercel) to serve `404.html` for unknown routes
 
-**5d. Fix the contact form**
-- Replace `mailto:` with a Supabase insert into a `contact_submissions` table
-- Create migration `0012_contact_submissions.sql` (columns: name, email, message, created_at)
-- Add RLS: anyone can INSERT, only admin can SELECT
-- Wire `contact.html` form to `supabase.from("contact_submissions").insert(...)`
+**5d. Fix the contact form** ✅ Done
+- Created `0014_contact_submissions.sql` migration (name, email, message, created_at)
+- Added RLS: anyone can INSERT, only admin can SELECT
+- Created `js/contact.js` with form handler (Supabase insert + success/error messages)
+- Updated `pages/contact.html`: removed `mailto:` action, wired to `contact.js`
+- Added spinner on submit button during send
 
-**5e. Fix SETUP.md missing section 6**
-- Add section 6 (or renumber sections 7→6, 8→7)
+**5e. Fix SETUP.md missing section 6** ✅ Done
+- Added section 6 listing migrations 0009–0014
+- Renumbered section 7 (Realtime) and section 8 (What's next) accordingly
 
-**5f. Update Readme.md**
-- Add migration files 0006–0010 to the file tree
-- Add one-line descriptions for each
-
----
-
-### Phase 6 — Admin Login UX Improvement
-
-**6a. Improve admin login error handling**
-- Currently: logs in, checks role, signs out if not admin (leaks info)
-- Change to: after login, if role !== admin, show generic "Invalid credentials" and sign out immediately (don't reveal that the account exists but isn't admin)
-- Or: add a server-side check via a Supabase Edge Function that validates admin status before completing login
+**5f. Update Readme.md** ✅ Done (in Phase 4)
 
 ---
 
-### Phase 7 — Environment Config + Dependency Management
+### Phase 6 — Admin Login UX Improvement ✅ DONE
 
-**7a. Pin CDN dependency versions**
-- Change `supabase-js@2/+esm` to an exact version like `supabase-js@2.45.0/+esm`
-- Add a comment in `supabase-client.js` with the pinned version and date
-
-**7b. Add environment-based config**
-- Create `js/config.js` that reads from `window.__ENV__` or falls back to defaults
-- For production: inject config via hosting platform (Netlify env vars, Vercel env vars)
-- For local dev: use `.env` + a simple build step or `<script>` injection
-
-**7c. Add `package.json`**
-- Add `name`, `version`, `private: true`
-- Add scripts: `dev` (use a local server like `npx serve`), `lint` (if adding a linter)
-- This is the foundation for later CI/CD
+**6a. Improve admin login error handling** ✅ Done
+- Changed non-admin response from `"This account doesn't have admin access."` → `"Invalid email or password."`
+- Same generic message for wrong password AND non-admin accounts — doesn't reveal whether the account exists
+- Added spinner on submit button during login
+- Added toast notification on failure
+- Sign out happens silently in background (no visible state leak)
 
 ---
 
-### Phase 8 — Testing
+### Phase 7 — Environment Config + Dependency Management ✅ DONE
 
-**8a. Add E2E tests for the critical flow**
-- Use Playwright (lightweight, no build step needed)
-- Test flow: register → login → create delivery → (as driver) accept → update status → delivered → rate
-- Test RLS: login as farmer, try to access driver data (should fail)
-- Test edge cases: double-click accept, invalid status transition, offline behavior
+**7a. Pin CDN dependency versions** ✅ Done
+- Pinned `@supabase/supabase-js@2.45.4` in `js/supabase-client.js` (was unpinned `@2`)
+- DOMPurify was already pinned at `3.1.6` via cdnjs URL
+- Cleaned up 6 marketing pages that still had `https://images.unsplash.com` in CSP `img-src` (hero is now local)
+- Added version + date comment in supabase-client.js for future tracking
 
-**8b. Add unit tests for shared utilities**
-- Test `statusLabel()`, `timeAgo()`, `estimateCost()`, `geocodeAddress()` (with mocked fetch)
-- Use Vitest or Jest (lightweight)
+**7b. Add environment-based config** ✅ Done
+- Created `js/config.js` with `export const config` containing Supabase URL, key, and Mapbox token
+- Falls back to hardcoded defaults for local dev
+- Production: inject via `window.__SAKADA_CONFIG__` before app loads (Netlify/Vercel env vars)
+- Any JS file can `import { config } from "./config.js"` to access values
+
+**7c. Add `package.json`** ✅ Done
+- Created `sakada-web/package.json` with name, version, private: true
+- Added `dev` script: `npx serve . -l 3000` for local development server
+- Added `lint` placeholder for future linter setup
+- Added `engines: { node: ">=18" }`
+
+---
+
+### Audit Fixes (Post-Phase 7)
+
+**Critical:**
+- Fixed `dashboard-shared.js:58` — `loadNotifications` was undefined in `renderNotifications` scope. Added `onRead` callback parameter, passed from `setupNotifications`.
+
+**High:**
+- Fixed XSS in `toast.js` — switched from `innerHTML` to DOM APIs (`textContent`) for message rendering
+- Fixed `og:image` and `twitter:image` in `index.html` — changed from relative paths to absolute URLs
+- Added global `:focus-visible` style in `base.css` (amber outline on all interactive elements)
+- Fixed `.notif-panel` mobile overflow — added `max-width: calc(100vw - 40px)`
+- Removed unused `showToast` import from `farmer-dashboard.js`
+- Replaced dynamic `import("./ratings.js")` with static import in farmer + vendor dashboards
+
+**Medium:**
+- Changed `enforceRateLimit()` from throwing to returning `{ error }` — prevents unhandled rejections in dashboard callers
+- Added `<meta name="robots" content="noindex">` to `login.html`, `register.html`, `callback.html`
+- Added skip links to all 4 dashboard pages + all 4 auth pages
+- Added `id="main"` to auth page `<main>` elements for skip link targets
+
+**Low:**
+- Removed dead `sanitizeTemplate` function from `sanitize.js`
+- Removed invalid `data-*` from `ALLOWED_ATTR` in sanitize config (DOMPurify doesn't support wildcards there)
+
+---
+
+### Phase 8 — Testing ✅ DONE
+
+**8a. ~~Add E2E tests for the critical flow~~** — Deferred
+- Playwright E2E testing deferred — requires a running server + Supabase connection
+- Can be added in Phase 9 after deployment is configured
+
+**8b. ~~Add unit tests for shared utilities~~** ✅
+- Installed **Vitest** (v3.2.7) + **jsdom** for DOM testing
+- `vitest.config.js` configured with jsdom environment
+- `npm test` runs all unit tests, `npm run test:watch` for development
+- **4 test files, 41 tests, all passing:**
+  - `tests/dashboard-shared.test.js` (11 tests): `statusLabel()`, `timeAgo()`, `HISTORY_STATUSES`
+  - `tests/mapbox-client.test.js` (9 tests): `estimateCost()`, `staticMapUrl()`
+  - `tests/sanitize.test.js` (10 tests): `sanitizeHTML()`, `sanitizeText()` — DOMPurify validation
+  - `tests/toast.test.js` (11 tests): `showToast()`, type convenience functions, dismiss behavior
 
 ---
 
@@ -391,9 +428,9 @@ A logistics platform (farmer/vendor ↔ driver delivery matching) built on **Sup
 | **2** | Dedup: shared JS, CSS split, inline scripts | Medium | High (maintainability) | ✅ Done |
 | **3** | UX: toasts, skeletons, offline | Medium | High (user experience) | ✅ Done |
 | **4** | Backend: notification optimization, rate limiting | Low-Medium | Medium (scalability) | ✅ Done |
-| **5** | Polish: hero image, favicon, 404, contact form | Low | Medium (professionalism) | |
-| **6** | Admin login UX | Low | Low-Medium | |
-| **7** | Config: env vars, package.json, pinned deps | Low | Medium (dev experience) | |
-| **8** | Testing: E2E + unit | Medium-High | High (reliability) | |
+| **5** | Polish: hero image, favicon, 404, contact form | Low | Medium (professionalism) | ✅ Done |
+| **6** | Admin login UX | Low | Low-Medium | ✅ Done |
+| **7** | Config: env vars, package.json, pinned deps | Low | Medium (dev experience) | ✅ Done |
+| **8** | Testing: E2E + unit | Medium-High | High (reliability) | ✅ Done (unit tests) |
 | **9** | CI/CD + deployment | Medium | High (workflow) | |
 | **10** | Future: PWA, i18n, analytics | High | Medium (growth) | |

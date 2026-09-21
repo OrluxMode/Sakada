@@ -46,11 +46,12 @@
   top: 44px;
   right: 0;
   width: 320px;
+  max-width: calc(100vw - 40px);
   max-height: 400px;
   overflow-y: auto;
   background: var(--panel-dark);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 8px;
   display: none;
   z-index: 20;

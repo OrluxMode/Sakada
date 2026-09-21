@@ -78,6 +78,17 @@ where id = (select id from auth.users where email = 'the-admin-email@example.com
 
 There is intentionally no self-service way to become an admin from the UI.
 
+## 6. Run remaining migrations
+
+Continue running the migration files in order after step 2:
+
+9. `0009_notify_drivers_new_delivery.sql` — fan-out notify all drivers on new delivery
+10. `0010_fix_role_escalation.sql` — fix for when `auth.uid()` is NULL (trusted backend context)
+11. `0011_optimize_driver_notifications.sql` — only notify drivers active in the last 7 days
+12. `0012_rate_limiting.sql` — rate limit table + check function for delivery operations
+13. `0013_deny_status_history_insert.sql` — explicit DENY for direct status history inserts
+14. `0014_contact_submissions.sql` — contact form submissions table
+
 ## 7. Enable Realtime for live tracking and notifications (Phase 7 & 8)
 
 The farmer/vendor tracking map and the notification bell both update live

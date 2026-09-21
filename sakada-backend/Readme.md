@@ -18,7 +18,8 @@ sakada-backend/
 │       ├── 0010_fix_role_escalation.sql      ← fix when auth.uid() is NULL
 │       ├── 0011_optimize_driver_notifications.sql ← only notify active drivers (7d)
 │       ├── 0012_rate_limiting.sql            ← rate limit table + check function
-│       └── 0013_deny_status_history_insert.sql ← explicit DENY for status history
+│       ├── 0013_deny_status_history_insert.sql ← explicit DENY for status history
+│       └── 0014_contact_submissions.sql      ← contact form submissions table
 ├── docs/
 │   ├── SCHEMA.md                            ← every table explained
 │   └── SETUP.md                             ← step-by-step setup guide

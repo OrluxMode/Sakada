@@ -17,6 +17,9 @@ comment on table delivery_status_history is
   'by the SECURITY DEFINER trigger log_delivery_status_change() (migration 0002). '
   'Direct INSERTs from clients are blocked by the INSERT policy below.';
 
+-- Drop existing policy if re-running this migration
+drop policy if exists "deny direct inserts to status history" on delivery_status_history;
+
 -- Explicit DENY policy for direct client inserts
 -- The trigger bypasses RLS (SECURITY DEFINER), so this doesn't affect it.
 create policy "deny direct inserts to status history"

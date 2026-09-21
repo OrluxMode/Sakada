@@ -9,8 +9,16 @@
 -- by the frontend on each dashboard visit. Drivers who haven't logged
 -- in for a week are considered inactive and are skipped.
 
--- 1. Add last_login_at column to profiles
-alter table profiles add column last_login_at timestamptz default now();
+-- 1. Add last_login_at column to profiles (skip if already exists)
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_name = 'profiles' and column_name = 'last_login_at'
+  ) then
+    alter table profiles add column last_login_at timestamptz default now();
+  end if;
+end $$;
 
 -- Backfill existing rows so they aren't immediately skipped
 update profiles set last_login_at = created_at where last_login_at is null;

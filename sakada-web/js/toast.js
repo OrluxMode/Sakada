@@ -25,11 +25,24 @@ export function showToast(message, type = "info") {
 
   const toast = document.createElement("div");
   toast.className = `toast toast--${type}`;
-  toast.innerHTML = `
-    <span class="toast__icon">${iconForType(type)}</span>
-    <span class="toast__msg">${message}</span>
-    <button class="toast__close" type="button" aria-label="Dismiss">×</button>
-  `;
+
+  const icon = document.createElement("span");
+  icon.className = "toast__icon";
+  icon.textContent = iconForType(type);
+
+  const msg = document.createElement("span");
+  msg.className = "toast__msg";
+  msg.textContent = message;
+
+  const close = document.createElement("button");
+  close.className = "toast__close";
+  close.type = "button";
+  close.setAttribute("aria-label", "Dismiss");
+  close.textContent = "×";
+
+  toast.appendChild(icon);
+  toast.appendChild(msg);
+  toast.appendChild(close);
 
   container.appendChild(toast);
   visibleCount++;

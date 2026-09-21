@@ -30,7 +30,7 @@ export function timeAgo(dateString) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function renderNotifications(list, notifBadge, notifPanel) {
+export function renderNotifications(list, notifBadge, notifPanel, onRead) {
   const unreadCount = list.filter((n) => !n.is_read).length;
   notifBadge.textContent = unreadCount > 9 ? "9+" : String(unreadCount);
   notifBadge.classList.toggle("visible", unreadCount > 0);
@@ -55,7 +55,7 @@ export function renderNotifications(list, notifBadge, notifPanel) {
     item.addEventListener("click", async () => {
       if (item.dataset.read === "true") return;
       await markNotificationRead(item.dataset.notifId);
-      loadNotifications();
+      if (onRead) onRead();
     });
   });
 }
@@ -142,10 +142,10 @@ export function wireRatingControls(container, profile, submitRatingFn, onSuccess
   });
 }
 
-export function setupNotifications(profile, notifBell, notifPanel, notifBadge, loadFn) {
+export function setupNotifications(profile, notifBell, notifPanel, notifBadge) {
   async function loadNotifications() {
     const { data, error } = await getMyNotifications(profile.id);
-    if (!error && data) renderNotifications(data, notifBadge, notifPanel);
+    if (!error && data) renderNotifications(data, notifBadge, notifPanel, loadNotifications);
   }
 
   notifBell.addEventListener("click", () => {

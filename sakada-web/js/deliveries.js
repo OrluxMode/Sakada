@@ -10,11 +10,16 @@ async function enforceRateLimit(operation, maxPerWindow = 3, windowSeconds = 60)
     p_max_per_window: maxPerWindow,
     p_window_seconds: windowSeconds,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === "42P01") return { error: null };
+    return { error: new Error(error.message) };
+  }
+  return { error: null };
 }
 
 export async function createDelivery(payload) {
-  await enforceRateLimit("create_delivery", 3, 60);
+  const rl = await enforceRateLimit("create_delivery", 3, 60);
+  if (rl.error) return { data: null, error: rl.error };
   return await supabase.from("deliveries").insert(payload).select().single();
 }
 
@@ -46,7 +51,8 @@ export async function getAvailableDeliveries() {
  * cleanly instead of silently overwriting the first driver's assignment.
  */
 export async function acceptDelivery(deliveryId, driverId) {
-  await enforceRateLimit("accept_delivery", 3, 60);
+  const rl = await enforceRateLimit("accept_delivery", 3, 60);
+  if (rl.error) return { data: null, error: rl.error };
   return await supabase
     .from("deliveries")
     .update({ driver_id: driverId, status: "driver_assigned" })
@@ -72,7 +78,8 @@ export async function updateDeliveryStatus(
   currentStatus,
   newStatus,
 ) {
-  await enforceRateLimit("update_status", 5, 60);
+  const rl = await enforceRateLimit("update_status", 5, 60);
+  if (rl.error) return { data: null, error: rl.error };
   return await supabase
     .from("deliveries")
     .update({ status: newStatus })

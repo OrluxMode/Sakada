@@ -3,6 +3,7 @@ import {
   getCurrentProfile,
   signOut,
 } from "./auth.js";
+import { toastError } from "./toast.js";
 
 const messageEl = document.getElementById("formMessage");
 function showMessage(text, type) {
@@ -16,7 +17,7 @@ const submitBtn = document.getElementById("submitBtn");
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   submitBtn.disabled = true;
-  submitBtn.textContent = "Logging in...";
+  submitBtn.innerHTML = '<span class="spinner"></span>Logging in…';
 
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
@@ -26,17 +27,17 @@ form.addEventListener("submit", async (e) => {
   if (error) {
     submitBtn.disabled = false;
     submitBtn.textContent = "Log In";
-    showMessage(error.message, "error");
+    showMessage("Invalid email or password.", "error");
+    toastError("Login failed");
     return;
   }
 
   const profile = await getCurrentProfile();
 
   if (profile?.role !== "admin") {
-    showMessage("This account doesn't have admin access.", "error");
+    showMessage("Invalid email or password.", "error");
+    toastError("Login failed");
     await signOut("../index.html");
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Log In";
     return;
   }
 

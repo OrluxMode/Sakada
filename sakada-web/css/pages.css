@@ -126,62 +126,7 @@
   margin: 0;
 }
 
-/* ---------- Contact form ---------- */
-.contact-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 56px;
-}
-
-@media (max-width: 760px) {
-  .contact-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.field label {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.field input,
-.field textarea {
-  background: var(--panel-dark);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 12px 14px;
-  color: var(--text-cream);
-  font-family: inherit;
-  font-size: 14px;
-}
-
-.field input:focus-visible,
-.field textarea:focus-visible {
-  outline: 2px solid var(--accent-amber);
-  outline-offset: 1px;
-}
-
-.contact-info dt {
-  color: var(--accent-amber);
-  font-size: 13px;
-  font-weight: 600;
-  margin-top: 20px;
-}
-.contact-info dt:first-child {
-  margin-top: 0;
-}
-.contact-info dd {
-  margin: 4px 0 0;
-  color: var(--text-muted);
-  font-size: 15px;
-}
+/* Contact form styles are in contact.css */
 
 /* ---------- Footer ---------- */
 .site-footer {

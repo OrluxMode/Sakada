@@ -1,0 +1,467 @@
+/* ================================================
+   Contact page styles
+   Based on Stitch design with Impeccable principles
+   ================================================ */
+
+/* ---------- Contact grid ---------- */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 56px;
+  align-items: start;
+}
+
+/* ---------- Contact form column ---------- */
+.contact-form-col h2 {
+  font-size: clamp(24px, 3vw, 32px);
+  margin-bottom: 8px;
+}
+
+.contact-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 32px;
+}
+
+.fast-response {
+  color: var(--accent-amber);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ---------- Role tabs ---------- */
+.role-tabs {
+  border: none;
+  padding: 0;
+  margin: 0 0 28px;
+}
+
+.role-tabs-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.role-tabs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.role-tab {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 16px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.role-tab:hover {
+  border-color: rgba(224, 151, 47, 0.4);
+  color: var(--text-cream);
+}
+
+.role-tab:focus-visible {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: 2px;
+}
+
+.role-tab.active {
+  background: var(--accent-amber);
+  border-color: var(--accent-amber);
+  color: #17150c;
+  font-weight: 600;
+}
+
+/* ---------- Form rows ---------- */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Form fields ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.required {
+  color: var(--accent-amber);
+}
+
+.field-hint {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(184, 180, 166, 0.6);
+}
+
+.field input,
+.field textarea,
+.field select {
+  background: var(--panel-dark);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 14px;
+  color: var(--text-cream);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  transition:
+    border-color 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: rgba(184, 180, 166, 0.5);
+}
+
+.field input:hover,
+.field textarea:hover,
+.field select:hover {
+  border-color: rgba(243, 239, 228, 0.2);
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible,
+.field select:focus-visible {
+  outline: none;
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 0 3px rgba(224, 151, 47, 0.15);
+}
+
+.field input:disabled,
+.field textarea:disabled,
+.field select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.field select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23b8b4a6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* ---------- Form footer ---------- */
+.form-footer {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.form-disclaimer {
+  color: rgba(184, 180, 166, 0.5);
+  font-size: 12px;
+  margin: 0;
+}
+
+/* ---------- Button styles ---------- */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent-amber);
+  color: #17150c;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  border: none;
+  border-radius: 6px;
+  padding: 14px 24px;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
+.btn-primary:hover {
+  background: var(--accent-amber-dim);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(224, 151, 47, 0.25);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+  transition-duration: 100ms;
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: 2px;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-primary .spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(23, 21, 12, 0.3);
+  border-top-color: #17150c;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Form messages ---------- */
+.form-message {
+  display: none;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.form-message.visible {
+  display: block;
+}
+
+.form-message.success {
+  background: rgba(46, 125, 50, 0.15);
+  border: 1px solid rgba(46, 125, 50, 0.3);
+  color: #7ab05c;
+}
+
+.form-message.error {
+  background: rgba(198, 40, 40, 0.15);
+  border: 1px solid rgba(198, 40, 40, 0.3);
+  color: #ef5350;
+}
+
+/* ---------- Contact info column ---------- */
+.contact-info-col h2 {
+  font-size: clamp(24px, 3vw, 32px);
+  margin-bottom: 8px;
+}
+
+.contact-info-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 28px;
+}
+
+/* ---------- Contact cards ---------- */
+.contact-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contact-card {
+  background: var(--panel-dark);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  gap: 16px;
+  transition:
+    border-color 200ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
+.contact-card:hover {
+  border-color: rgba(224, 151, 47, 0.25);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.contact-card-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(224, 151, 47, 0.1);
+  border-radius: 8px;
+  color: var(--accent-amber);
+}
+
+.contact-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.contact-card-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-amber);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.contact-card-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-cream);
+  text-decoration: none;
+  transition: color 150ms ease-out;
+}
+
+a.contact-card-value:hover {
+  color: var(--accent-amber);
+}
+
+.contact-card-ext {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.contact-card-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+.contact-card-status {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #7ab05c;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ---------- Highlight card (Driver Network) ---------- */
+.contact-card--highlight {
+  background: linear-gradient(135deg, rgba(224, 151, 47, 0.08) 0%, rgba(224, 151, 47, 0.02) 100%);
+  border-color: rgba(224, 151, 47, 0.2);
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contact-card-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  background: var(--accent-amber);
+  color: #17150c;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.contact-card-heading {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-cream);
+  line-height: 1.4;
+}
+
+.contact-card-cta {
+  font-size: 13px;
+  color: var(--accent-amber);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  transition: gap 150ms ease-out;
+}
+
+.contact-card--highlight:hover .contact-card-cta {
+  gap: 10px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .contact-grid {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+
+  .contact-info-col {
+    order: -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .role-tabs-list {
+    flex-direction: column;
+  }
+
+  .role-tab {
+    width: 100%;
+    text-align: center;
+  }
+
+  .form-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .contact-card {
+    padding: 16px;
+  }
+}

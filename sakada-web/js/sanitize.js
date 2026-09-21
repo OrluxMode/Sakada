@@ -13,7 +13,7 @@ const PURIFY_CONFIG = {
     "b", "i", "em", "strong", "br", "span", "div",
     "p", "a", "ul", "ol", "li", "img",
   ],
-  ALLOWED_ATTR: ["href", "src", "alt", "class", "id", "data-*"],
+  ALLOWED_ATTR: ["href", "src", "alt", "class", "id"],
   ALLOW_DATA_ATTR: false,
 };
 
@@ -33,23 +33,4 @@ export function sanitizeHTML(dirty) {
 export function sanitizeText(dirty) {
   if (typeof dirty !== "string") return "";
   return DOMPurify.sanitize(dirty, { ALLOWED_TAGS: [] });
-}
-
-/**
- * Sanitize a template literal string containing mixed HTML + user data.
- * Pass user-controlled values through sanitizeText() before interpolation.
- *
- * Example:
- *   const safe = sanitizeHTML`
- *     <div class="card">
- *       <span>${sanitizeText(d.pickup_address)}</span>
- *       <span>${sanitizeText(d.goods_description)}</span>
- *     </div>
- *   `;
- */
-export function sanitizeTemplate(strings, ...values) {
-  const sanitized = values.map((v) =>
-    typeof v === "string" ? sanitizeText(v) : v
-  );
-  return strings.reduce((result, str, i) => result + str + (sanitized[i] ?? ""), "");
 }

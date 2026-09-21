@@ -11,7 +11,7 @@ import {
   getMyDeliveries,
   subscribeToDeliveryUpdates,
 } from "./deliveries.js";
-import { submitRating } from "./ratings.js";
+import { submitRating, getMyRatingsForDeliveries } from "./ratings.js";
 import {
   statusLabel,
   HISTORY_STATUSES,
@@ -19,7 +19,7 @@ import {
   wireRatingControls,
   setupNotifications,
 } from "./dashboard-shared.js";
-import { showToast, toastSuccess, toastError } from "./toast.js";
+import { toastSuccess, toastError } from "./toast.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
 
 const profile = await requireRole(
@@ -243,8 +243,9 @@ async function loadDeliveries() {
         <p class="empty-state__desc">Create a delivery above to get started</p>
       </div>`;
 
-  const ratingsMap = await import("./ratings.js").then((m) =>
-    m.getMyRatingsForDeliveries(history.map((d) => d.id), profile.id),
+  const ratingsMap = await getMyRatingsForDeliveries(
+    history.map((d) => d.id),
+    profile.id,
   );
 
   historyEl.innerHTML = history.length
