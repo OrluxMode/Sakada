@@ -26,8 +26,8 @@ const STATUS_FLOW = {
 
 const profile = await requireRole(
   "driver",
-  "../auth/login.html",
-  "../index.html",
+  "../../auth/login.html",
+  "../../index.html",
 );
 if (!profile) throw new Error("redirecting");
 
@@ -41,7 +41,7 @@ document.getElementById("greeting").textContent =
 
 document
   .getElementById("signOutBtn")
-  .addEventListener("click", () => signOut("../index.html"));
+  .addEventListener("click", () => signOut("../../index.html"));
 
 const messageEl = document.getElementById("formMessage");
 function showMessage(text, type) {

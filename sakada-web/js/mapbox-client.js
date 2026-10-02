@@ -1,11 +1,14 @@
 // Mapbox geocoding + driving-distance helpers, used to turn a typed
 // address into coordinates and a real cost estimate.
 //
-// The token below is a PUBLIC token (starts with pk.) — safe to use in
-// browser code, same as the Supabase publishable key. If you ever need to
-// change it, update it here and nowhere else.
+// The token is a PUBLIC token (starts with pk.) — safe to use in browser
+// code, same as the Supabase publishable key. It lives in config.js so
+// there is exactly one place to change it; this file used to hardcode a
+// second copy.
 
-const MAPBOX_TOKEN = "pk.eyJ1IjoicWFkcmlhbmNhcmxvIiwiYSI6ImNtdTJpMW5iYzA3MHMyeXNlcW1oYnpsODkifQ.eIvugh9G7UAa-sTCkJmZ7g";
+import { config } from "./config.js";
+
+const MAPBOX_TOKEN = config.mapboxToken;
 
 /**
  * Turns a typed address into coordinates. Biased to the Philippines so

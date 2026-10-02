@@ -17,5 +17,5 @@ const overrides = typeof window !== "undefined" && window.__SAKADA_CONFIG__
 export const config = {
   supabaseUrl: overrides.supabaseUrl || "https://aeeniueayubeugvooyqj.supabase.co",
   supabaseKey: overrides.supabaseKey || "sb_publishable_1Y6nsjO_nS0j2Vz6xKqfmA_VpCpPs82",
-  mapboxToken: overrides.mapboxToken || "pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw",
+  mapboxToken: overrides.mapboxToken || "pk.eyJ1IjoicWFkcmlhbmNhcmxvIiwiYSI6ImNtdTJpMW5iYzA3MHMyeXNlcW1oYnpsODkifQ.eIvugh9G7UAa-sTCkJmZ7g",
 };

@@ -12,8 +12,8 @@ import { initOfflineDetection, getIsOffline } from "./offline.js";
 
 const profile = await requireRole(
   "admin",
-  "../auth/admin-login.html",
-  "../index.html",
+  "../../auth/admin-login.html",
+  "../../index.html",
 );
 if (!profile) throw new Error("redirecting");
 
@@ -26,7 +26,7 @@ document.getElementById("greeting").textContent =
   `Welcome, ${profile.full_name.split(" ")[0]}.`;
 document
   .getElementById("signOutBtn")
-  .addEventListener("click", () => signOut("../index.html"));
+  .addEventListener("click", () => signOut("../../index.html"));
 
 const messageEl = document.getElementById("formMessage");
 function showMessage(text, type) {
