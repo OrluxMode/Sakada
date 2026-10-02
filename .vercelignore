@@ -1,0 +1,2 @@
+# Safety net: node_modules must never be uploaded as static assets.
+sakada-web/node_modules/

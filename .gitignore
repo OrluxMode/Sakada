@@ -2,6 +2,9 @@
 .env
 sakada-backend/.env
 
+# Dependencies — install with `npm install`. Never commit or deploy these.
+node_modules/
+
 # Editor / OS clutter
 .DS_Store
 Thumbs.db
