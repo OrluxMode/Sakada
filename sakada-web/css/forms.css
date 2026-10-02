@@ -1,0 +1,90 @@
+/* ================================================
+   Shared form fields
+
+   These rules were originally in contact.css, which only
+   contact.html loads — so login, register, admin-login and
+   both dashboards rendered raw browser-default inputs.
+   Loaded globally via style.css so every .field works.
+   ================================================ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.required {
+  color: var(--accent-amber);
+}
+
+.field-hint {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(184, 180, 166, 0.6);
+}
+
+.field input,
+.field textarea,
+.field select {
+  background: var(--panel-dark);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--text-cream);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  transition:
+    border-color 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: rgba(184, 180, 166, 0.5);
+}
+
+.field input:hover,
+.field textarea:hover,
+.field select:hover {
+  border-color: rgba(243, 239, 228, 0.2);
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible,
+.field select:focus-visible {
+  outline: none;
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 0 3px rgba(224, 151, 47, 0.15);
+}
+
+.field input:disabled,
+.field textarea:disabled,
+.field select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.field select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23b8b4a6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 100px;
+}
