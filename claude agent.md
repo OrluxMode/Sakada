@@ -49,7 +49,7 @@
   - copy language (English for now; Taglish offered)
   - inner-page footers' mobile tap targets (only the landing footer was fixed)
   - impeccable finish steps (detector, finish review, DESIGN.md)
-- **Other open backlog:** security findings N1–N7 in `claude read and analyze.md`. Migrations 0015 (contact columns) and 0016 (RLS hardening) are next.
+- **Security backlog:** N1–N11, N16, N21 fixed and live (2026-10-13). Remaining low-priority cleanup: N12–N15, N17–N20, N22, N23.
 
 ## Key files to read first when resuming
 
@@ -327,5 +327,74 @@
   - step 5: run 0018 + checks (triggers, role_confirmed_at null count 0, price, 4th booking rate-limited, Google driver sign-up)
   - rollback: drop the price/rate triggers
 - Waiting on the user to run it.
+
+### 2026-10-13: Security rollout done
+- User ran steps 1–5 of `security rollout - steps.md`; all checks passed.
+- Claude confirmed the live site with curl: all 5 security headers present, deliveries.js no longer calls check_rate_limit, farmer-dashboard.js sends distance_km.
+- Marked N1–N11, N16, N21 fixed in `claude read and analyze.md`. Remaining: low-priority N12–N15, N17–N20, N22, N23.
+
+### 2026-10-13: Prompt for N14 + N15
+- Wrote `opencode prompt - dashboard cancel and stale quote.md`:
+  - N15: `isQuoteStale()` helper in dashboard-shared + an input listener that drops the quote + a guard in the confirm handler
+  - N14: `cancelMyDelivery()` (eq id/requester/pending) + "Cancel request" button on pending active cards with confirm(), wired like the admin version; general `.btn-small.danger` (44px) + `.delivery-card-actions` in dashboard.css
+  - 5 isQuoteStale tests
+  - same edits in the farmer + vendor dashboards (N12 merge deferred)
+- Next: user runs OpenCode, then Claude reviews.
+
+### 2026-10-13: N14 + N15 verified
+- OpenCode's changes match the prompt. The vendor changes are identical to the farmer ones. Tests 48/48.
+- Claude made one tweak directly in both dashboards: when the cancel fails because a driver accepted first (PGRST116), the toast is friendly ("A driver already accepted this delivery…") instead of the raw PostgREST text.
+- Not committed. User pushes manually. No SQL needed.
+- Remaining backlog: N12, N13, N17–N20, N22, N23.
+
+### 2026-10-13: Prompt for the final backlog cleanup
+- Wrote `opencode prompt - backlog cleanup.md`:
+  - N12: requester-dashboard.js + body data-role, delete the farmer/vendor JS
+  - N13: remove the Phase 9 note
+  - N17: back-online toast → success
+  - N18: admin Messages tab + getContactSubmissions; loadFeedback reuses deliveryCodeById
+  - N19: remove `lock:false`
+  - N20: DOMPurify 3.4.15 + SRI `sha384-uUMu9JDY…Kp3N` (computed from cdnjs)
+  - N22: role pickers role=group + aria-pressed
+  - N23: things-to-improve CSP wording, SCHEMA notifications paragraph, SETUP 0015–0018 + apply order, Readme wording
+  - drop the updateLastLogin console.warn
+- Next: user runs OpenCode, then Claude reviews.
+
+### 2026-10-13: Impeccable critique of index.html
+- Two reviews ran separately: a design review and the automated detector. The detector found 0 issues, both from the command line and in the browser.
+- Score 19/32 (59%, Acceptable). Two checks (7, 10) don't apply to a landing page. The previous run, on 10-11, scored 18/36.
+- The page is still Option A, the generic dark photo look.
+- P1 issues:
+  - The fare formula is never shown.
+  - The tractor/turbines photo doesn't fit the Philippine setting.
+- P2 issues:
+  - 5 CTAs all go to register.
+  - The section below the hero has no proof.
+- P3 issues:
+  - "nearby" isn't backed by the product.
+  - The stages copy is wrong.
+  - offline.js isn't loaded.
+- Snapshot: `.impeccable/critique/2026-10-13T03-40-02Z__sakada-web-index-html.md`. Asked the user about priority, A vs B, and scope.
+
+### 2026-10-13: Backlog cleanup verified — backlog complete
+- Every item matches the prompt:
+  - N12: requester-dashboard.js + data-role; old files deleted, no references left
+  - N13: removed
+  - N17: toastSuccess
+  - N18: Messages tab; feedback reuses deliveryCodeById
+  - N19: lock removed
+  - N20: 3.4.15 + SRI on 4 dashboards; hash re-verified, cdnjs sends ACAO *
+  - N22: role=group + aria-pressed
+  - N23: docs updated
+  - console.warn removed
+- All changed modules pass `node --check`. Tests 48/48.
+- Not committed. User pushes manually; no SQL needed.
+- `claude read and analyze.md` backlog is now fully closed (N1–N23). Untracked `.impeccable/critique/2026-10-13…md` appeared (not from Claude this session).
+
+### 2026-10-13: Pre-push check
+- User asked what still needs fixing before one push. Answer: nothing blocks it; everything is reviewed and tests pass 48/48.
+- The stray `.impeccable/critique/2026-10-13T03-40-02Z…` (19/32, from another session) mostly re-argues settled decisions (photo, Option A).
+- Valid small copy item: step 02 says "driver nearby", but drivers are notified nationwide, not by proximity.
+- Offered as optional later: the fare example on the landing page, logged-in "Book a Delivery" routing, status-pill tokens, CI.
 
 <!-- Add the next session's entry above this line -->

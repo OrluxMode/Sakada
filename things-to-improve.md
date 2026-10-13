@@ -20,7 +20,7 @@ A logistics platform (farmer/vendor ↔ driver delivery matching) built on **Sup
 ### 3. ~~No Content Security Policy (CSP)~~ ✅ DONE
 - No CSP headers or meta tags. Combined with the innerHTML issue, this makes XSS exploitation trivial.
 - **Fix:** Add a CSP meta tag or configure at the hosting layer.
-- **Done:** All 16 HTML files now have `Content-Security-Policy-Report-Only` meta tags. Policy allows: Google Fonts, Supabase CDN, Mapbox API, DOMPurify CDN, Unsplash hero image. Uses report-only mode to catch violations before enforcing. `'unsafe-inline'` for scripts is a known tradeoff (needed for inline `<script type="module">` blocks) — will be fixed in Phase 2 when scripts are extracted to separate files.
+- **Done:** All 16 HTML files now use an **enforcing** `Content-Security-Policy` meta tag (no longer report-only). Policy allows: Google Fonts, Supabase CDN, Mapbox API, DOMPurify CDN, Unsplash hero image. Uses enforcing mode, not report-only. `frame-ancestors` and other security headers are now set in the root `vercel.json` (added 2026-10-13). `'unsafe-inline'` for scripts is a known tradeoff (needed for inline `<script type="module">` blocks) — will be fixed in Phase 2 when scripts are extracted to separate files.
 
 ---
 
@@ -169,9 +169,9 @@ A logistics platform (farmer/vendor ↔ driver delivery matching) built on **Sup
 - Fixed: Error messages in innerHTML across farmer, vendor, driver dashboards were unsanitized — wrapped with `sanitizeText()` ✅
 
 **1c. Add Content Security Policy** ✅ Done
-- Add a `<meta http-equiv="Content-Security-Policy-Report-Only">` tag to all 16 HTML files ✅
+- Add an enforcing `<meta http-equiv="Content-Security-Policy">` tag to all 16 HTML files ✅
 - Allowlist: Google Fonts, Supabase CDN, Mapbox API, DOMPurify CDN, Unsplash hero image ✅
-- Uses report-only mode to catch violations before enforcing ✅
+- The policy is enforced directly (not report-only); `frame-ancestors` and other security headers are set in the root `vercel.json` (added 2026-10-13) ✅
 - Note: `'unsafe-inline'` for scripts remains — required for inline `<script type="module">` blocks, will be fixed in Phase 2c when scripts are extracted to separate files
 
 ---

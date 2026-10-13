@@ -14,7 +14,7 @@
     />
     <link rel="stylesheet" href="../../css/style.css" />
     <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.15/purify.min.js" integrity="sha384-uUMu9JDY09vBzRf9SPcK2VgUj+W/70J6Soc+Dded5P474ElQ63iv9j5N3DE7Kp3N" crossorigin="anonymous"></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -78,6 +78,7 @@
         </button>
         <button type="button" data-tab="users">Users</button>
         <button type="button" data-tab="feedback">Feedback</button>
+        <button type="button" data-tab="messages">Messages</button>
       </div>
 
       <div class="admin-panel active" id="panel-deliveries">
@@ -138,6 +139,29 @@
             <tbody id="feedbackTableBody">
               <tr>
                 <td colspan="5">Loading…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="admin-panel" id="panel-messages">
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Received</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Purpose</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody id="messagesTableBody">
+              <tr>
+                <td colspan="7">Loading…</td>
               </tr>
             </tbody>
           </table>

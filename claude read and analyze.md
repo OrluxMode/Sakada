@@ -171,3 +171,10 @@ cd sakada-web && npm run dev               # http://localhost:3000
 diff sakada-web/js/farmer-dashboard.js sakada-web/js/vendor-dashboard.js   # proves N12
 grep -n "data:" sakada-web/js/auth.js      # N2 (OAuth data option)
 ```
+
+---
+
+## ✅ Fixed on 2026-10-13
+Migrations 0015–0018 were applied and checked in the Supabase SQL editor. The website is deployed, and the live headers were confirmed with curl.
+- **Fixed:** N1–N23 (all), and the og:image domain.
+- **Still open:** none from section 4.

@@ -88,6 +88,13 @@ Continue running the migration files in order after step 2:
 12. `0012_rate_limiting.sql` — rate limit table + check function for delivery operations
 13. `0013_deny_status_history_insert.sql` — explicit DENY for direct status history inserts
 14. `0014_contact_submissions.sql` — contact form submissions table
+15. `0015_contact_columns.sql` — contact form columns (fixes N1)
+16. `0016_rls_hardening.sql` — RLS hardening (fixes N3, N4, N7, N9, N21)
+17. `0017_delivery_distance.sql` — store the route distance the fare was computed from (prep for N5)
+18. `0018_server_pricing_rate_limits_initial_role.sql` — server-side pricing (N5), enforced rate limits (N6), first-login role for Google sign-ups (N2)
+
+Run 0015–0017 first, deploy the website, then run 0018 (it requires the
+website to send `distance_km`).
 
 ## 7. Enable Realtime for live tracking and notifications (Phase 7 & 8)
 

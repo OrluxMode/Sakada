@@ -12,10 +12,10 @@ roleTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     roleTabs.forEach((t) => {
       t.classList.remove("active");
-      t.setAttribute("aria-selected", "false");
+      t.setAttribute("aria-pressed", "false");
     });
     tab.classList.add("active");
-    tab.setAttribute("aria-selected", "true");
+    tab.setAttribute("aria-pressed", "true");
     selectedRole = tab.dataset.role;
   });
 

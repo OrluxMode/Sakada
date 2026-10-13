@@ -31,7 +31,7 @@ sakada-backend/
 
 Status
 
-All migrations 0001–0018 are complete. The frontend (sakada-web/) is fully wired to this backend with:
+Migrations 0001–0018 are written and applied. The frontend (sakada-web/) is fully wired to this backend with:
 - Real authentication (email/password + Google OAuth)
 - Role-based dashboards (farmer, vendor, driver, admin)
 - Toast notifications, loading skeletons, offline detection

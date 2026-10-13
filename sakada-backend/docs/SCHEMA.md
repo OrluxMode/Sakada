@@ -54,11 +54,11 @@ who changed it, and when. Auto-populated by a trigger — the front end never
 writes to this table directly, so there's no risk of the audit trail and the
 real status disagreeing.
 
-**`notifications`** — one row per notification. The trigger doesn't create
-these automatically (unlike status history) because the *wording* of a
-notification is a product decision, not a database concern. Phase 8 should
-insert a row here from application code whenever something notification-
-worthy happens: driver accepted, picked up, in transit, delivered.
+**`notifications`** — one row per notification. Created by database triggers:
+`0008_notifications_trigger.sql` notifies the requester on every status
+change, and `0009`/`0011` notify recently active drivers when a new delivery
+is posted. Users can only mark their own notifications as read (`is_read`,
+enforced by column grants in `0016`).
 
 **`ratings`** — one row per (delivery, rater). Both the requester and the
 driver can each leave one rating about the other side for the same

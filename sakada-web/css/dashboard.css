@@ -268,3 +268,19 @@
 .section-subheading:first-child {
   margin-top: 0;
 }
+
+.delivery-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.btn-small.danger {
+  background: transparent;
+  border: 1px solid #e0542f;
+  color: #f2a98a;
+  min-height: 44px;
+}
+.btn-small.danger:hover:not(:disabled),
+.btn-small.danger:focus-visible {
+  background: rgba(224, 84, 47, 0.12);
+}

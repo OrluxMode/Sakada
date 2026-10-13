@@ -25,12 +25,12 @@
         <h1>Create your account</h1>
         <p class="auth-sub">Choose the account type that fits what you do.</p>
 
-        <div class="role-tabs" role="tablist" aria-label="Account type">
-          <button type="button" data-role="farmer" class="active">
+        <div class="role-tabs" role="group" aria-label="Account type">
+          <button type="button" data-role="farmer" class="active" aria-pressed="true">
             Farmer
           </button>
-          <button type="button" data-role="vendor">Vendor</button>
-          <button type="button" data-role="driver">Driver</button>
+          <button type="button" data-role="vendor" aria-pressed="false">Vendor</button>
+          <button type="button" data-role="driver" aria-pressed="false">Driver</button>
         </div>
 
         <div id="formMessage" class="form-message" role="alert"></div>

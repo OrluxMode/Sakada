@@ -11,9 +11,11 @@ if (presetRole && ["farmer", "vendor", "driver"].includes(presetRole)) {
 
 function setActiveTab(role) {
   selectedRole = role;
-  tabs.forEach((btn) =>
-    btn.classList.toggle("active", btn.dataset.role === role),
-  );
+  tabs.forEach((btn) => {
+    const isActive = btn.dataset.role === role;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-pressed", String(isActive));
+  });
 }
 setActiveTab(selectedRole);
 

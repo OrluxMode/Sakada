@@ -16,7 +16,6 @@ import { config } from "./config.js";
 
 export const supabase = createClient(config.supabaseUrl, config.supabaseKey, {
   auth: {
-    lock: false,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,

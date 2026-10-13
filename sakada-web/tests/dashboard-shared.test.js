@@ -17,6 +17,7 @@ import {
   timeAgo,
   HISTORY_STATUSES,
   renderRatingBlock,
+  isQuoteStale,
 } from "../js/dashboard-shared.js";
 
 describe("HISTORY_STATUSES", () => {
@@ -112,5 +113,63 @@ describe("renderRatingBlock", () => {
       "requester-456",
     );
     expect(html).toContain('data-other-user-id="driver-123"');
+  });
+});
+
+describe("isQuoteStale", () => {
+  const quote = {
+    pickupAddress: "La Trinidad, Benguet",
+    dropoffAddress: "Baguio City",
+    quantityKg: 400,
+  };
+
+  it("returns false when the form matches the quote (addresses trimmed)", () => {
+    expect(
+      isQuoteStale(quote, {
+        pickupAddress: "  La Trinidad, Benguet  ",
+        dropoffAddress: " Baguio City ",
+        quantityKg: "400",
+      }),
+    ).toBe(false);
+  });
+
+  it("returns true when the pickup changed", () => {
+    expect(
+      isQuoteStale(quote, {
+        pickupAddress: "Bugallon, Pangasinan",
+        dropoffAddress: "Baguio City",
+        quantityKg: "400",
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true when the drop-off changed", () => {
+    expect(
+      isQuoteStale(quote, {
+        pickupAddress: "La Trinidad, Benguet",
+        dropoffAddress: "Dagupan City",
+        quantityKg: "400",
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true when the load changed", () => {
+    expect(
+      isQuoteStale(quote, {
+        pickupAddress: "La Trinidad, Benguet",
+        dropoffAddress: "Baguio City",
+        quantityKg: "500",
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true when there is no quote", () => {
+    expect(
+      isQuoteStale(null, {
+        pickupAddress: "La Trinidad, Benguet",
+        dropoffAddress: "Baguio City",
+        quantityKg: "400",
+      }),
+    ).toBe(true);
   });
 });

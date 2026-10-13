@@ -64,8 +64,7 @@ export async function signOut(homePath) {
  * Silently ignores 404 if migration 0011 hasn't been run yet.
  */
 export async function updateLastLogin() {
-  const { error } = await supabase.rpc("update_my_last_login");
-  if (error && error.code !== "42P01") console.warn("updateLastLogin:", error.message);
+  await supabase.rpc("update_my_last_login");
 }
 
 /** Returns the signed-in user's profile row, or null if not logged in. */

@@ -166,3 +166,17 @@ export function setupNotifications(profile, notifBell, notifPanel, notifBadge) {
 
   return loadNotifications;
 }
+
+/**
+ * True when the form no longer matches the quote the user saw, so the
+ * quote must not be booked. Addresses compare trimmed; load compares
+ * as a number.
+ */
+export function isQuoteStale(quote, form) {
+  if (!quote) return true;
+  return (
+    quote.pickupAddress !== form.pickupAddress.trim() ||
+    quote.dropoffAddress !== form.dropoffAddress.trim() ||
+    quote.quantityKg !== parseFloat(form.quantityKg)
+  );
+}

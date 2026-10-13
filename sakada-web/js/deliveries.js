@@ -8,6 +8,23 @@ export async function createDelivery(payload) {
   return await supabase.from("deliveries").insert(payload).select().single();
 }
 
+/**
+ * Requester cancels their own delivery. Only works while it is still
+ * pending. The .eq() filters keep a stale screen from cancelling a
+ * delivery a driver has just accepted, and RLS plus the 0016 guard
+ * trigger enforce the same rule in the database.
+ */
+export async function cancelMyDelivery(deliveryId, requesterId) {
+  return await supabase
+    .from("deliveries")
+    .update({ status: "cancelled" })
+    .eq("id", deliveryId)
+    .eq("requester_id", requesterId)
+    .eq("status", "pending")
+    .select()
+    .single();
+}
+
 /** Every delivery a farmer/vendor has requested, most recent first. */
 export async function getMyDeliveries(userId) {
   return await supabase

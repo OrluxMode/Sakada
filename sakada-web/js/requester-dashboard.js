@@ -7,6 +7,7 @@ import {
   staticMapUrl,
 } from "./mapbox-client.js";
 import {
+  cancelMyDelivery,
   createDelivery,
   getMyDeliveries,
   subscribeToDeliveryUpdates,
@@ -18,12 +19,19 @@ import {
   renderRatingBlock,
   wireRatingControls,
   setupNotifications,
+  isQuoteStale,
 } from "./dashboard-shared.js";
-import { toastSuccess, toastError } from "./toast.js";
+import { toastSuccess, toastError, toastInfo } from "./toast.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
 
+// One script serves both requester dashboards; the page says which role it's for.
+const ROLE = document.body.dataset.role;
+if (ROLE !== "farmer" && ROLE !== "vendor") {
+  throw new Error(`requester-dashboard.js: unexpected data-role "${ROLE}"`);
+}
+
 const profile = await requireRole(
-  "vendor",
+  ROLE,
   "../../auth/login.html",
   "../../index.html",
 );
@@ -56,6 +64,15 @@ const costPreview = document.getElementById("costPreview");
 const confirmBtn = document.getElementById("confirmBtn");
 
 let pendingQuote = null;
+
+["pickupAddress", "dropoffAddress", "quantityKg"].forEach((id) => {
+  document.getElementById(id).addEventListener("input", () => {
+    if (!pendingQuote) return;
+    pendingQuote = null;
+    costPreview.classList.remove("visible");
+    toastInfo("Details changed. Get a new estimate before booking.");
+  });
+});
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -113,6 +130,16 @@ form.addEventListener("submit", async (e) => {
 
 confirmBtn.addEventListener("click", async () => {
   if (!pendingQuote) return;
+  if (isQuoteStale(pendingQuote, {
+    pickupAddress: document.getElementById("pickupAddress").value,
+    dropoffAddress: document.getElementById("dropoffAddress").value,
+    quantityKg: document.getElementById("quantityKg").value,
+  })) {
+    pendingQuote = null;
+    costPreview.classList.remove("visible");
+    toastError("Details changed. Get a new estimate before booking.");
+    return;
+  }
   if (getIsOffline()) {
     toastError("Can't book — you're offline");
     return;
@@ -233,6 +260,10 @@ async function loadDeliveries() {
           <div class="delivery-route">${sanitizeText(d.pickup_address)} → ${sanitizeText(d.dropoff_address)}</div>
           <div class="delivery-meta">${sanitizeText(d.goods_description)} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
           ${renderMapBlock(d)}
+          ${d.status === "pending" ? `
+          <div class="delivery-card-actions">
+            <button type="button" class="btn-small danger" data-cancel-id="${sanitizeText(d.id)}">Cancel request</button>
+          </div>` : ""}
         </div>
       `,
         )
@@ -243,6 +274,33 @@ async function loadDeliveries() {
         <p class="empty-state__title">No active deliveries</p>
         <p class="empty-state__desc">Create a delivery above to get started</p>
       </div>`;
+
+  activeEl.querySelectorAll("[data-cancel-id]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (getIsOffline()) {
+        toastError("Can't cancel — you're offline");
+        return;
+      }
+      if (!confirm("Cancel this delivery request? This can't be undone.")) return;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Cancelling…';
+      const { error } = await cancelMyDelivery(btn.dataset.cancelId, profile.id);
+      if (error) {
+        btn.disabled = false;
+        btn.textContent = "Cancel request";
+        // No row matched: a driver accepted it in the meantime.
+        if (error.code === "PGRST116" || /no rows|not found/i.test(error.message)) {
+          toastError("A driver already accepted this delivery, so it can't be cancelled here.");
+          loadDeliveries();
+        } else {
+          toastError("Couldn't cancel: " + error.message);
+        }
+        return;
+      }
+      toastSuccess("Delivery request cancelled");
+      loadDeliveries();
+    });
+  });
 
   const ratingsMap = await getMyRatingsForDeliveries(
     history.map((d) => d.id),

@@ -28,6 +28,15 @@ export async function getAllRatings() {
     .order("created_at", { ascending: false });
 }
 
+/** Contact-form messages, newest first (admins only, via the 0014 RLS policy). */
+export async function getContactSubmissions() {
+  return await supabase
+    .from("contact_submissions")
+    .select("id, name, email, phone, role, purpose, message, created_at")
+    .order("created_at", { ascending: false })
+    .limit(200);
+}
+
 /**
  * Admin override to cancel a delivery. Note this still goes through the
  * same validate_status_transition trigger as everyone else (Phase 6) —

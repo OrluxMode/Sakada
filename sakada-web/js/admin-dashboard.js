@@ -4,6 +4,7 @@ import {
   getAllProfiles,
   getAllDeliveries,
   getAllRatings,
+  getContactSubmissions,
   adminCancelDelivery,
 } from "./admin-data.js";
 import { statusLabel } from "./dashboard-shared.js";
@@ -64,6 +65,7 @@ function renderTableSkeletons(rows = 4, cols = 5) {
 }
 
 let profilesById = new Map();
+let deliveryCodeById = new Map();
 
 async function loadStatsAndUsers() {
   const tbody = document.getElementById("usersTableBody");
@@ -123,6 +125,8 @@ async function loadDeliveries() {
     (d) => d.status === "delivered",
   ).length;
 
+  deliveryCodeById = new Map(data.map((d) => [d.id, d.delivery_code]));
+
   tbody.innerHTML = data
     .map((d) => {
       const requesterName =
@@ -180,11 +184,6 @@ async function loadFeedback() {
     return;
   }
 
-  const { data: deliveries } = await getAllDeliveries();
-  const deliveryCodeById = new Map(
-    (deliveries || []).map((d) => [d.id, d.delivery_code]),
-  );
-
   tbody.innerHTML = data.length
     ? data
         .map(
@@ -202,6 +201,37 @@ async function loadFeedback() {
     : `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">No feedback yet.</td></tr>`;
 }
 
+async function loadMessages() {
+  const tbody = document.getElementById("messagesTableBody");
+  tbody.innerHTML = renderTableSkeletons(3, 7);
+
+  const { data, error } = await getContactSubmissions();
+  if (error) {
+    showMessage(`Couldn't load messages: ${error.message}`, "error");
+    toastError("Failed to load messages");
+    return;
+  }
+
+  tbody.innerHTML = data.length
+    ? data
+        .map(
+          (m) => `
+        <tr>
+          <td>${new Date(m.created_at).toLocaleString()}</td>
+          <td>${sanitizeText(m.name) || "—"}</td>
+          <td>${sanitizeText(m.email) || "—"}</td>
+          <td>${sanitizeText(m.phone) || "—"}</td>
+          <td>${sanitizeText(m.role) || "—"}</td>
+          <td>${sanitizeText(m.purpose) || "—"}</td>
+          <td>${sanitizeText(m.message)}</td>
+        </tr>
+      `,
+        )
+        .join("")
+    : `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">No messages yet.</td></tr>`;
+}
+
 await loadStatsAndUsers();
 await loadDeliveries();
 await loadFeedback();
+await loadMessages();

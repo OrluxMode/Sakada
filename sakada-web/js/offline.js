@@ -1,4 +1,4 @@
-import { toastWarning } from "./toast.js";
+import { toastSuccess, toastWarning } from "./toast.js";
 
 const SUBMIT_SELECTORS =
   'button[type="submit"], .btn-primary:not([type="button"]), .btn-accept, .btn-small[data-submit-rating]';
@@ -43,7 +43,7 @@ function handleOnline() {
   isOffline = false;
   hideBanner();
   enableSubmits();
-  toastWarning("You're back online");
+  toastSuccess("You're back online");
 }
 
 export function initOfflineDetection() {
