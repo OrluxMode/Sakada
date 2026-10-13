@@ -247,4 +247,22 @@
   - index loads only base/nav/pages CSS; fonts 700;800;900; og → vercel
 - Left: P3 landscape headline touches the nav (suggest `padding-top: calc(var(--nav-h) + 24px)`). The detector's flat-hierarchy false positive remains.
 
+### 2026-10-13: Prompt for 20/20
+- User wants a perfect audit score. Wrote `opencode prompt - landing 20 of 20.md`:
+  - Perf: WebP hero via image-set + webp preloads; hero text no longer starts at opacity 0 (delayed LCP), transform-only rise; self-host latin woff2 fonts (Barlow 800/900, Public Sans variable) + preload + CSP font-src 'self' on index only.
+  - Theming: color-scheme dark; `--ink-rgb` / `--cream-rgb` channel tokens; radius tokens (+`--radius-btn: 6px`); single .hero-photo background with a `--hero-img` swap.
+  - Responsive: hero padding-top `calc(var(--nav-h) + 24px)`.
+- Next: user runs OpenCode, then Claude re-audits (network: no Google font requests, webp loaded, no CSP errors; 844×390 gap).
+
+### 2026-10-13: Landing page audit 20/20
+- Verified OpenCode's 20/20 round:
+  - no Google font requests; 3 self-hosted woff2 files (~72 KB)
+  - hero.webp 199 KB / hero-mobile.webp 101 KB actually load
+  - 0 CSP violations; h1 opacity 1 from the start; color-scheme dark
+  - 42px gap under the nav at 844×390; detector [] ; tests 41/41
+- Appended "Re-audit #2" to `claude audit - landing page.md`. Landing page is finished. User pushes manually.
+
+### 2026-10-13: Prompt file location
+- User asked where the 20/20 prompt is. Answer: the project root, `/home/orlux/Desktop/Sakada/`, next to the other OpenCode prompts.
+
 <!-- Add the next session's entry above this line -->

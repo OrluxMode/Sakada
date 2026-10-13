@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
     <title>
       Sakada Logistics — Book Agricultural Delivery, No More Guesswork
     </title>
@@ -10,18 +11,39 @@
       name="description"
       content="Sakada connects farmers and vendors directly with available trucks for agricultural delivery — book, track, and manage every shipment in one place."
     />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://api.mapbox.com data:; connect-src 'self' https://*.supabase.co https://api.mapbox.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com wss://*.supabase.co; frame-src 'none';" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Public+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https://api.mapbox.com data:; connect-src 'self' https://*.supabase.co https://api.mapbox.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com wss://*.supabase.co; frame-src 'none';" />
+    <link rel="stylesheet" href="css/fonts.css" />
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/nav.css" />
     <link rel="stylesheet" href="css/pages.css" />
-    <link rel="preload" as="image" href="assets/hero-mobile.jpg" media="(max-width: 1024px)" />
-    <link rel="preload" as="image" href="assets/hero.jpg" media="(min-width: 1025px)" />
+    <link
+      rel="preload"
+      href="assets/fonts/barlow-condensed-800.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="assets/fonts/public-sans.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="image"
+      href="assets/hero-mobile.webp"
+      type="image/webp"
+      media="(max-width: 1024px)"
+    />
+    <link
+      rel="preload"
+      as="image"
+      href="assets/hero.webp"
+      type="image/webp"
+      media="(min-width: 1025px)"
+    />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
     <meta property="og:title" content="Sakada Logistics — Book Agricultural Delivery" />
     <meta property="og:description" content="Connect farmers and vendors directly with available trucks. Book, track, and manage every shipment in one place." />

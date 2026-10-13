@@ -1,4 +1,6 @@
 :root {
+  color-scheme: dark;
+
   /* Color */
   --bg-black: #0b0c09;
   --panel-dark: #14150f;
@@ -8,6 +10,8 @@
   --accent-amber-dim: #b9761c;
   --text-on-amber: #17150c;
   --line: rgba(243, 239, 228, 0.12);
+  --ink-rgb: 11 12 9;
+  --cream-rgb: 243 239 228;
 
   /* Layout */
   --nav-h: 79px;
@@ -24,6 +28,7 @@
   /* Border radius */
   --radius-sm: 4px;
   --radius-md: 8px;
+  --radius-btn: 6px;
   --radius-lg: 12px;
   --radius-pill: 999px;
 }

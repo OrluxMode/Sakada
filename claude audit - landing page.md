@@ -139,3 +139,16 @@ The page is a coherent product-specific build. It uses one token set (`base.css`
    - fix the font weights
 4. **[P2] `/impeccable colorize`:** a slightly stronger scrim behind the side column.
 5. **`/impeccable polish`:** `--text-on-amber` token and the two whitespace/comment nits.
+
+---
+
+## Re-audit #2 (2026-10-13): **20/20, Excellent**
+| Dimension | Score | Evidence |
+|---|---|---|
+| Accessibility | 4 | Landmarks fixed; menu disclosure works (toggle, Escape → focus returns, outside click, link click); lede worst-case 7.9:1 |
+| Performance | 4 | No Google requests; self-hosted woff2 (3 files, ~72 KB), 2 preloaded; hero WebP 195 KB desktop / 99 KB mobile; hero text visible from the first frame (no opacity-0 entrance); only 4 small CSS files |
+| Theming | 4 | `color-scheme: dark`; every color and radius comes from tokens (`--ink-rgb`, `--cream-rgb`, `--text-on-amber`, `--radius-*`); one hero background with a `--hero-img` swap |
+| Responsive | 4 | 42px gap under the nav at 844×390; no overflow at any width; all targets ≥44px |
+| Implementation integrity | 4 | Detector: 0 findings; 0 CSP violations; og → live domain |
+
+Measured in headless Chrome at 1440×900, 900×800, 844×390 and 390×844 (resource timing, `document.fonts`, a `securitypolicyviolation` listener). Tests 41/41.
