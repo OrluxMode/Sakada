@@ -29,17 +29,25 @@ export async function loginWithEmail({ email, password }) {
 
 /**
  * Google sign-in. `role` is only meaningful the first time a given Google
- * account signs in — it's passed as signup metadata the same way the
- * email/password path does, so 0004_auth_trigger.sql can set the correct
- * role at account-creation time. Signing in again with an existing
- * account ignores it (the account already has a role, and users aren't
- * allowed to change their own role — see 0006_prevent_role_escalation.sql).
+ * account signs in. OAuth can't carry signup metadata, so the role is
+ * stored locally as `sakada.pendingRole` and applied by callback.js after
+ * sign-in via the `set_initial_role` RPC — the database (0018) confirms it
+ * once. Signing in again with an existing account ignores it (the account
+ * already has a role, and users aren't allowed to change their own role —
+ * see 0006_prevent_role_escalation.sql).
  */
 export async function loginWithGoogle(role) {
+  if (role === "farmer" || role === "vendor" || role === "driver") {
+    localStorage.setItem(
+      "sakada.pendingRole",
+      JSON.stringify({ role, at: Date.now() }),
+    );
+  } else {
+    localStorage.removeItem("sakada.pendingRole");
+  }
   return await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      data: role ? { role } : undefined,
       redirectTo: new URL("../auth/callback.html", window.location.href).href,
     },
   });

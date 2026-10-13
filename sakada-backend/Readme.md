@@ -19,7 +19,11 @@ sakada-backend/
 │       ├── 0011_optimize_driver_notifications.sql ← only notify active drivers (7d)
 │       ├── 0012_rate_limiting.sql            ← rate limit table + check function
 │       ├── 0013_deny_status_history_insert.sql ← explicit DENY for status history
-│       └── 0014_contact_submissions.sql      ← contact form submissions table
+│       ├── 0014_contact_submissions.sql      ← contact form submissions table
+│       ├── 0015_contact_columns.sql          ← contact form columns (fixes N1)
+│       ├── 0016_rls_hardening.sql            ← RLS hardening (fixes N3, N4, N7, N9, N21)
+│       ├── 0017_delivery_distance.sql        ← store the route distance the fare was computed from (prep for N5)
+│       └── 0018_server_pricing_rate_limits_initial_role.sql ← server-side pricing (N5), enforced rate limits (N6), first-login role for Google sign-ups (N2)
 ├── docs/
 │   ├── SCHEMA.md                            ← every table explained
 │   └── SETUP.md                             ← step-by-step setup guide
@@ -27,7 +31,7 @@ sakada-backend/
 
 Status
 
-All migrations through 0013 are complete. The frontend (sakada-web/) is fully wired to this backend with:
+All migrations 0001–0018 are complete. The frontend (sakada-web/) is fully wired to this backend with:
 - Real authentication (email/password + Google OAuth)
 - Role-based dashboards (farmer, vendor, driver, admin)
 - Toast notifications, loading skeletons, offline detection

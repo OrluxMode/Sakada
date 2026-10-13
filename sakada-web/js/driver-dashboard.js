@@ -223,7 +223,7 @@ async function loadAssigned() {
           </div>
           <div class="delivery-route">${sanitizeText(d.pickup_address)} → ${sanitizeText(d.dropoff_address)}</div>
           <div class="delivery-meta">${sanitizeText(d.goods_description)} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
-          ${renderRatingBlock(d, ratingsMap.get(d.id), "You rated the requester")}
+          ${renderRatingBlock(d, ratingsMap.get(d.id), "You rated the requester", profile.id)}
         </div>
       `,
         )

@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { JSDOM } from "jsdom";
+import DOMPurify from "dompurify";
 
 // Mock the notifications module (it imports from https URLs)
 vi.mock("../js/notifications.js", () => ({
@@ -7,10 +9,14 @@ vi.mock("../js/notifications.js", () => ({
   subscribeToNotifications: vi.fn(),
 }));
 
+// Inject into global so sanitize.js can use it (same as sanitize.test.js)
+globalThis.DOMPurify = DOMPurify(new JSDOM("").window);
+
 import {
   statusLabel,
   timeAgo,
   HISTORY_STATUSES,
+  renderRatingBlock,
 } from "../js/dashboard-shared.js";
 
 describe("HISTORY_STATUSES", () => {
@@ -77,5 +83,34 @@ describe("timeAgo", () => {
   it("handles exactly 1 day", () => {
     const d = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     expect(timeAgo(d)).toBe("1d ago");
+  });
+});
+
+describe("renderRatingBlock", () => {
+  const delivered = {
+    id: "delivery-1",
+    status: "delivered",
+    driver_id: "driver-123",
+    requester_id: "requester-456",
+  };
+
+  it("rates the requester when the viewer is the driver", () => {
+    const html = renderRatingBlock(
+      delivered,
+      null,
+      "You rated the requester",
+      "driver-123",
+    );
+    expect(html).toContain('data-other-user-id="requester-456"');
+  });
+
+  it("rates the driver when the viewer is the requester", () => {
+    const html = renderRatingBlock(
+      delivered,
+      null,
+      "You rated this delivery",
+      "requester-456",
+    );
+    expect(html).toContain('data-other-user-id="driver-123"');
   });
 });

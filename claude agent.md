@@ -265,4 +265,67 @@
 ### 2026-10-13: Prompt file location
 - User asked where the 20/20 prompt is. Answer: the project root, `/home/orlux/Desktop/Sakada/`, next to the other OpenCode prompts.
 
+### 2026-10-13: VS Code refresh
+- User couldn't see the prompt file because VS Code's explorer hadn't refreshed yet. Resolved, no action needed.
+
+### 2026-10-13: Force-quit VS Code
+- Explained how to force-quit VS Code on Linux Mint: `pkill code`, or `pkill -9 code` if it's frozen, or System Monitor / xkill.
+
+### 2026-10-13: VS Code restarted
+- User force-quit and reopened VS Code. Nothing pending on the landing page; next steps are the user's commit/push, then pick from the backlog.
+
+### 2026-10-13: Security backlog + inner footers → 2 OpenCode prompts
+- Re-verified the backlog: migrations still end at 0014, and N1–N11 + N21 are still open.
+- `opencode prompt - security 1 database.md` writes migration files only (never runs them):
+  - 0015: contact columns + limits (N1)
+  - 0016: RLS hardening:
+    - search_path on all functions (N9)
+    - profiles/driver_profiles own+admin only (N7)
+    - profiles column grants
+    - N21 accept policy needs the driver role
+    - guard_delivery_update jsonb diff (N4) + guard_delivery_insert
+    - ratings must target the other party (N3)
+    - notifications: is_read-only grant
+  - 0017: deliveries.distance_km column
+  - 0018:
+    - price_delivery trigger with a haversine check (N5)
+    - enforce_rate_limit via a trigger, check_rate_limit stub (N6)
+    - role_confirmed_at + set_initial_role + updated handle_new_user / prevent_role_escalation (N2)
+- `opencode prompt - security 2 website.md`:
+  - inner footers get `lp-footer`
+  - renderRatingBlock viewerId (N3), rating error toast (N11), sanitizeText for notifications (N8)
+  - removes the client rate limiter (N6)
+  - root vercel.json headers (N10)
+  - distance_km in the booking payload (N5)
+  - Google role via localStorage + callback.js set_initial_role + 10s fallback (N2/N16)
+  - 2 new tests
+- **Apply order:** run 0015–0017 → deploy website → run 0018. Then run the verification SQL. psql/docker aren't installed, so the SQL hasn't been executed anywhere yet.
+- Not covered: N12–N23 except N16.
+
+### 2026-10-13: Security rollout plan agreed
+- User's plan:
+  - OpenCode runs prompt 1 (database), then Claude checks.
+  - OpenCode runs prompt 2 (website), then Claude checks.
+  - Then apply: 0015–0017 → push website → 0018, with verification SQL after each step.
+
+### 2026-10-13: Prompt 1 (database) verified
+- The 4 migration files 0015–0018 are byte-identical to the prompt's SQL (diffed, trailing whitespace ignored). Readme lists 0001–0018.
+- Nit: the Readme says "All migrations 0001–0018 are complete" although 0015–0018 aren't applied yet. Not blocking.
+- Re-reviewed the SQL logic: trigger order, grants, definer bypass, jsonb diff. No issues found. Still not executed anywhere.
+- Next: OpenCode runs prompt 2 (website).
+
+### 2026-10-13: Prompt 2 (website) verified
+- All 8 items match the spec: footers lp-footer ×8, renderRatingBlock viewerId + 3 callers, toastError on rating failure, sanitizeText for notifications, rate limiter removed, root vercel.json headers (valid JSON), distance_km in both booking payloads, Google pendingRole + callback set_initial_role + 10s fallback, 2 new tests. Tests 43/43.
+- Claude fixed one race directly in callback.js: added a `running` guard so the timeout can't run finish() while SIGNED_IN's call is mid-RPC.
+- Next: apply. Back up the DB → run 0015, 0016, 0017 (with verification SQL) → push the website → run 0018 → verify.
+
+### 2026-10-13: Rollout guide written
+- `security rollout - steps.md` (project root):
+  - step 0 backup
+  - steps 1–3: run 0015/0016/0017, each with a check query; 0016 includes an RLS impersonation test (set_config jwt claims + set local role authenticated → profiles count = 1)
+  - step 4: push the website + live smoke tests
+  - step 5: run 0018 + checks (triggers, role_confirmed_at null count 0, price, 4th booking rate-limited, Google driver sign-up)
+  - rollback: drop the price/rate triggers
+- Waiting on the user to run it.
+
 <!-- Add the next session's entry above this line -->

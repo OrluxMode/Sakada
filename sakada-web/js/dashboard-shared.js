@@ -1,4 +1,5 @@
-import { sanitizeHTML, sanitizeText } from "./sanitize.js";
+import { sanitizeText } from "./sanitize.js";
+import { toastError } from "./toast.js";
 import {
   getMyNotifications,
   markNotificationRead,
@@ -44,7 +45,7 @@ export function renderNotifications(list, notifBadge, notifPanel, onRead) {
     .map(
       (n) => `
     <div class="notif-item ${n.is_read ? "" : "unread"}" data-notif-id="${sanitizeText(n.id)}" data-read="${n.is_read}">
-      ${sanitizeHTML(n.message)}
+      ${sanitizeText(n.message)}
       <span class="notif-time">${timeAgo(n.created_at)}</span>
     </div>
   `,
@@ -60,8 +61,11 @@ export function renderNotifications(list, notifBadge, notifPanel, onRead) {
   });
 }
 
-export function renderRatingBlock(d, existingRating, ratedLabel) {
+export function renderRatingBlock(d, existingRating, ratedLabel, viewerId) {
   if (d.status !== "delivered") return "";
+
+  const otherUserId =
+    d.driver_id === viewerId ? d.requester_id : d.driver_id;
 
   if (existingRating) {
     return `
@@ -80,7 +84,7 @@ export function renderRatingBlock(d, existingRating, ratedLabel) {
         ${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-star="${n}">★</button>`).join("")}
       </div>
       <textarea class="rating-comment" data-comment-for="${sanitizeText(d.id)}" rows="2" placeholder="How was this delivery? (optional)"></textarea>
-      <button class="btn-small" data-submit-rating="${sanitizeText(d.id)}" data-other-user-id="${sanitizeText(d.driver_id || d.requester_id)}" disabled>Submit Rating</button>
+      <button class="btn-small" data-submit-rating="${sanitizeText(d.id)}" data-other-user-id="${sanitizeText(otherUserId)}" disabled>Submit Rating</button>
     </div>
   `;
 }
@@ -133,11 +137,11 @@ export function wireRatingControls(container, profile, submitRatingFn, onSuccess
       if (error) {
         btn.disabled = false;
         btn.textContent = "Submit Rating";
-        return { error };
+        toastError("Couldn't save your rating: " + error.message);
+        return;
       }
 
       onSuccess();
-      return {};
     });
   });
 }

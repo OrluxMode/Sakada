@@ -142,6 +142,7 @@ confirmBtn.addEventListener("click", async () => {
       : null,
     notes: notes || null,
     estimated_cost: pendingQuote.cost,
+    distance_km: pendingQuote.distanceKm,
   });
 
   confirmBtn.disabled = false;
@@ -259,7 +260,7 @@ async function loadDeliveries() {
           </div>
           <div class="delivery-route">${sanitizeText(d.pickup_address)} → ${sanitizeText(d.dropoff_address)}</div>
           <div class="delivery-meta">${sanitizeText(d.goods_description)} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
-          ${renderRatingBlock(d, ratingsMap.get(d.id), "You rated this delivery")}
+          ${renderRatingBlock(d, ratingsMap.get(d.id), "You rated this delivery", profile.id)}
         </div>
       `,
         )
