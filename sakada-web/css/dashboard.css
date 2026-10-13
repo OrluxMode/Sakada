@@ -161,36 +161,54 @@
 }
 
 .status-pill {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 3px 10px;
+  --pill: var(--status-pending);
+  --pill-text: var(--status-pending-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px 6px 10px;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  color: var(--text-muted);
+  border: 1px solid color-mix(in srgb, var(--pill) 45%, transparent);
+  background: color-mix(in srgb, var(--pill) 14%, transparent);
+  color: var(--pill-text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
-.status-pill[data-status="pending"] {
-  border-color: #888;
-  color: #ccc;
+.status-pill::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pill);
+}
+.status-pill[data-status="pending"]::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--pill);
 }
 .status-pill[data-status="driver_assigned"] {
-  border-color: var(--accent-amber);
-  color: var(--accent-amber);
+  --pill: var(--status-assigned);
+  --pill-text: var(--status-assigned-text);
 }
-.status-pill[data-status="picked_up"],
+.status-pill[data-status="picked_up"] {
+  --pill: var(--status-picked-up);
+  --pill-text: var(--status-picked-up-text);
+}
 .status-pill[data-status="in_transit"] {
-  border-color: #5b9bd5;
-  color: #8ab8e6;
+  --pill: var(--status-in-transit);
+  --pill-text: var(--status-in-transit-text);
 }
 .status-pill[data-status="delivered"] {
-  border-color: #7ab05c;
-  color: #a9d18f;
+  --pill: var(--status-delivered);
+  --pill-text: var(--status-delivered-text);
 }
 .status-pill[data-status="cancelled"] {
-  border-color: #e0542f;
-  color: #f2a98a;
+  --pill: var(--status-cancelled);
+  --pill-text: var(--status-cancelled-text);
 }
 
 .delivery-route {

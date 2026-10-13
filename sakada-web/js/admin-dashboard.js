@@ -10,6 +10,7 @@ import {
 import { statusLabel } from "./dashboard-shared.js";
 import { toastSuccess, toastError } from "./toast.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
+import { paginate, pageList } from "./pagination.js";
 
 const profile = await requireRole(
   "admin",
@@ -64,8 +65,48 @@ function renderTableSkeletons(rows = 4, cols = 5) {
   }).join("");
 }
 
+const CHEVRON_LEFT = `<svg aria-hidden="true" width="8" height="12" viewBox="0 0 8 12" fill="none"><path d="M6.5 1 1.5 6l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const CHEVRON_RIGHT = `<svg aria-hidden="true" width="8" height="12" viewBox="0 0 8 12" fill="none"><path d="m1.5 1 5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+/** Renders "Showing 1–25 of 212 messages" + Previous / 1 2 … 9 / Next. */
+function renderPager(nav, state, noun, onPage) {
+  if (state.total === 0) {
+    nav.innerHTML = "";
+    return;
+  }
+  const range = `<p class="pager-range">Showing ${state.from}–${state.to} of ${state.total} ${noun}</p>`;
+  if (state.totalPages === 1) {
+    nav.innerHTML = range;
+    return;
+  }
+  const nums = pageList(state.page, state.totalPages)
+    .map((p) =>
+      p === "…"
+        ? `<span class="pager-gap" aria-hidden="true">…</span>`
+        : `<button type="button" class="pager-btn pager-num" data-page="${p}"${p === state.page ? ' aria-current="page"' : ""} aria-label="Page ${p}">${p}</button>`,
+    )
+    .join("");
+  nav.innerHTML = `${range}
+    <div class="pager-controls">
+      <button type="button" class="pager-btn" data-page="${state.page - 1}" aria-label="Previous page"${state.page === 1 ? " disabled" : ""}>${CHEVRON_LEFT}<span class="pager-label">Previous</span></button>
+      ${nums}
+      <span class="pager-status">Page ${state.page} of ${state.totalPages}</span>
+      <button type="button" class="pager-btn" data-page="${state.page + 1}" aria-label="Next page"${state.page === state.totalPages ? " disabled" : ""}><span class="pager-label">Next</span>${CHEVRON_RIGHT}</button>
+    </div>`;
+  nav.onclick = (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (btn && !btn.disabled) onPage(Number(btn.dataset.page));
+  };
+}
+
 let profilesById = new Map();
 let deliveryCodeById = new Map();
+
+const pages = { users: 1, deliveries: 1, feedback: 1, messages: 1 };
+let usersData = [];
+let deliveriesData = [];
+let ratingsData = [];
+let messagesData = [];
 
 async function loadStatsAndUsers() {
   const tbody = document.getElementById("usersTableBody");
@@ -90,7 +131,16 @@ async function loadStatsAndUsers() {
     (p) => p.role === "driver",
   ).length;
 
-  tbody.innerHTML = profiles
+  usersData = profiles;
+  renderUsers();
+}
+
+function renderUsers() {
+  const tbody = document.getElementById("usersTableBody");
+  const state = paginate(usersData, pages.users);
+  pages.users = state.page;
+
+  tbody.innerHTML = state.rows
     .map(
       (p) => `
     <tr>
@@ -102,6 +152,11 @@ async function loadStatsAndUsers() {
   `,
     )
     .join("");
+
+  renderPager(document.getElementById("usersPager"), state, "users", (p) => {
+    pages.users = p;
+    renderUsers();
+  });
 }
 
 async function loadDeliveries() {
@@ -127,7 +182,16 @@ async function loadDeliveries() {
 
   deliveryCodeById = new Map(data.map((d) => [d.id, d.delivery_code]));
 
-  tbody.innerHTML = data
+  deliveriesData = data;
+  renderDeliveries();
+}
+
+function renderDeliveries() {
+  const tbody = document.getElementById("deliveriesTableBody");
+  const state = paginate(deliveriesData, pages.deliveries);
+  pages.deliveries = state.page;
+
+  tbody.innerHTML = state.rows
     .map((d) => {
       const requesterName =
         profilesById.get(d.requester_id)?.full_name || "—";
@@ -171,6 +235,16 @@ async function loadDeliveries() {
       loadDeliveries();
     });
   });
+
+  renderPager(
+    document.getElementById("deliveriesPager"),
+    state,
+    "deliveries",
+    (p) => {
+      pages.deliveries = p;
+      renderDeliveries();
+    },
+  );
 }
 
 async function loadFeedback() {
@@ -184,8 +258,17 @@ async function loadFeedback() {
     return;
   }
 
-  tbody.innerHTML = data.length
-    ? data
+  ratingsData = data;
+  renderFeedback();
+}
+
+function renderFeedback() {
+  const tbody = document.getElementById("feedbackTableBody");
+  const state = paginate(ratingsData, pages.feedback);
+  pages.feedback = state.page;
+
+  tbody.innerHTML = ratingsData.length
+    ? state.rows
         .map(
           (r) => `
         <tr>
@@ -199,6 +282,16 @@ async function loadFeedback() {
         )
         .join("")
     : `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">No feedback yet.</td></tr>`;
+
+  renderPager(
+    document.getElementById("feedbackPager"),
+    state,
+    "ratings",
+    (p) => {
+      pages.feedback = p;
+      renderFeedback();
+    },
+  );
 }
 
 async function loadMessages() {
@@ -212,8 +305,17 @@ async function loadMessages() {
     return;
   }
 
-  tbody.innerHTML = data.length
-    ? data
+  messagesData = data;
+  renderMessages();
+}
+
+function renderMessages() {
+  const tbody = document.getElementById("messagesTableBody");
+  const state = paginate(messagesData, pages.messages);
+  pages.messages = state.page;
+
+  tbody.innerHTML = messagesData.length
+    ? state.rows
         .map(
           (m) => `
         <tr>
@@ -229,6 +331,16 @@ async function loadMessages() {
         )
         .join("")
     : `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">No messages yet.</td></tr>`;
+
+  renderPager(
+    document.getElementById("messagesPager"),
+    state,
+    "messages",
+    (p) => {
+      pages.messages = p;
+      renderMessages();
+    },
+  );
 }
 
 await loadStatsAndUsers();

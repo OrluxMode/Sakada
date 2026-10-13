@@ -31,21 +31,29 @@ export function timeAgo(dateString) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+// Keep delivery codes like "SK-00142" on one line. Runs on text that
+// sanitizeText already escaped, and only matches letters, digits and "-",
+// so it can't inject markup.
+const keepCodesTogether = (safeText) =>
+  safeText.replace(/\bSK-\d+\b/g, (code) => `<span class="notif-code">${code}</span>`);
+
 export function renderNotifications(list, notifBadge, notifPanel, onRead) {
   const unreadCount = list.filter((n) => !n.is_read).length;
   notifBadge.textContent = unreadCount > 9 ? "9+" : String(unreadCount);
   notifBadge.classList.toggle("visible", unreadCount > 0);
 
+  const head = `<div class="notif-head">Notifications</div>`;
+
   if (list.length === 0) {
-    notifPanel.innerHTML = `<div class="notif-empty">No notifications yet.</div>`;
+    notifPanel.innerHTML = `${head}<div class="notif-empty"><strong>No notifications yet.</strong><span>Updates on your deliveries show up here.</span></div>`;
     return;
   }
 
-  notifPanel.innerHTML = list
+  notifPanel.innerHTML = head + list
     .map(
       (n) => `
     <div class="notif-item ${n.is_read ? "" : "unread"}" data-notif-id="${sanitizeText(n.id)}" data-read="${n.is_read}">
-      ${sanitizeText(n.message)}
+      ${keepCodesTogether(sanitizeText(n.message))}
       <span class="notif-time">${timeAgo(n.created_at)}</span>
     </div>
   `,
@@ -152,13 +160,24 @@ export function setupNotifications(profile, notifBell, notifPanel, notifBadge) {
     if (!error && data) renderNotifications(data, notifBadge, notifPanel, loadNotifications);
   }
 
+  const setOpen = (open) => {
+    notifPanel.classList.toggle("open", open);
+    notifBell.setAttribute("aria-expanded", String(open));
+  };
+
   notifBell.addEventListener("click", () => {
-    notifPanel.classList.toggle("open");
+    setOpen(!notifPanel.classList.contains("open"));
   });
 
   document.addEventListener("click", (e) => {
-    if (!e.target.closest(".notif-wrap"))
-      notifPanel.classList.remove("open");
+    if (!e.target.closest(".notif-wrap")) setOpen(false);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && notifPanel.classList.contains("open")) {
+      setOpen(false);
+      notifBell.focus();
+    }
   });
 
   loadNotifications();

@@ -28,13 +28,17 @@ export async function getAllRatings() {
     .order("created_at", { ascending: false });
 }
 
-/** Contact-form messages, newest first (admins only, via the 0014 RLS policy). */
+/**
+ * Contact-form messages, newest first (admins only, via the 0014 RLS policy).
+ * The UI paginates these 25 at a time, so we fetch up to 1000 (Supabase's
+ * default maximum rows per request).
+ */
 export async function getContactSubmissions() {
   return await supabase
     .from("contact_submissions")
     .select("id, name, email, phone, role, purpose, message, created_at")
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(1000);
 }
 
 /**

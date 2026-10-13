@@ -54,6 +54,7 @@ export async function loginWithGoogle(role) {
 }
 
 export async function signOut(homePath) {
+  localStorage.removeItem("sakada.role");
   await supabase.auth.signOut();
   window.location.href = homePath;
 }
@@ -93,6 +94,7 @@ export async function getCurrentProfile() {
 export async function requireRole(expectedRole, loginPath, homePath) {
   const profile = await getCurrentProfile();
   if (!profile) {
+    localStorage.removeItem("sakada.role");
     window.location.href = loginPath;
     return null;
   }
@@ -100,5 +102,6 @@ export async function requireRole(expectedRole, loginPath, homePath) {
     window.location.href = homePath;
     return null;
   }
+  localStorage.setItem("sakada.role", profile.role);
   return profile;
 }

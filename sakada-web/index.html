@@ -69,14 +69,23 @@
           <li><a href="pages/for-vendors.html">For Vendors</a></li>
           <li><a href="pages/for-drivers.html">For Drivers</a></li>
           <li><a href="pages/contact.html">Contact</a></li>
-          <li class="nav-item-menu"><a href="auth/login.html">Log In</a></li>
+          <li class="nav-item-menu" data-auth="guest"><a href="auth/login.html">Log In</a></li>
+          <li class="nav-item-menu" data-auth="member" hidden>
+            <button type="button" class="nav-link-btn" data-signout>Log Out</button>
+          </li>
         </ul>
 
         <div class="nav-actions">
-          <a class="nav-btn nav-btn-outline nav-login" href="auth/login.html"
+          <a class="nav-btn nav-btn-outline nav-login" href="auth/login.html" data-auth="guest"
             >Log In</a
           >
-          <a class="nav-btn nav-btn-solid" href="auth/register.html">Sign up</a>
+          <a class="nav-btn nav-btn-solid" href="auth/register.html" data-auth="guest">Sign up</a>
+          <button type="button" class="nav-btn nav-btn-outline nav-login" data-auth="member" data-signout hidden>
+            Log Out
+          </button>
+          <a class="nav-btn nav-btn-solid" href="auth/login.html" data-auth="member" data-dashboard-link hidden
+            >My Dashboard</a
+          >
           <button
             class="nav-toggle"
             aria-label="Open menu"
@@ -123,8 +132,8 @@
             Stop calling around for a ride. Post what you're moving, get matched
             with a driver, and watch it get there — all from your phone.
           </p>
-          <a class="btn-primary" href="auth/register.html">
-            Book a Delivery
+          <a class="btn-primary" href="auth/register.html" data-book-link>
+            <span data-book-label>Book a Delivery</span>
             <svg
               aria-hidden="true"
               width="20"
@@ -141,7 +150,7 @@
               />
             </svg>
           </a>
-          <div class="role-chips">
+          <div class="role-chips" data-auth="guest">
             <span class="role-chips-label">New here? I'm a…</span>
             <div class="chips-row">
               <a class="chip" href="auth/register.html?role=farmer"
@@ -194,6 +203,10 @@
               ></a>
             </div>
           </div>
+          <p class="signed-in" data-auth="member" hidden>
+            <span class="signed-in-dot" aria-hidden="true"></span>
+            <span>Signed in as <span data-role-label>a farmer</span></span>
+          </p>
         </div>
       </div>
     </div>
@@ -211,8 +224,8 @@
         <span class="step-number">02</span>
         <h3 class="step-title">Get matched with a driver</h3>
         <p class="step-body">
-          An available driver nearby accepts your booking. You see the estimated
-          cost before you confirm.
+          An available driver accepts your booking. You see the estimated cost
+          before you confirm.
         </p>
       </div>
       <div class="step">
@@ -237,5 +250,6 @@
     </footer>
 
     <script src="js/main.js"></script>
+    <script type="module" src="js/landing-auth.js"></script>
   </body>
 </html>

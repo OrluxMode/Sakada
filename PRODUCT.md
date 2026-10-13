@@ -28,6 +28,11 @@ A booking platform built for agri-delivery in the Philippines. The fare is compu
 - Live: email + Google sign-up with role (farmer / vendor / driver), booking, fare estimate, real-time status, notifications, driver ratings, admin dashboard.
 - **Planned, not built yet:** payment choice at booking. Either **GCash** (paid up front, so the drop-off has no cash handling) or **cash on delivery** (paid to the driver at drop-off, like Shopee COD). Present as upcoming until it ships.
 - Stack: vanilla HTML/CSS/ES modules, Supabase, Mapbox, hosted on Vercel.
+- **Confirmed by the owner 2026-10-13:**
+  - payment today goes directly to the driver, outside the app
+  - the driver is paid exactly the booked fare: no haggling at drop-off, no Sakada cut stated
+  - there is no weight limit; drivers see the kg before accepting (truck tonnage on the site is only a guide)
+  - notifications are in-app only (no SMS); a booking stays Pending until a driver accepts or the requester cancels
 
 ## Brand Commitments
 - Name: Sakada Logistics. Logo is a "SAKADA" wordmark with "DA" in the accent color.
@@ -36,7 +41,7 @@ A booking platform built for agri-delivery in the Philippines. The fare is compu
 ## Evidence on Hand
 - Real: fare formula, delivery stages, three roles, nationwide scope.
 - **Absent, do not fabricate:** customer counts, testimonials, partner logos, delivery volumes, verified-driver counts, ratings averages.
-- Hero photo: the current `assets/hero.jpg` (European tractor) is wrong for the subject. A Filipino truck-with-produce photo is still needed from the owner.
+- Hero photo: keep the current `assets/hero.jpg` (tractor at sunset). Owner decision 2026-10-13: satisfied with it, no Filipino truck photo planned. Don't flag it as a problem.
 
 ## Product Principles
 1. One booking replaces the phone calls: every page should lead to booking or signing up.

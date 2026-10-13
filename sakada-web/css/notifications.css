@@ -11,9 +11,11 @@
   border: 1px solid var(--line);
   color: var(--text-cream);
   border-radius: 6px;
-  width: 36px;
-  height: 36px;
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
   cursor: pointer;
   position: relative;
 }
@@ -43,7 +45,7 @@
 
 .notif-panel {
   position: absolute;
-  top: 44px;
+  top: 52px;
   right: 0;
   width: 320px;
   max-width: calc(100vw - 40px);
@@ -53,25 +55,65 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px;
-  display: none;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
   z-index: 20;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition:
+    opacity 0.12s ease-in,
+    transform 0.12s ease-in,
+    visibility 0s linear 0.12s;
 }
 .notif-panel.open {
-  display: block;
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition:
+    opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .notif-panel,
+  .notif-panel.open {
+    transform: none;
+  }
+}
+.notif-head {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
 }
 
 .notif-item {
-  padding: 12px 12px;
+  position: relative;
+  padding: 12px 12px 12px 30px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
-  color: var(--text-cream);
+  color: var(--text-muted);
   cursor: pointer;
-  border-left: 2px solid transparent;
 }
 .notif-item.unread {
   background: rgba(224, 151, 47, 0.08);
-  border-left-color: var(--accent-amber);
+  color: var(--text-cream);
+  font-weight: 500;
+}
+.notif-item.unread::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 19px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-amber);
 }
 .notif-item:hover {
   background: rgba(243, 239, 228, 0.05);
@@ -83,10 +125,23 @@
   color: var(--text-muted);
   margin-top: 3px;
 }
+.notif-code {
+  white-space: nowrap;
+}
 
 .notif-empty {
-  padding: 20px 12px;
-  color: var(--text-muted);
-  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 28px 12px;
   text-align: center;
+}
+.notif-empty strong {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-cream);
+}
+.notif-empty span {
+  font-size: 14px;
+  color: var(--text-muted);
 }

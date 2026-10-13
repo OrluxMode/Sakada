@@ -6,16 +6,15 @@
     <title>How Sakada Works — Sakada Logistics</title>
     <meta
       name="description"
-      content="See exactly how booking, matching, and tracking a delivery works on Sakada, for farmers, vendors, and drivers."
+      content="See how booking, fares, and live tracking work on Sakada, for farmers, vendors, and truck drivers."
     />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none';" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Public+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="../css/style.css" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none';" />
+    <link rel="stylesheet" href="../css/fonts.css" />
+    <link rel="stylesheet" href="../css/base.css" />
+    <link rel="stylesheet" href="../css/nav.css" />
+    <link rel="stylesheet" href="../css/pages.css" />
+    <link rel="preload" href="../assets/fonts/barlow-condensed-800.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="../assets/fonts/public-sans.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
@@ -62,118 +61,185 @@
     </header>
 
     <main id="main">
-      <section class="page-hero">
-        <h1>
-          One delivery, three people, no guesswork about what happens next.
-        </h1>
-        <p>
-          A farmer or vendor books a delivery. A driver accepts it. Everyone
-          sees the same status, updated in real time, until the goods arrive.
+      <section class="hiw-hero">
+        <h1>You book it. A driver accepts it. You both see every step.</h1>
+        <div class="hiw-hero-side">
+          <p class="hiw-lede">
+            Farmers and vendors book the delivery, a truck driver accepts it, and
+            both of you see the same status, updated live, until the goods arrive.
+          </p>
+          <p class="hiw-jump-label" id="jump-label">Jump to your part:</p>
+          <div class="hiw-jump" role="group" aria-labelledby="jump-label">
+            <a class="chip" href="#senders"
+              >I'm sending goods<svg aria-hidden="true" width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 4v11M5 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg
+            ></a>
+            <a class="chip" href="#drivers"
+              >I'm driving<svg aria-hidden="true" width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 4v11M5 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg
+            ></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="hiw-section" aria-labelledby="status-heading">
+        <h2 id="status-heading">One status, seen by everyone</h2>
+        <p class="hiw-intro">
+          The driver updates each stage from their phone. Every change shows up for
+          you at the same moment, so there's no need to call and ask.
+        </p>
+        <ol class="hiw-stages">
+          <li class="hiw-stage" data-status="pending">
+            <span class="hiw-dot" aria-hidden="true"></span>
+            <span class="hiw-stage-name">Pending</span>
+            <span class="hiw-stage-who">You book it</span>
+          </li>
+          <li class="hiw-stage" data-status="driver_assigned">
+            <span class="hiw-dot" aria-hidden="true"></span>
+            <span class="hiw-stage-name">Driver Assigned</span>
+            <span class="hiw-stage-who">A driver accepts</span>
+          </li>
+          <li class="hiw-stage" data-status="picked_up">
+            <span class="hiw-dot" aria-hidden="true"></span>
+            <span class="hiw-stage-name">Picked Up</span>
+            <span class="hiw-stage-who">Your goods are on the truck</span>
+          </li>
+          <li class="hiw-stage" data-status="in_transit">
+            <span class="hiw-dot" aria-hidden="true"></span>
+            <span class="hiw-stage-name">In Transit</span>
+            <span class="hiw-stage-who">On the road to the drop-off</span>
+          </li>
+          <li class="hiw-stage" data-status="delivered">
+            <span class="hiw-dot" aria-hidden="true"></span>
+            <span class="hiw-stage-name">Delivered</span>
+            <span class="hiw-stage-who">Arrived at the drop-off</span>
+          </li>
+        </ol>
+        <p class="hiw-cancel">
+          <span class="hiw-dot hiw-dot--cancelled" aria-hidden="true"></span>
+          Changed your mind? You can cancel any time while it's still Pending.
         </p>
       </section>
 
-      <section class="section">
-        <h2>If you're sending goods (farmer or vendor)</h2>
-        <ol class="step-list">
-          <li>
-            <span class="step-num" aria-hidden="true">1</span>
-            <div>
-              <h3>Create the delivery</h3>
-              <p>
-                Enter your pickup point, destination, what you're moving, and
-                roughly when it needs to go.
-              </p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">2</span>
-            <div>
-              <h3>Get an estimated cost</h3>
-              <p>
-                Sakada calculates a fee estimate before you commit to anything.
-              </p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">3</span>
-            <div>
-              <h3>Confirm and wait for a driver</h3>
-              <p>
-                Your request goes live to available drivers. You'll see "Driver
-                Assigned" the moment one accepts.
-              </p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">4</span>
-            <div>
-              <h3>Track the trip</h3>
-              <p>
-                Watch your delivery move through Picked Up, In Transit, and
-                Delivered — no need to call and ask.
-              </p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">5</span>
-            <div>
-              <h3>Rate the service</h3>
-              <p>
-                Once it's delivered, leave a rating and it's saved to your
-                delivery history for next time.
-              </p>
-            </div>
-          </li>
-        </ol>
+      <section class="hiw-section hiw-fare" id="fare" aria-labelledby="fare-heading">
+        <div class="hiw-fare-text">
+          <h2 id="fare-heading">See the fare before you book</h2>
+          <p class="hiw-intro">
+            Sakada works it out from the road distance and the weight, before you
+            commit to anything. Here's a worked example.
+          </p>
+          <p class="hiw-formula">₱150 base + ₱15 per km + ₱2 per kg</p>
+        </div>
+
+        <div class="hiw-fare-card">
+          <p class="hiw-fare-example">Example: 115 km, 500 kg</p>
+          <dl class="hiw-fare-rows">
+            <div><dt>Base fare</dt><dd>₱150</dd></div>
+            <div><dt>115 km × ₱15</dt><dd>₱1,725</dd></div>
+            <div><dt>500 kg × ₱2</dt><dd>₱1,000</dd></div>
+            <div class="hiw-fare-total"><dt>Estimated fare</dt><dd>₱2,875</dd></div>
+          </dl>
+          <p>Your estimate uses the road distance from the map, not a straight line.</p>
+          <p class="hiw-fare-rule">The fare you book is the fare you pay. No haggling at <span class="hiw-nowrap">drop-off.</span></p>
+          <p>
+            For now, you pay the driver directly. <span class="hiw-nowrap">In-app</span> payment (GCash or cash on
+            delivery) is coming soon.
+          </p>
+          <a class="btn-primary" href="../auth/register.html">Book a Delivery</a>
+        </div>
+
+        <div class="hiw-load">
+          <h3>How much can I send?</h3>
+          <p>
+            There's no fixed limit. Drivers see the weight before they accept, so
+            they only take loads their truck can carry. As a guide, a small truck
+            carries about 1–2 tonnes and a six-wheeler about 4–7 tonnes.
+          </p>
+        </div>
       </section>
 
-      <section class="section">
-        <h2>If you're driving (driver)</h2>
-        <ol class="step-list">
-          <li>
-            <span class="step-num" aria-hidden="true">1</span>
-            <div>
+      <section class="hiw-section hiw-roles" aria-label="Steps by role">
+        <div class="hiw-role" id="senders">
+          <h2>If you're sending goods</h2>
+          <p class="hiw-role-who">Farmers and vendors</p>
+          <ol class="hiw-steps">
+            <li>
+              <span class="hiw-step-num" aria-hidden="true">01</span>
+              <h3>Create the delivery</h3>
+              <p>Make an account, then enter your pickup point, destination, what you're moving, and the pickup date.</p>
+            </li>
+            <li>
+              <span class="hiw-step-num" aria-hidden="true">02</span>
+              <h3>Get an estimated fare</h3>
+              <p>You see the fare before you commit to anything.</p>
+              <a class="hiw-link" href="#fare">See the worked fare example</a>
+            </li>
+            <li>
+              <span class="hiw-step-num" aria-hidden="true">03</span>
+              <h3>Confirm and wait for a driver</h3>
+              <p>Your request goes live to available drivers. You'll get a notification in Sakada the moment one accepts. Until then your booking stays Pending, and you can cancel it any time.</p>
+            </li>
+            <li>
+              <span class="hiw-step-num" aria-hidden="true">04</span>
+              <h3>Track the trip</h3>
+              <p>Watch your delivery move through each stage — no need to call and ask.</p>
+              <ul class="hiw-legend" aria-label="Stages you'll see">
+                <li data-status="picked_up">Picked Up</li>
+                <li data-status="in_transit">In Transit</li>
+                <li data-status="delivered">Delivered</li>
+              </ul>
+            </li>
+            <li>
+              <span class="hiw-step-num" aria-hidden="true">05</span>
+              <h3>Rate your driver</h3>
+              <p>Once it's delivered, rate your driver. It's saved to your delivery history.</p>
+            </li>
+          </ol>
+          <a class="btn-outline" href="../auth/register.html">Book a Delivery</a>
+        </div>
+
+        <div class="hiw-role" id="drivers">
+          <h2>If you're driving</h2>
+          <p class="hiw-role-who">Truck drivers</p>
+          <ol class="hiw-steps">
+            <li>
+              <span class="hiw-step-num" aria-hidden="true">01</span>
               <h3>Browse available deliveries</h3>
-              <p>
-                See pickup and drop-off points, what's being moved, and the
-                estimated fee before you accept anything.
-              </p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">2</span>
-            <div>
+              <p>See pickup and drop-off points, what's being moved, and the estimated fare before you accept anything.</p>
+            </li>
+            <li>
+              <span class="hiw-step-num" aria-hidden="true">02</span>
               <h3>Accept a delivery</h3>
-              <p>
-                Once you accept, it's assigned to you and moves to your active
-                deliveries list.
-              </p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">3</span>
-            <div>
+              <p>Once you accept, it's assigned to you and moves to your active deliveries list.</p>
+            </li>
+            <li>
+              <span class="hiw-step-num" aria-hidden="true">03</span>
               <h3>Update status as you go</h3>
-              <p>
-                Mark Picked Up, then In Transit, then Delivered — the farmer or
-                vendor sees each update immediately.
-              </p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">4</span>
-            <div>
+              <p>Mark each stage from your phone. The farmer or vendor sees every update immediately.</p>
+              <ul class="hiw-legend" aria-label="Stages you'll mark">
+                <li data-status="picked_up">Picked Up</li>
+                <li data-status="in_transit">In Transit</li>
+                <li data-status="delivered">Delivered</li>
+              </ul>
+            </li>
+            <li>
+              <span class="hiw-step-num" aria-hidden="true">04</span>
               <h3>Get rated, build your history</h3>
               <p>Completed deliveries and ratings stay on your profile.</p>
-            </div>
-          </li>
-        </ol>
+            </li>
+          </ol>
+          <a class="btn-outline" href="../auth/register.html?role=driver">Sign up to drive</a>
+        </div>
       </section>
 
-      <div class="cta-band">
-        <h2>Ready to move your harvest?</h2>
-        <a class="btn-primary" href="for-farmers.html">Book a Delivery</a>
-      </div>
+      <section class="hiw-close" aria-labelledby="close-heading">
+        <div>
+          <h2 id="close-heading">Ready to move your goods?</h2>
+          <p>Questions first? <a class="hiw-link" href="contact.html">Contact us</a></p>
+        </div>
+        <div class="hiw-close-actions">
+          <a class="btn-primary" href="../auth/register.html">Book a Delivery</a>
+          <a class="btn-outline" href="../auth/register.html?role=driver">Sign up to drive</a>
+        </div>
+      </section>
     </main>
 
     <footer class="site-footer lp-footer">

@@ -38,8 +38,10 @@
             id="notifBell"
             type="button"
             aria-label="Notifications"
+            aria-expanded="false"
+            aria-controls="notifPanel"
           >
-            🔔<span class="notif-badge" id="notifBadge">0</span>
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2.5a5 5 0 0 0-5 5v3.2l-1.5 2.8h13L15 10.7V7.5a5 5 0 0 0-5-5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 16a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="notif-badge" id="notifBadge">0</span>
           </button>
           <div class="notif-panel" id="notifPanel">
             <div class="notif-empty" id="notifEmpty">No notifications yet.</div>

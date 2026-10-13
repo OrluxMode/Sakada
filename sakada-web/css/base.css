@@ -9,6 +9,21 @@
   --accent-amber: #e0972f;
   --accent-amber-dim: #b9761c;
   --text-on-amber: #17150c;
+  --ok-green: #7ab05c;
+  /* Delivery status colours (shared with the dashboard later) */
+  --status-pending: #b8b4a6;
+  --status-assigned: #e0972f;
+  --status-picked-up: #4fa3b0;
+  --status-in-transit: #5b9bd5;
+  --status-delivered: #7ab05c;
+  --status-cancelled: #e0542f;
+  --status-pending-text: #d6d2c4;
+  --status-assigned-text: #f0b25a;
+  --status-picked-up-text: #9fd0d8;
+  --status-in-transit-text: #9cc3ee;
+  --status-delivered-text: #a9d18f;
+  --status-cancelled-text: #f2a98a;
+  --rail: rgba(184, 180, 166, 0.7);
   --line: rgba(243, 239, 228, 0.12);
   --ink-rgb: 11 12 9;
   --cream-rgb: 243 239 228;
@@ -31,6 +46,10 @@
   --radius-btn: 6px;
   --radius-lg: 12px;
   --radius-pill: 999px;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 * {

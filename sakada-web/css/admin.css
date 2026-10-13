@@ -103,3 +103,94 @@
   border: 1px solid #e0542f;
   color: #f2a98a;
 }
+
+/* ---------- Table pager ---------- */
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding-top: 20px;
+}
+.pager:empty {
+  display: none;
+}
+.pager-range {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.pager-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.pager-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-btn);
+  color: var(--text-cream);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.pager-num {
+  padding: 0;
+}
+.pager-btn:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+.pager-btn[aria-current="page"] {
+  background: var(--accent-amber);
+  border-color: var(--accent-amber);
+  color: var(--text-on-amber);
+  font-weight: 700;
+}
+.pager-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pager-gap {
+  min-width: 44px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.pager-status {
+  display: none;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+@media (max-width: 600px) {
+  .pager {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .pager-controls {
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+  .pager-num,
+  .pager-gap,
+  .pager-label {
+    display: none;
+  }
+  .pager-status {
+    display: block;
+  }
+  .pager-btn {
+    padding: 0;
+  }
+}

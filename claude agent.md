@@ -26,30 +26,31 @@
 - Figma MCP is on the **Starter plan with a tool-call limit**. Batch the work into a few big `use_figma` calls.
 - Capturing the local or live site into Figma (`generate_figma_design`) gets blocked by the permission classifier. Rebuild from code instead.
 
-## ▶ Resume here (status as of 2026-10-12, end of session)
+## ▶ Resume here (status as of 2026-10-13, end of the dashboard polish + CI session)
 
-- **Workflow now:** Claude designs, critiques, audits and reviews. **OpenCode (MiMo v2.6 flash free)** writes the code from prompt files in the project root (`opencode prompt - *.md`). The user pastes each prompt into OpenCode, then asks Claude to check the result. The user does git commit/push **manually**.
-- **Chosen design:** the Option A layout with the original photo, now called **"Sakada v2 lp"**.
-  - Figma file: `https://www.figma.com/design/8q1102hOL3ZvFsiePuJrQv/Sakada`
-  - Desktop frame `18:184`, mobile frame `25:209` (under it). Both have the outlined SAKADA wordmark (`24:209` desktop, `25:270` mobile) and say "5 delivery stages".
-  - Untouched: Option A `1:4` / `3:112`, Option B `1:5` / `4:275`, "Option B v2" single-screen `15:156` (not chosen).
-- **Done in code (by OpenCode, reviewed by Claude, tests 41/41):**
-  - Landing page v2: `index.html`, `css/nav.css`, `css/base.css`.
-  - New nav on all 7 inner pages and `404.html`: `css/pages.css`. All 81 nav links checked, 0 broken. main.js now also loads on contact + 404.
-  - Not committed yet. The user pushes it.
-- **✅ Hero wordmark done and verified (2026-10-12).** Next: user commits/pushes; then pick from the optional list.
-- ~~Pending: the hero wordmark prompt~~ When they say it's done, check `index.html` at 1440/1100/900/390/320:
-  - wordmark centered, 14% from the top, 260px at desktop and 90px on mobile
-  - under the hero content (z-index 1 vs 2), aria-hidden, pointer-events none
-  - no horizontal overflow
-  - `npm test` still passes
-- **Review method that works:** serve with `npx serve . -l <port>` from `sakada-web/`, take headless screenshots with `google-chrome --headless=new --window-size=W,H --screenshot=...`, stitch them with PIL, check links with a Python urljoin + urlopen script. Kill the server with `fuser -k <port>/tcp`.
-- **Optional later:**
-  - Filipino truck-with-produce hero photo (still the tractor)
-  - copy language (English for now; Taglish offered)
-  - inner-page footers' mobile tap targets (only the landing footer was fixed)
-  - impeccable finish steps (detector, finish review, DESIGN.md)
-- **Security backlog:** N1–N11, N16, N21 fixed and live (2026-10-13). Remaining low-priority cleanup: N12–N15, N17–N20, N22, N23.
+- **Workflow:** Claude designs, critiques, audits, reviews and writes prompts. **OpenCode (MiMo v2.6 flash free)** writes the code from `opencode prompt - *.md` files in the project root. Then Claude verifies (git diff, headless Chrome screenshots/measurements, `npm test`, curl). The user commits/pushes **manually** and runs SQL in the Supabase SQL editor.
+- **Done earlier and pushed:** landing page v2 (audit 20/20), security N1–N23, migrations 0015–0018 (commit `2e13f5f`).
+- **Done this session, verified by Claude, and confirmed by the user ("its good on my end"):**
+  - landing step 02 without "nearby"
+  - landing page for logged-in users (`js/landing-auth.js`)
+  - How It Works page rebuilt from Figma (`35:301` / `37:389`); critique 21 → 26/36; self-hosted latin-ext fonts for ₱; `--status-*` tokens
+  - dashboard polish: admin pagination (`js/pagination.js`), status pills, notification panel, For Farmers copy
+  - Tests 63/63. **Unclear whether the user has pushed these yet; ask.**
+- **⏳ Waiting on OpenCode: `opencode prompt - ci and small fixes.md`:**
+  1. `.github/workflows/test.yml` (runs `npm test` in `sakada-web/` on every push/PR)
+  2. admin pager on phones: ‹ Page X of Y ›
+  3. "SK-00142" kept on one line in notifications
+  - **Next session:** when the user says OpenCode is done, verify: YAML (spaces, path), tests 63, node --check, a pager harness at 390, and the notif-code span after sanitizeText. After the push, the GitHub Actions tab should show a green ✓.
+- **Optional later:** ESLint, blocking Vercel deploys on a red ✗, E2E tests (need a Supabase test account), `--shadow-*` tokens. Existing Google users wrongly set to farmer can be fixed by hand in Supabase.
+- **Dropped by the user:** the Filipino truck photo. Keep the current hero (PRODUCT.md updated).
+- **User decisions to respect:** keep the current tractor hero photo; Option A layout; the landing page is single-purpose.
+- **Review toolkit that works:**
+  - `npx serve . -l <port>` from `sakada-web/` (kill with `fuser -k <port>/tcp`)
+  - `google-chrome --headless=new --window-size=W,H --screenshot=…`
+  - measurements: inject a `zz.js` into a scratch copy of the site (the CSP blocks inline scripts) and read it with `--dump-dom`
+  - Python urljoin link checks
+  - `node --check` on a `.mjs` copy for syntax
+  - psql/docker are not installed, so SQL can't be run locally
 
 ## Key files to read first when resuming
 
@@ -396,5 +397,314 @@
 - The stray `.impeccable/critique/2026-10-13T03-40-02Z…` (19/32, from another session) mostly re-argues settled decisions (photo, Option A).
 - Valid small copy item: step 02 says "driver nearby", but drivers are notified nationwide, not by proximity.
 - Offered as optional later: the fare example on the landing page, logged-in "Book a Delivery" routing, status-pill tokens, CI.
+
+### 2026-10-13 (end): Session saved
+- User said "that's all for now". Rewrote **▶ Resume here**. Next session: confirm the user pushed and the dashboards load, then pick from the ideas list.
+
+### 2026-10-13 (new session): Resumed from this log
+- Read this file. Git shows the last batch is pushed: commit `2e13f5f "testing v2"` has requester-dashboard.js, admin Messages, cancel/stale-quote, tests. `main` matches `origin/main`.
+- Still to do: open the farmer/vendor/admin dashboards on the live site once, and check the admin Messages tab.
+
+### 2026-10-13: Ideas mocked up in Figma (file `8q1102hOL3ZvFsiePuJrQv`)
+- Used impeccable + figma-use. Everything sits to the right of "Sakada v2 lp" (x ≥ 9400). Old frames were not touched. Each frame has a cream "Notes — …" panel beside it.
+- Idea 1 (`33:234` desktop, `33:299` mobile): step 02 drops "nearby" and shows a sample-fare list under it (₱150 + 115 km × ₱15 + 500 kg × ₱2 = ₱2,875). The user picked "step 03", but I put it under step 02 because that step promises the cost. I told the user and they can move it.
+- Idea 2 (`33:370`): logged-in landing. Log Out / My Dashboard, chips and "New here?" hidden, "Signed in as a farmer". Book a Delivery → dashboard; drivers get "Find Deliveries" (noted only).
+- Idea 3 (`33:430`): admin Messages, 25 per page, "Showing 1–25 of 212", Previous / 1 2 3 … 9 / Next, 44px. Sample rows.
+- Idea 4 (`33:595`): 6 `--status-*` tokens (picked up = teal, so it's no longer the same as in transit), dot + tint, 12px, before/after + cards.
+- Idea 5 (`33:686`): notification panel closed / opening / open / empty, 160 ms fade+slide, SVG bell 44px, amber dot instead of the 2px left bar.
+- Used 4 use_figma calls. Next: the user reviews, then I write the OpenCode prompts for the approved ones.
+
+### 2026-10-13 (end): Session saved
+- User said "save our convo, we will resume later". Rewrote **▶ Resume here**. Next session: ask which of the 5 Figma ideas the user approves, then write the OpenCode prompts.
+
+### 2026-10-13: "hey bro game"
+- User said "hey bro game", which is probably "ready, let's go". Asked whether they've reviewed the 5 Figma ideas and which ones to build.
+
+### 2026-10-13: Decision — sample fare moves to the How It Works page
+- **User decision:** the landing page for new visitors keeps the plain step 02 from Idea 2: "Get matched with a driver. An available driver accepts your booking. You see the estimated cost before you confirm." There's no fare list on the landing page.
+- The sample-fare list belongs on `pages/how-it-works.html`, step 2 "Get an estimated cost" (line ~91). Today it only says "Sakada calculates a fee estimate before you commit to anything."
+- Proposed next: (a) the landing copy fix (removing one word); (b) a Figma mockup of How It Works step 2 with the fare list, then an OpenCode prompt. Waiting for the user's go-ahead.
+
+### 2026-10-13: Order agreed + prompt for the landing step 02 copy
+- **User's order:** (1) landing page for new visitors → (2) landing page for logged-in users (Idea 2, user loves it) → (3) the rest (How It Works fare, admin pagination, pills, notifications).
+- Wrote `opencode prompt - landing step 02 copy.md`: index.html only, remove "nearby" from step 02, no fare list. Check: grep finds no "nearby", tests 48/48.
+- Noticed for later: `pages/for-farmers.html:132` also says "available drivers nearby". Out of scope for now (landing only).
+- Next: user runs OpenCode, Claude verifies, then the logged-in landing prompt.
+
+### 2026-10-13: Landing step 02 copy verified
+- OpenCode's diff matches the prompt exactly: only index.html, 2 lines, "nearby" gone, title/number unchanged. grep finds no "nearby". Tests 48/48.
+- Not committed; the user pushes manually. Next: the prompt for the logged-in landing page (Idea 2, `33:370`).
+
+### 2026-10-13: Prompt for the logged-in landing page
+- Wrote `opencode prompt - landing logged in.md` (Idea 2, `33:370`).
+- Detection without loading the SDK, to protect the 20/20 perf: `requireRole()` saves `localStorage["sakada.role"]` and `signOut()` clears it. The landing treats the user as signed in only if the role is valid AND an `sb-*-auth-token` key exists; a stale hint is removed. It's only a UI hint, since dashboards still guard.
+- New `js/landing-auth.js` module (pure `getLandingState` / `applyLandingState`). Log Out lazily `import("./auth.js")`.
+- index.html gets `data-auth="guest|member"` + `hidden`. Signed-in view: Log Out / My Dashboard, mobile menu Log Out, hero CTA → `dashboard/<role>/index.html#deliveryForm` (driver "Find Deliveries", admin "Open Admin"), chips → "Signed in as a farmer" with a `--ok-green` dot.
+- base.css gets `[hidden]{display:none!important}` (`.nav-btn` inline-flex would override it) and `--ok-green`. nav.css: `.nav-btn` font/cursor, `.nav-link-btn`, `.signed-in`. 7 new tests → expect 55.
+- Next: user runs OpenCode, then Claude verifies: guest page unchanged, and the signed-in state by faking localStorage in a scratch copy at 1440 + 390.
+
+### 2026-10-13: Logged-in landing verified
+- OpenCode's diff matches the prompt: landing-auth.js identical, auth.js hint set/clear, `[hidden]` rule, `--ok-green`, `.nav-link-btn` incl. the ≤1024 menu rule, data-auth markup. Tests 55/55.
+- Headless Chrome (temp copy that fakes localStorage):
+  - guest at 1440/390 unchanged
+  - farmer/vendor: Log Out + My Dashboard, CTA → `dashboard/<role>/index.html#deliveryForm`
+  - driver: "Find Deliveries"; admin → admin dashboard
+  - a fake role ("hacker") stays guest
+  - mobile menu shows Log Out aligned with the other links
+- Claude fixed one bug from its own prompt directly: "Signed in as  a farmer" had a double gap (flex gap between the text and the span). Wrapped them in one `<span>`.
+- Known minor: a logged-in user may see the guest buttons for a split second before the module runs. Not worth a round.
+- Not committed. Next: the remaining tasks (How It Works fare, admin pagination, status pills, notification panel, for-farmers "nearby").
+
+### 2026-10-13: How It Works page designed in Figma
+- **User's plan:** design How It Works in Figma first, implement after approval. Their link: Figma page "how it works" (`35:300`), frame `35:301`, which was empty.
+- User chose "Refine + fare example": today's copy and order, landing dark/amber look, senders and drivers side by side.
+- Built:
+  - **desktop** `35:301` "How It Works (desktop)", 1440×1776
+  - **mobile** `37:389` "How It Works (mobile)", 390 wide, at x 1540
+- Sections:
+  - nav (cloned from the landing page, "How It Works" in amber, black bg)
+  - page hero (h1 64px / 38px mobile + lede)
+  - steps: senders 1–5 in a 684px column + drivers 1–4, stacked on mobile
+  - sender step 2 has the sample-fare list (400px wide on desktop): ₱150 + 115 km × ₱15 + 500 kg × ₱2 = ₱2,875
+  - CTA band with a Button instance, then the footer
+- **Copy change to flag:** step 2 text "Sakada calculates a fee estimate before you commit to anything." → "Sakada works out the fare from distance and weight before you commit to anything." Told the user so they can revert it.
+- Mobile number column narrowed to 28px (gap 16). Today's CSS uses 64px.
+- Next: user approves, then Claude writes the OpenCode prompt for `pages/how-it-works.html` + pages.css.
+
+### 2026-10-13: /impeccable critique of the How It Works design (in progress)
+- User asked for an impeccable critique of the Figma How It Works design (`35:301` desktop, `37:389` mobile).
+- Exported the renders to `/tmp/hiw-critique.WRbU/`. Slug `sakada-web-pages-how-it-works-html`.
+- Running two isolated reviews in parallel: A (design review) and B (detector on the incumbent how-it-works.html + measurements on the renders). The report comes when both finish.
+- **Result: 21/36 (58%, Acceptable)**, heuristic 7 n/a. Snapshot: `.impeccable/critique/2026-10-13T08-25-15Z__sakada-web-pages-how-it-works-html.md`. Temp files deleted.
+- P1s:
+  - no driver action, and the CTA sends vendors to For Farmers
+  - fare receipt text 12–14px, below the 16px floor
+- P2s:
+  - status chain told, never shown; identical rows; small "1" numerals vs the landing's "01"
+  - cost/fare/fee naming; no cancel/payment line (cancel while Pending ships, N14)
+  - mobile role-jump chips
+- Detector: 1 false positive (flat hierarchy, @imports). All contrast passes (lowest 7.5:1).
+- Minor (code): inner pages load Google Fonts 600/800/900 while h3 wants 700. The footer 44px is already fine in code.
+- Asked the user about priority, the status strip, and scope.
+
+### 2026-10-13 (end): Session saved
+- After the critique report, the user rejected the follow-up questions to clarify them, then said "save first our convo, we will resume later". Rewrote **▶ Resume here**.
+- Next session: ask what they wanted clarified about the critique questions.
+
+### 2026-10-13: "game bro", resuming
+- User is ready. Asked what they wanted clarified about the critique questions (priority, status strip, scope).
+
+### 2026-10-13: How It Works, all critique fixes applied in Figma
+- User: "fix all for a perfect score" (status strip included). Rebuilt desktop `35:301` (now 1440×2689) and mobile `37:389` (390×4483).
+- Hero is two columns on desktop (h1 left; lede + "Jump to your part:" chips right). Mobile chips are stacked, 48px tall.
+- New "One status, seen by everyone" strip: 5 stages with dots in the status-pill colors (Pending hollow) and who moves each one (You book it / A driver accepts / The driver marks it). Cancelled off-ramp line. Vertical rail on mobile.
+- Step lists:
+  - equal columns
+  - "01–05" 40px numerals above 22px titles
+  - 16px body
+  - sub-labels "Farmers and vendors" / "Truck drivers"
+  - headings shortened to "If you're sending goods" / "If you're driving"
+- Fare block is 16px (formula line, example, rows, ₱2,875 at 34px, map note, "Payment: GCash or cash on delivery, coming soon."), 440px wide on desktop.
+- Copy changes:
+  - "fare" everywhere (step 2 title "Get an estimated fare", driver step 1)
+  - step 1 "Make an account, then…"
+  - step 3 adds "Changed your mind? Cancel any time while it's still Pending."
+- Per-column buttons: Book a Delivery / Sign up to drive. The bottom band became "Still have questions?" + Ghost "Contact us".
+- Left for code: chip arrows should point down (they're jump links), and self-host fonts on inner pages. Not fixable without product facts: weight limits, driver wait times.
+- Next: user reviews; optional re-critique; then an OpenCode prompt.
+
+### 2026-10-13: Re-critique of How It Works (in progress)
+- User likes the fixed design and asked for the critique again. Fresh renders are in `/tmp/hiw-critique2.n2sh/`. Two isolated reviews (A design, B detector + measurements) are running; the report comes when both finish.
+- **Result: 26/36 (72%, Good)**, up from 21/36. Snapshot `.impeccable/critique/2026-10-13T08-59-05Z__sakada-web-pages-how-it-works-html.md`. Temp files deleted.
+- P1: (1) ~540px void under the driver column on desktop, CTAs at different heights → pull the fare receipt into a full-width band; (2) no "we'll notify you when a driver accepts" line at step 03 (notifications ship).
+- P2:
+  - "three people" headline vs two parties (owner copy, ask first)
+  - fare footnotes and example at 15px → 16px; "estimated vs real fare" wording
+  - first Book CTA at 87% of page height → add one under the receipt + closing band Book + Contact
+- Minor:
+  - "The driver marks it" ×3 → "Goods loaded / On the road / Arrived"
+  - rail line 1.32:1
+  - Cancelled ring looks like a 6th stage
+  - step 01 "roughly when" → "the pickup date" (the form requires `scheduledPickup`)
+  - mobile divider between the sections
+  - orphan "next."
+- Asked the user what to fix next.
+
+### 2026-10-13: How It Works v3, all re-critique fixes applied
+- User chose "all of them" + change the headline. Rebuilt desktop `35:301` (1440×2948) and mobile `37:389` (390×5042).
+- **New headline:** "You book it. A driver takes it. You both see every step."
+- **New lede:** "Farmers and vendors book the delivery, a truck driver accepts it, and both of you see the same status, updated live, until the goods arrive."
+- **Status strip:**
+  - sub: "The driver updates each stage from their phone…"
+  - stage meanings: "Your goods are on the truck" / "On the road to the drop-off" / "Arrived at the drop-off"
+  - rail line is muted at 45% (stronger); the last stage hugs so the rail reaches the right edge
+  - "**Cancelled** is not a stage…" with a red ✕ icon
+- **New "See the fare before you book" band** between the strip and the steps:
+  - left: explanation + big formula line
+  - right: a 520px card, all 16px, ₱2,875 at 36px
+  - note: "Your estimate uses the road distance from the map, not a straight line."
+  - payment "coming soon" + a Book a Delivery button
+- **Step copy:**
+  - step 01 "…and the pickup date"
+  - step 02 "…like the example above"
+  - step 03 adds "We'll notify you the moment one accepts, so you don't need to keep this page open." + the cancel line
+- **Layout:**
+  - numerals 32px; columns fill-height so Book a Delivery / Sign up to drive share a baseline
+  - mobile: a divider above the driver section
+  - closing band "Ready to move your harvest?" + Book a Delivery + Ghost Contact us (top and bottom hairlines)
+- Next: user reviews; optional third critique; then an OpenCode prompt (remember: chip arrows point down, self-host fonts on inner pages).
+
+### 2026-10-13: Third critique of How It Works (in progress)
+- User asked for the critique again on v3. Renders are in `/tmp/hiw-critique3.37gn/`. Two isolated reviews are running; the report comes when both finish.
+- **Result: 26/36 again** (trend 21 → 26 → 26). Snapshot `.impeccable/critique/2026-10-13T09-08-26Z__sakada-web-pages-how-it-works-html.md`.
+- The plateau is mostly **missing product facts**, not design: how people pay today, what happens if no driver accepts, truck capacity, notify channel (in-app only).
+- P1: payment line ambiguous ("In-app payment … coming soon" + the current arrangement from the owner).
+- P2:
+  - step 03 "notify" → "notification in Sakada" + "stays Pending until accepted or cancelled"
+  - the story is told 3× → step 02 one line + anchor
+  - 608×289px void under drivers, caused by my baseline alignment (the reviewers disagreed between runs) → CTA under each list
+  - stronger rail
+- P3: closing band also needs "Sign up to drive".
+- Measured: rail 2.74:1, card border 1.32:1, band 1.07:1, mobile header Sign up 42px.
+- Asked the user about payment today + the fix scope.
+
+### 2026-10-13: How It Works v4, third-critique fixes applied
+- **User answers:**
+  - customers pay the **driver directly in cash** for now
+  - apply **all** fixes
+  - they **will give a truck weight limit** (number not given yet → waiting)
+- Rebuilt desktop `35:301` (1440×2995) and mobile `37:389` (390×5091).
+- **Copy:**
+  - headline "You book it. A driver **accepts** it. You both see every step."
+  - cancel line "Changed your mind? You can cancel any time while it's still Pending."
+  - fare card: "For now, you pay the driver directly. In-app payment (GCash or cash on delivery) is coming soon."
+  - step 02 "You see the fare before you commit to anything." + amber underlined link "See the worked fare example"
+  - step 03 "You'll get a notification in Sakada the moment one accepts. Until then your booking stays Pending, and you can cancel it any time."
+  - step 04 / driver step 03: status mini-pills (dot + name)
+  - driver step 03 "Mark each stage from your phone…"
+- **Layout:**
+  - status dots 18px, rail at muted 70% (≥3:1); fare card border at muted 35%; fare section top-aligned, intro 520px
+  - paragraphs 560px on desktop; buttons sit directly under each list (no baseline alignment)
+  - closing band: "Questions first? Contact us" link + Book a Delivery + Ghost "Sign up to drive"
+- Next: add the truck-limit line once the user gives the number (likely in the fare card or step 01), then optionally re-critique, then an OpenCode prompt.
+
+### 2026-10-13: Truck load guidance added
+- User asked me to just put in a typical kg per booking for agri logistics.
+- Checked the code: there is **no weight limit** (form `min="1"` only; DB only rejects ≤0; `driver_profiles` has `vehicle_type`/`vehicle_plate`, no capacity). So I didn't state a hard limit.
+- Added a "How much can I send?" block under the formula in the fare band (desktop `43:334`, mobile `43:337`): "There's no fixed limit. Drivers see the weight before they accept, so they only take loads their truck can carry. As a guide, a small truck carries about 1–2 tonnes and a six-wheeler about 4–7 tonnes."
+- The tonnes are typical PH truck figures, not Sakada rules; told the user to confirm or adjust. Mobile is now 5292 tall.
+- Next: optional fourth critique, or the OpenCode prompt.
+
+### 2026-10-13: Fourth critique of How It Works (in progress)
+- User asked for the critique again on v4 + the load guide. Renders are in `/tmp/hiw-critique4.vOJ7/`. Two isolated reviews are running.
+- **Result: 26/36 again** (trend 21 → 26 → 26 → 26), **0 P1s now** (first time). Snapshot `.impeccable/critique/2026-10-13T09-25-55Z__sakada-web-pages-how-it-works-html.md`.
+- P2s:
+  - merge the status strip + role steps into one two-lane track (a structural redesign)
+  - mobile fare order (card right after the formula, load Q&A after the card)
+  - trust gaps needing owner facts: is the driver paid exactly the booked fare? change after accept? no-driver? The sender dashboard shows NO driver name (checked), so don't claim it.
+- P3s:
+  - repeated CTAs (3× Book)
+  - inline links under 44px (code: padding)
+- Measured: rail fixed (5.08:1); fare card border 2.09:1 and band 1.07:1 still under 3:1; 80-char line in sending 03; orphans in driving 02/03.
+- Told the user the score has plateaued, reviewers now flip-flop on layout, and 72% is "Good". Recommended: cheap fixes + owner facts, then build.
+
+### 2026-10-13: Final Figma fixes + OpenCode prompt for How It Works
+- **User answers:** the driver gets **exactly the booked fare**; do "quick fixes, then build".
+- **Figma** (desktop 3057 tall, mobile 5372):
+  - fare card adds "The fare you book is the fare you pay. No haggling at drop-off."; card border at muted 50%
+  - mobile order: formula → card → "How much can I send?"
+  - end-of-list buttons → Ghost; cancel ✕ → red ring dot
+  - "Rate your driver"; band "Ready to move your **goods**?"; paragraphs 540px
+- **Found:** the self-hosted fonts are a Latin subset **without ₱ (U+20B1)**. Fontsource latin-ext files exist on jsdelivr (checked HTTP 200).
+- **Wrote `opencode prompt - how it works page.md`:**
+  - download 2 latin-ext woff2 + `@font-face` with the latin-ext unicode-range
+  - head like index (fonts/base/nav/pages CSS, CSP font-src 'self', no Google Fonts / style.css)
+  - `--status-*` + `--rail` tokens in base.css; `.btn-outline` in nav.css
+  - full `<main>` markup (hiw-* classes, data-status dots, dl fare rows, down-arrow chips → #senders/#drivers, `.hiw-link` 44px hit area)
+  - full CSS block appended to pages.css; ≤900px single column
+  - checks: no googleapis, fonts >5 KB, vitest 55, visual at 1440/390, ₱ in the right font
+- Next: user runs OpenCode, then Claude verifies (screenshots 1440/390 vs Figma, CSP console, ₱ glyph, anchors, other pages unchanged).
+
+### 2026-10-13: How It Works build verified
+- OpenCode's build matches the prompt **exactly**: `<main>` identical ignoring whitespace; the CSS block in pages.css identical (diffed); head has fonts/base/nav/pages + CSP font-src 'self', no googleapis/style.css. Latin-ext fonts are 14.5 KB / 18.5 KB. Tokens and `.btn-outline` are right. Tests 55/55.
+- Headless Chrome 1440 + 390:
+  - matches Figma v4
+  - ₱ renders in Barlow/Public Sans
+  - chips have down arrows
+  - mobile status rail is vertical
+  - fare order on mobile is formula → card → load Q&A
+  - no CSP errors seen
+- Claude fixed one thing directly: hyphen line-breaks ("drop-/off", "In-/app") → `<span class="hiw-nowrap">` + `.hiw-nowrap { white-space: nowrap; }`.
+- Detector now: the flat-hierarchy false positive is gone (direct CSS links). 1 new "cramped-padding" on `.hiw-close` is a false positive: the band has `padding: 64px clamp(20px,5vw,64px)` and the screenshots show a 64px/20px inset. The detector likely can't read clamp().
+- Not committed. Uncommitted together: landing step 02 copy + logged-in landing + How It Works.
+
+### 2026-10-13: Prompt for the rest of the list (dashboard polish)
+- User: "let's do all in the list". Wrote `opencode prompt - dashboard polish.md` (4 parts, from Figma Ideas 3–5):
+  - **A. Admin pagination**, client-side so the stat cards and name lookups still use the full lists:
+    - new `js/pagination.js` (`paginate`, `pageList`, PAGE_SIZE 25) + 8 tests
+    - messages limit 200 → 1000 (Supabase's default max)
+    - `<nav class="pager">` after each of the 4 tables
+    - admin-dashboard.js split into load/render with a `renderPager` helper (SVG chevrons, aria-current, disabled ends); pager CSS in admin.css, 44px buttons
+  - **B. Status pills:** `--status-*-text` tokens; dashboard.css pill uses color-mix tint/border, a dot (`::before`), 12px text, hollow dot for Pending; Picked Up is now teal.
+  - **C. Notification panel:**
+    - SVG bell replaces 🔔 in the farmer/vendor/driver dashboards, 44px, aria-expanded/controls, Escape closes
+    - panel fades and slides (160 ms in / 120 ms out, reduced-motion = fade only)
+    - "Notifications" header; amber unread dot replaces the 2px left border
+    - empty state "No notifications yet. / Updates on your deliveries show up here."
+  - **D.** `for-farmers.html` "available drivers nearby" → "available drivers".
+- Checks: vitest 63, no "nearby", no 🔔, node --check.
+- Next: user runs OpenCode, then Claude verifies (admin pages with fake data in a scratch copy, pill colors, notification states).
+
+### 2026-10-13: Dashboard polish verified
+- OpenCode's diff matches the prompt for all 4 parts:
+  - pagination.js identical; admin-dashboard.js load/render split with renderPager; 4 pager navs; messages limit 1000
+  - pill tokens + CSS; notifications CSS/JS; SVG bell + aria in 3 dashboards
+  - for-farmers copy
+- Tests 63/63, node --check ok, no "nearby", no 🔔.
+- Visual check with a CSS harness (temp copy, real style.css, sample markup) at 1200 + 390:
+  - pager: amber current page, Previous dimmed on page 1, 44px
+  - 6 distinct pills with dots (Pending hollow)
+  - notification panel open (amber unread dots, header, shadow) and empty state; the closed panel is hidden
+- Minor, not fixed:
+  - on mobile the pager's "Next" wraps to a second row
+  - delivery codes like "SK-00142" can break at the hyphen inside notification text
+- Real dashboards weren't loaded (they need a login); the user should click through once after pushing.
+- **Everything from the list is done.** All uncommitted, waiting for one push: landing copy, logged-in landing, How It Works, dashboard polish.
+
+### 2026-10-13: User confirmed everything works
+- User: "its good on my end". The landing (guest + logged-in), How It Works, and dashboard polish are all confirmed by the user.
+- Still open (optional): mobile pager "Next" wrap; "SK-" hyphen break in notifications; CI (lint + vitest) + E2E tests; `--shadow-*` tokens.
+
+### 2026-10-13: Truck photo dropped
+- User: ignore the Filipino truck photo; satisfied with the current hero. Updated PRODUCT.md ("keep the current hero.jpg, don't flag it") and removed the photo from the open list.
+
+### 2026-10-13: Explained "automated tests on every push" (CI)
+- There's no `.github/` folder yet. package.json has `test` (vitest, 63 tests); `lint` is a placeholder echo.
+- Explained: a GitHub Actions workflow would run `npm test` on every push/PR and show ✓/✗. Optional: ESLint, and blocking Vercel deploys on failure. Offered to write it; no answer yet.
+
+### 2026-10-13: Clarified "the first part"
+- The first part = just the GitHub Actions file that runs the existing 63 vitest tests on every push (no ESLint, no deploy blocking, no E2E). Offered again to write it.
+
+### 2026-10-13: Is CI a good move?
+- Answered yes: low cost, free for a public repo, and a safety net because OpenCode writes most of the code and pushes are manual. Caveats: it only covers what the 63 tests cover (logic, not the visuals), and it doesn't stop Vercel deploys by itself.
+
+### 2026-10-13: Prompt for CI + the 2 small fixes
+- User: "do it" (CI) + "the small issue". Following the OpenCode workflow, wrote `opencode prompt - ci and small fixes.md`:
+  1. `.github/workflows/test.yml` at the repo root: checkout, setup-node 22 with npm cache (`sakada-web/package-lock.json`), `npm ci`, `npm test`; working-directory `sakada-web`; on push + PR
+  2. admin pager on ≤600px: icon-only Prev/Next (aria-labels), number buttons hidden, "Page X of Y" shown
+  3. notification codes: `keepCodesTogether()` wraps `SK-\d+` in `<span class="notif-code">` (white-space: nowrap) after sanitizeText
+- Next: user runs OpenCode, then Claude verifies (YAML check, tests, pager harness at 390). After the push, the GitHub Actions tab should show a green ✓.
+
+### 2026-10-13 (end): Session saved
+- User said "save our convo, we will resume later". Rewrote **▶ Resume here**. Waiting on OpenCode's run of the CI + small-fixes prompt.
+
+### 2026-10-13: Resumed ("where we at")
+- Checked git: the last commit is still `2e13f5f`, so **this session's work is not pushed yet**. The CI + small-fixes prompt has **not been run** (no `.github/`, no `pager-status`/`notif-code`).
+- Told the user: run that prompt in OpenCode → Claude verifies → one push for everything.
+
+### 2026-10-13: CI + small fixes verified
+- `.github/workflows/test.yml` matches the prompt (valid YAML, no tabs, working-directory sakada-web, npm cache path right). `npm ci --dry-run` ok. Tests 63/63, node --check ok.
+- Pager at 390: ‹ Page 5 of 9 › on one row; desktop unchanged (Previous / 1 … 4 5 6 … 9 / Next). `SK-00142` stays whole in the notification.
+- **Everything is ready for one push.** After pushing: check the GitHub Actions tab for a green ✓, then do a quick live click-through (landing Log Out, admin pages, bell).
 
 <!-- Add the next session's entry above this line -->

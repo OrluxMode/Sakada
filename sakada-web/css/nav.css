@@ -57,6 +57,24 @@
   color: var(--accent-amber);
 }
 
+.nav-link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  text-align: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-cream);
+  transition: color 0.2s ease;
+}
+.nav-link-btn:hover,
+.nav-link-btn:focus-visible {
+  color: var(--accent-amber);
+}
+
 .nav-actions {
   display: flex;
   align-items: center;
@@ -70,9 +88,11 @@
   min-height: 44px;
   padding: 12px 20px;
   border-radius: var(--radius-pill);
+  font-family: inherit;
   font-size: 15px;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
   transition:
     background 0.2s ease,
     color 0.2s ease,
@@ -234,6 +254,30 @@
   transform: translateY(-1px);
 }
 
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: transparent;
+  color: var(--text-cream);
+  font-weight: 700;
+  font-size: 17px;
+  border: 1px solid var(--text-cream);
+  border-radius: var(--radius-btn);
+  padding: 15px 27px;
+  text-decoration: none;
+  width: fit-content;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+.btn-outline:hover,
+.btn-outline:focus-visible {
+  background: var(--text-cream);
+  color: var(--bg-black);
+}
+
 .role-chips {
   display: flex;
   flex-direction: column;
@@ -244,6 +288,23 @@
   font-size: 15px;
   font-weight: 500;
   color: var(--text-muted);
+}
+
+.signed-in {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.signed-in-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok-green);
 }
 
 .chips-row {
@@ -396,7 +457,8 @@
   .nav-links.open {
     display: flex;
   }
-  .nav-links a {
+  .nav-links a,
+  .nav-link-btn {
     display: block;
     padding: 14px 8px;
   }
