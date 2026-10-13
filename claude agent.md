@@ -29,7 +29,7 @@
 ## ▶ Resume here (status as of 2026-10-13, everything pushed)
 
 - **Workflow:** Claude designs, critiques, audits, reviews and writes prompts. **OpenCode (MiMo v2.6 flash free)** writes the code from `opencode prompt - *.md` files in the project root. Then Claude verifies (git diff, headless Chrome screenshots/measurements, `npm test`, curl). The user commits/pushes **manually** and runs SQL in the Supabase SQL editor.
-- **All work is pushed** (commit `482d81d "landing page all goods ft. how it works"`, main = origin/main). The user confirmed live: GitHub Actions "Tests" is green, and Log Out / admin pages / bell work.
+- **All work is pushed** (latest commit `99ac2c7 "fixed landing page and logged navs"`, main = origin/main). Logged-in nav works on all 9 public pages; the For pages' buttons go to register?role= (guests) or the dashboard (logged in). The user confirmed live: GitHub Actions "Tests" is green, and Log Out / admin pages / bell work.
 - **Shipped:**
   - landing v2 (audit 20/20) + logged-in landing
   - How It Works (critique 26/36)
@@ -736,5 +736,34 @@
   - farmer: Book → farmer dashboard #deliveryForm (also on For Vendors); For Drivers button hidden
   - driver: "Find Deliveries" on For Drivers; hidden on the farmer/vendor pages
 - Not committed. Uncommitted now: logged-in nav on all pages + For pages' CTAs.
+
+### 2026-10-13: Nav + CTA fixes pushed and confirmed
+- User: "all goods". Pushed as `99ac2c7`; main = origin/main. Nothing pending. Updated **▶ Resume here**.
+
+### 2026-10-13: Explained self-hosted fonts + E2E tests
+- Fonts: 15 pages still load Google Fonts (extra connection to Google, slower on slow mobile data, Google sees visitors, weight mismatch 600/700 vs our 800/900). The fix is mechanical, like How It Works.
+- E2E: a robot browser (e.g. Playwright) doing real flows. A full login/booking flow needs a separate Supabase test project or test accounts + cleanup. Suggested a middle step: logged-out smoke tests (pages load, links, no console errors, the logged-in nav via faked localStorage) with no Supabase needed.
+- Recommended: fonts yes; E2E smoke tests optional. Waiting for the user's choice.
+
+### 2026-10-13: Prompt for fonts + ESLint + E2E smoke tests
+- User: "do your 3 recommendations" (= self-hosted fonts on 15 pages, code checker + deploy blocking, E2E smoke tests).
+- Wrote `opencode prompt - fonts lint e2e.md`:
+  1. **Fonts:** download Barlow 600/700 latin (fontsource, checked 200); for 15 pages delete Google preconnect/stylesheet, add `css/fonts.css`, CSP style-src drop googleapis + font-src 'self' (404 has no CSP)
+  2. **ESLint 9** flat config `eslint.config.mjs` (browser modules, main.js as script, DOMPurify global, tests/e2e node), `npm run lint`, minimal fixes only, disable + report anything that would change behavior
+  3. **Playwright** smoke tests `e2e/smoke.spec.mjs`, served by `serve` on :4400:
+     - 10 public pages load with no console errors
+     - no broken internal links
+     - logged-out CTAs
+     - faked farmer/driver/bogus-role nav + CTAs
+     - phone menu + Escape
+  4. **CI:** a lint step + a separate `e2e` job (playwright install chromium, report artifact on failure); .gitignore for playwright output
+- **Deploy blocking** is a Vercel dashboard setting ("Deployment Checks", needs Vercel for GitHub). Gave the user steps; they must click it.
+
+### 2026-10-13: Fonts + ESLint + E2E verified
+- **Fonts:** no Google Fonts left in any HTML; all 15 pages link `css/fonts.css` with CSP font-src 'self' (404 has no CSP); Barlow 600/700 files ~22 KB each, `@font-face` added.
+- **ESLint:** config identical to the prompt. The only fix was an unused `beforeEach` import in tests/dashboard-shared.test.js. `npm run lint` is clean.
+- **Playwright:** config + `e2e/smoke.spec.mjs` identical to the prompt. Ran locally: **26/26 pass** in about 12 s (10 pages × load-without-errors + no-broken-links, CTAs, faked farmer/driver/bogus nav, phone menu). Unit tests 66/66.
+- **CI:** workflow identical (jobs `test` with lint+unit, and `e2e`); .gitignore covers the playwright output.
+- Not committed. After the push: check that both Actions jobs are green, then turn on Vercel Deployment Checks for "test" + "e2e".
 
 <!-- Add the next session's entry above this line -->

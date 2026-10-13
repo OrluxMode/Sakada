@@ -13,3 +13,7 @@ Thumbs.db
 
 # Live Server / local tooling
 .history/
+
+# Playwright output
+sakada-web/playwright-report/
+sakada-web/test-results/
