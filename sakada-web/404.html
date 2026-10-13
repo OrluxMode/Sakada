@@ -29,14 +29,23 @@
           <li><a href="pages/for-vendors.html">For Vendors</a></li>
           <li><a href="pages/for-drivers.html">For Drivers</a></li>
           <li><a href="pages/contact.html">Contact</a></li>
-          <li class="nav-item-menu"><a href="auth/login.html">Log In</a></li>
+          <li class="nav-item-menu" data-auth="guest"><a href="auth/login.html">Log In</a></li>
+          <li class="nav-item-menu" data-auth="member" hidden>
+            <button type="button" class="nav-link-btn" data-signout>Log Out</button>
+          </li>
         </ul>
 
         <div class="nav-actions">
-          <a class="nav-btn nav-btn-outline nav-login" href="auth/login.html"
+          <a class="nav-btn nav-btn-outline nav-login" href="auth/login.html" data-auth="guest"
             >Log In</a
           >
-          <a class="nav-btn nav-btn-solid" href="auth/register.html">Sign up</a>
+          <a class="nav-btn nav-btn-solid" href="auth/register.html" data-auth="guest">Sign up</a>
+          <button type="button" class="nav-btn nav-btn-outline nav-login" data-auth="member" data-signout hidden>
+            Log Out
+          </button>
+          <a class="nav-btn nav-btn-solid" href="auth/login.html" data-auth="member" data-dashboard-link hidden
+            >My Dashboard</a
+          >
           <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">
             <svg
               aria-hidden="true"
@@ -82,5 +91,6 @@
     </footer>
 
     <script src="js/main.js"></script>
+    <script type="module" src="js/landing-auth.js"></script>
   </body>
 </html>

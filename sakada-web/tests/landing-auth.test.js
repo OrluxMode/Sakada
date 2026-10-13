@@ -95,3 +95,50 @@ describe("applyLandingState", () => {
     document.body.innerHTML = "";
   });
 });
+
+describe("getLandingState with a root prefix", () => {
+  it("prefixes dashboard and book links with the root", () => {
+    const storage = makeStorage([["sakada.role", "farmer"], SESSION]);
+    const state = getLandingState(storage, "https://x.test/");
+    expect(state.dashboard).toBe("https://x.test/dashboard/farmer/index.html");
+    expect(state.book).toBe(
+      "https://x.test/dashboard/farmer/index.html#deliveryForm",
+    );
+  });
+});
+
+describe("applyLandingState with page CTA buttons", () => {
+  const ctaFixture = `
+    <a data-auth-cta="book" href="auth/register.html">Book a Delivery</a>
+    <a data-auth-cta="drive" href="auth/register.html?role=driver">Sign up to drive</a>
+  `;
+
+  it("farmer: rewires the book button and hides the drive button", () => {
+    document.body.innerHTML = ctaFixture;
+    const storage = makeStorage([["sakada.role", "farmer"], SESSION]);
+    applyLandingState(document, getLandingState(storage));
+
+    const book = document.querySelector('[data-auth-cta="book"]');
+    const drive = document.querySelector('[data-auth-cta="drive"]');
+    expect(book.getAttribute("href")).toBe(
+      "dashboard/farmer/index.html#deliveryForm",
+    );
+    expect(book.hidden).toBe(false);
+    expect(drive.hidden).toBe(true);
+    document.body.innerHTML = "";
+  });
+
+  it("driver: hides the book button and turns drive into Find Deliveries", () => {
+    document.body.innerHTML = ctaFixture;
+    const storage = makeStorage([["sakada.role", "driver"], SESSION]);
+    applyLandingState(document, getLandingState(storage));
+
+    const book = document.querySelector('[data-auth-cta="book"]');
+    const drive = document.querySelector('[data-auth-cta="drive"]');
+    expect(book.hidden).toBe(true);
+    expect(drive.hidden).toBe(false);
+    expect(drive.textContent).toBe("Find Deliveries");
+    expect(drive.getAttribute("href")).toBe("dashboard/driver/index.html");
+    document.body.innerHTML = "";
+  });
+});

@@ -26,22 +26,18 @@
 - Figma MCP is on the **Starter plan with a tool-call limit**. Batch the work into a few big `use_figma` calls.
 - Capturing the local or live site into Figma (`generate_figma_design`) gets blocked by the permission classifier. Rebuild from code instead.
 
-## ▶ Resume here (status as of 2026-10-13, end of the dashboard polish + CI session)
+## ▶ Resume here (status as of 2026-10-13, everything pushed)
 
 - **Workflow:** Claude designs, critiques, audits, reviews and writes prompts. **OpenCode (MiMo v2.6 flash free)** writes the code from `opencode prompt - *.md` files in the project root. Then Claude verifies (git diff, headless Chrome screenshots/measurements, `npm test`, curl). The user commits/pushes **manually** and runs SQL in the Supabase SQL editor.
-- **Done earlier and pushed:** landing page v2 (audit 20/20), security N1–N23, migrations 0015–0018 (commit `2e13f5f`).
-- **Done this session, verified by Claude, and confirmed by the user ("its good on my end"):**
-  - landing step 02 without "nearby"
-  - landing page for logged-in users (`js/landing-auth.js`)
-  - How It Works page rebuilt from Figma (`35:301` / `37:389`); critique 21 → 26/36; self-hosted latin-ext fonts for ₱; `--status-*` tokens
-  - dashboard polish: admin pagination (`js/pagination.js`), status pills, notification panel, For Farmers copy
-  - Tests 63/63. **Unclear whether the user has pushed these yet; ask.**
-- **⏳ Waiting on OpenCode: `opencode prompt - ci and small fixes.md`:**
-  1. `.github/workflows/test.yml` (runs `npm test` in `sakada-web/` on every push/PR)
-  2. admin pager on phones: ‹ Page X of Y ›
-  3. "SK-00142" kept on one line in notifications
-  - **Next session:** when the user says OpenCode is done, verify: YAML (spaces, path), tests 63, node --check, a pager harness at 390, and the notif-code span after sanitizeText. After the push, the GitHub Actions tab should show a green ✓.
-- **Optional later:** ESLint, blocking Vercel deploys on a red ✗, E2E tests (need a Supabase test account), `--shadow-*` tokens. Existing Google users wrongly set to farmer can be fixed by hand in Supabase.
+- **All work is pushed** (commit `482d81d "landing page all goods ft. how it works"`, main = origin/main). The user confirmed live: GitHub Actions "Tests" is green, and Log Out / admin pages / bell work.
+- **Shipped:**
+  - landing v2 (audit 20/20) + logged-in landing
+  - How It Works (critique 26/36)
+  - security N1–N23 + migrations 0015–0018
+  - admin pagination, status pills (`--status-*` tokens), notification panel
+  - CI (`.github/workflows/test.yml`, 63 tests)
+- **Nothing is pending.**
+- **Optional later:** ESLint, blocking Vercel deploys on a red ✗, E2E tests (need a Supabase test account), `--shadow-*` tokens, and applying the impeccable flow to the other inner pages (For Farmers/Vendors/Drivers, Features, About, Contact still use the old step-list style and Google Fonts). Existing Google users wrongly set to farmer can be fixed by hand in Supabase.
 - **Dropped by the user:** the Filipino truck photo. Keep the current hero (PRODUCT.md updated).
 - **User decisions to respect:** keep the current tractor hero photo; Option A layout; the landing page is single-purpose.
 - **Review toolkit that works:**
@@ -706,5 +702,39 @@
 - `.github/workflows/test.yml` matches the prompt (valid YAML, no tabs, working-directory sakada-web, npm cache path right). `npm ci --dry-run` ok. Tests 63/63, node --check ok.
 - Pager at 390: ‹ Page 5 of 9 › on one row; desktop unchanged (Previous / 1 … 4 5 6 … 9 / Next). `SK-00142` stays whole in the notification.
 - **Everything is ready for one push.** After pushing: check the GitHub Actions tab for a green ✓, then do a quick live click-through (landing Log Out, admin pages, bell).
+
+### 2026-10-13: Everything pushed and confirmed live
+- User pushed (commit `482d81d`); GitHub Actions passed and the live click-through worked. Nothing pending. Rewrote **▶ Resume here**.
+
+### 2026-10-13: Bug: logged-in nav only on the landing page → prompt
+- User found that How It Works still shows Log In / Sign up when logged in. Cause: only index.html loads `landing-auth.js`, and its links were root-relative.
+- Wrote `opencode prompt - logged in nav on all pages.md`:
+  - `ROOT = new URL("../", import.meta.url)` with `getLandingState(storage, root="")` (old tests unchanged); signOut → `${ROOT}index.html`
+  - new `[data-auth-cta="book"|"drive"]` handling: book → sender booking form, else hidden; drive → driver gets "Find Deliveries", else hidden
+  - same nav markup + module script on the 7 pages/*.html + 404.html
+  - 5 HIW buttons tagged; 2 new tests
+- Not covered: in-page CTAs on the other pages (e.g. For Farmers "Book a Delivery") still go to register. Mentioned to the user as a possible follow-up.
+
+### 2026-10-13: Logged-in nav on all pages verified
+- OpenCode's diff matches the prompt: ROOT from import.meta.url, `getLandingState(storage, root)`, data-auth-cta handling, signOut to `${ROOT}index.html`. The module is on all 9 pages; 3 member elements per inner page; 5 HIW CTAs tagged. Tests 66/66, node --check ok.
+- Headless check (temp copy faking localStorage):
+  - HIW farmer: Log Out / My Dashboard; Book → absolute `dashboard/farmer/index.html#deliveryForm`; Sign up to drive hidden
+  - HIW driver: Book hidden; "Find Deliveries" → driver dashboard
+  - About (vendor) and 404 (driver): the My Dashboard link is right
+  - logged-out HIW unchanged
+- Testing note: `serve` redirects `/x.html?q` → `/x` and drops the query, so use clean URLs when faking params.
+- Not committed. Possible follow-up: in-page CTAs on the other pages.
+
+### 2026-10-13: Prompt for the For pages' CTAs
+- Found an existing bug: the For Farmers / For Vendors / For Drivers cta-band buttons all link to `../auth/login.html`, even for guests ("Register as a Driver" → login!).
+- Wrote `opencode prompt - for pages ctas.md`: 3 one-line changes → `register.html?role=farmer|vendor|driver` + `data-auth-cta="book"|"drive"` (the existing landing-auth.js handles logged-in users). Check: login.html count per page 4 → 3.
+
+### 2026-10-13: For pages' CTAs verified
+- The 3 cta-band links match the prompt; login.html count 3 per page; tests 66/66. register.js reads `?role=` (presetRole).
+- Headless 3 pages × 3 states:
+  - guests get register with the right role
+  - farmer: Book → farmer dashboard #deliveryForm (also on For Vendors); For Drivers button hidden
+  - driver: "Find Deliveries" on For Drivers; hidden on the farmer/vendor pages
+- Not committed. Uncommitted now: logged-in nav on all pages + For pages' CTAs.
 
 <!-- Add the next session's entry above this line -->
