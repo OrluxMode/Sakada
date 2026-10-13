@@ -26,20 +26,38 @@
         <a class="logo" href="../index.html"
           >SAKA<span class="mark">DA</span></a
         >
-        <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">
-          ☰
-        </button>
+
         <ul class="nav-links">
           <li><a href="how-it-works.html">How It Works</a></li>
-          <li><a href="for-farmers.html">For Farmers</a></li>
+          <li><a href="for-farmers.html" aria-current="page">For Farmers</a></li>
           <li><a href="for-vendors.html">For Vendors</a></li>
           <li><a href="for-drivers.html">For Drivers</a></li>
           <li><a href="contact.html">Contact</a></li>
+          <li class="nav-item-menu"><a href="../auth/login.html">Log In</a></li>
         </ul>
-        <a class="nav-cta" href="../auth/login.html">
-          <span class="dot" aria-hidden="true"></span>
-          Log In
-        </a>
+
+        <div class="nav-actions">
+          <a class="nav-btn nav-btn-outline nav-login" href="../auth/login.html"
+            >Log In</a
+          >
+          <a class="nav-btn nav-btn-solid" href="../auth/register.html">Sign up</a>
+          <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">
+            <svg
+              aria-hidden="true"
+              width="18"
+              height="18"
+              viewBox="0 0 20 20"
+              fill="none"
+            >
+              <path
+                d="M3 5h14M3 10h14M3 15h14"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        </div>
       </nav>
     </header>
 

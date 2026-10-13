@@ -14,58 +14,84 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Public+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Public+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/nav.css" />
+    <link rel="stylesheet" href="css/pages.css" />
+    <link rel="preload" as="image" href="assets/hero-mobile.jpg" media="(max-width: 1024px)" />
+    <link rel="preload" as="image" href="assets/hero.jpg" media="(min-width: 1025px)" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
     <meta property="og:title" content="Sakada Logistics — Book Agricultural Delivery" />
     <meta property="og:description" content="Connect farmers and vendors directly with available trucks. Book, track, and manage every shipment in one place." />
-    <meta property="og:image" content="https://sakadalogistics.ph/assets/hero.jpg" />
+    <meta property="og:image" content="https://sakada-blue.vercel.app/assets/hero.jpg" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://sakadalogistics.ph/" />
+    <meta property="og:url" content="https://sakada-blue.vercel.app/" />
     <meta property="og:site_name" content="Sakada Logistics" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Sakada Logistics — Book Agricultural Delivery" />
     <meta name="twitter:description" content="Connect farmers and vendors directly with available trucks. Book, track, and manage every shipment in one place." />
-    <meta name="twitter:image" content="https://sakadalogistics.ph/assets/hero.jpg" />
+    <meta name="twitter:image" content="https://sakada-blue.vercel.app/assets/hero.jpg" />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
 
-    <header class="hero">
+    <header class="site-header">
       <nav class="nav" aria-label="Primary">
         <a class="logo" href="index.html">SAKA<span class="mark">DA</span></a>
-        <!-- letter-spacing on .logo tightened in css/style.css to remove the visual gap -->
 
-        <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">
-          ☰
-        </button>
-
-        <ul class="nav-links">
+        <ul class="nav-links" id="primary-menu">
           <li><a href="pages/how-it-works.html">How It Works</a></li>
           <li><a href="pages/for-farmers.html">For Farmers</a></li>
           <li><a href="pages/for-vendors.html">For Vendors</a></li>
           <li><a href="pages/for-drivers.html">For Drivers</a></li>
           <li><a href="pages/contact.html">Contact</a></li>
+          <li class="nav-item-menu"><a href="auth/login.html">Log In</a></li>
         </ul>
 
-        <a class="nav-cta" href="auth/login.html">
-          <span class="dot" aria-hidden="true"></span>
-          Log In
-        </a>
+        <div class="nav-actions">
+          <a class="nav-btn nav-btn-outline nav-login" href="auth/login.html"
+            >Log In</a
+          >
+          <a class="nav-btn nav-btn-solid" href="auth/register.html">Sign up</a>
+          <button
+            class="nav-toggle"
+            aria-label="Open menu"
+            aria-expanded="false"
+            aria-controls="primary-menu"
+          >
+            <svg
+              aria-hidden="true"
+              width="18"
+              height="18"
+              viewBox="0 0 20 20"
+              fill="none"
+            >
+              <path
+                d="M3 5h14M3 10h14M3 15h14"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        </div>
       </nav>
+    </header>
 
-      <!-- Hero photo: rural road at sunset, local asset -->
-      <div
-        class="hero-photo"
-        role="img"
-        aria-label="Truck driving down a rural road at sunset next to green farmland"
-      ></div>
+    <main id="main">
+      <div class="hero">
+        <!-- Hero photo: tractor at sunset, local asset -->
+        <div
+          class="hero-photo"
+          role="img"
+          aria-label="Tractor pulling two trailers across farmland at sunset"
+        ></div>
 
-      <div class="wordmark" aria-hidden="true">SAKADA</div>
+        <div class="wordmark" aria-hidden="true">SAKADA</div>
 
-      <main id="main" class="hero-content">
+        <div class="hero-content">
         <h1 class="headline">
           Your Harvest.<br />Their Truck.<br />One Booking.
         </h1>
@@ -75,37 +101,109 @@
             Stop calling around for a ride. Post what you're moving, get matched
             with a driver, and watch it get there — all from your phone.
           </p>
-          <a class="btn-primary" href="pages/how-it-works.html"
-            >Book a Delivery</a
-          >
-        </div>
-      </main>
-
-      <div class="stat-strip">
-        <div class="stat">
-          <span class="stat-number">3</span>
-          <span class="stat-label"
-            >Roles connected: farmers, vendors, drivers</span
-          >
-        </div>
-        <div class="stat">
-          <span class="stat-number">1</span>
-          <span class="stat-label"
-            >Booking to move your goods, start to finish</span
-          >
-        </div>
-        <div class="stat">
-          <span class="stat-number">6</span>
-          <span class="stat-label">Delivery stages tracked in real time</span>
-        </div>
-        <div class="stat">
-          <span class="stat-number">24/7</span>
-          <span class="stat-label">Book a delivery any time</span>
+          <a class="btn-primary" href="auth/register.html">
+            Book a Delivery
+            <svg
+              aria-hidden="true"
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+            >
+              <path
+                d="M4 10h11M11 5l5 5-5 5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </a>
+          <div class="role-chips">
+            <span class="role-chips-label">New here? I'm a…</span>
+            <div class="chips-row">
+              <a class="chip" href="auth/register.html?role=farmer"
+                >Farmer<svg
+                  aria-hidden="true"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                >
+                  <path
+                    d="M4 10h11M11 5l5 5-5 5"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg
+              ></a>
+              <a class="chip" href="auth/register.html?role=vendor"
+                >Vendor<svg
+                  aria-hidden="true"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                >
+                  <path
+                    d="M4 10h11M11 5l5 5-5 5"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg
+              ></a>
+              <a class="chip" href="auth/register.html?role=driver"
+                >Driver<svg
+                  aria-hidden="true"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                >
+                  <path
+                    d="M4 10h11M11 5l5 5-5 5"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg
+              ></a>
+            </div>
+          </div>
         </div>
       </div>
-    </header>
+    </div>
 
-    <footer class="site-footer">
+    <section class="steps" aria-labelledby="steps-heading">
+      <h2 id="steps-heading" class="visually-hidden">How it works</h2>
+      <div class="step">
+        <span class="step-number">01</span>
+        <h3 class="step-title">Post your load</h3>
+        <p class="step-body">
+          Tell us what you're moving, how much, and where it needs to go.
+        </p>
+      </div>
+      <div class="step">
+        <span class="step-number">02</span>
+        <h3 class="step-title">Get matched with a driver</h3>
+        <p class="step-body">
+          An available driver nearby accepts your booking. You see the estimated
+          cost before you confirm.
+        </p>
+      </div>
+      <div class="step">
+        <span class="step-number">03</span>
+        <h3 class="step-title">Track it to the drop-off</h3>
+        <p class="step-body">
+          Follow all 5 delivery stages live, from pickup to delivered.
+        </p>
+      </div>
+    </section>
+    </main>
+
+    <footer class="site-footer lp-footer">
       <span>© 2026 Sakada Logistics.</span>
       <nav aria-label="Footer">
         <a href="index.html">Home</a>

@@ -4,8 +4,8 @@
    ================================================ */
 
 .nav--static {
-  position: static;
-  background: var(--panel-dark);
+  position: relative;
+  background: var(--bg-black);
   border-bottom: 1px solid var(--line);
 }
 

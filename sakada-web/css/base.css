@@ -6,7 +6,11 @@
   --text-muted: #b8b4a6;
   --accent-amber: #e0972f;
   --accent-amber-dim: #b9761c;
+  --text-on-amber: #17150c;
   --line: rgba(243, 239, 228, 0.12);
+
+  /* Layout */
+  --nav-h: 79px;
 
   /* Spacing scale */
   --space-xs: 4px;
@@ -69,7 +73,7 @@ a {
 
 :focus-visible {
   outline: 2px solid var(--accent-amber);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 .skip-link {

@@ -21,6 +21,35 @@
 - Verify claims with evidence (commands, file:line, pixel analysis for screenshots). Earlier sessions found that eyeballing screenshots was unreliable.
 - Write findings as `.md` files in the project root so they're easy to recall later.
 - Network calls to the live Supabase API from Claude got **blocked by the permission classifier** this session. Ask the user before trying, or ask them to check in the dashboard.
+- **Always use the impeccable skill** (`.claude/skills/impeccable`) for any design work, Figma included.
+- **Update this log at the end of every answer**, not only at the end of the session.
+- Figma MCP is on the **Starter plan with a tool-call limit**. Batch the work into a few big `use_figma` calls.
+- Capturing the local or live site into Figma (`generate_figma_design`) gets blocked by the permission classifier. Rebuild from code instead.
+
+## ▶ Resume here (status as of 2026-10-12, end of session)
+
+- **Workflow now:** Claude designs, critiques, audits and reviews. **OpenCode (MiMo v2.6 flash free)** writes the code from prompt files in the project root (`opencode prompt - *.md`). The user pastes each prompt into OpenCode, then asks Claude to check the result. The user does git commit/push **manually**.
+- **Chosen design:** the Option A layout with the original photo, now called **"Sakada v2 lp"**.
+  - Figma file: `https://www.figma.com/design/8q1102hOL3ZvFsiePuJrQv/Sakada`
+  - Desktop frame `18:184`, mobile frame `25:209` (under it). Both have the outlined SAKADA wordmark (`24:209` desktop, `25:270` mobile) and say "5 delivery stages".
+  - Untouched: Option A `1:4` / `3:112`, Option B `1:5` / `4:275`, "Option B v2" single-screen `15:156` (not chosen).
+- **Done in code (by OpenCode, reviewed by Claude, tests 41/41):**
+  - Landing page v2: `index.html`, `css/nav.css`, `css/base.css`.
+  - New nav on all 7 inner pages and `404.html`: `css/pages.css`. All 81 nav links checked, 0 broken. main.js now also loads on contact + 404.
+  - Not committed yet. The user pushes it.
+- **✅ Hero wordmark done and verified (2026-10-12).** Next: user commits/pushes; then pick from the optional list.
+- ~~Pending: the hero wordmark prompt~~ When they say it's done, check `index.html` at 1440/1100/900/390/320:
+  - wordmark centered, 14% from the top, 260px at desktop and 90px on mobile
+  - under the hero content (z-index 1 vs 2), aria-hidden, pointer-events none
+  - no horizontal overflow
+  - `npm test` still passes
+- **Review method that works:** serve with `npx serve . -l <port>` from `sakada-web/`, take headless screenshots with `google-chrome --headless=new --window-size=W,H --screenshot=...`, stitch them with PIL, check links with a Python urljoin + urlopen script. Kill the server with `fuser -k <port>/tcp`.
+- **Optional later:**
+  - Filipino truck-with-produce hero photo (still the tractor)
+  - copy language (English for now; Taglish offered)
+  - inner-page footers' mobile tap targets (only the landing footer was fixed)
+  - impeccable finish steps (detector, finish review, DESIGN.md)
+- **Other open backlog:** security findings N1–N7 in `claude read and analyze.md`. Migrations 0015 (contact columns) and 0016 (RLS hardening) are next.
 
 ## Key files to read first when resuming
 
@@ -31,6 +60,9 @@
 | `things-to-improve.md` | Phased roadmap (Phases 1–8 ✅, 9 CI/CD and 10 PWA/i18n open) |
 | `things-to-improve-design.md` | Design tokens/animation specs, P0–P3 design backlog |
 | `need to fix.md` | Older QA audit (several items already fixed; see analysis §5) |
+| `claude design critique - landing page.md` | Landing page audit and critique, fix list L1–L15 |
+| `PRODUCT.md` | Impeccable product record: users, fare formula, nationwide coverage, planned GCash/COD, no fabricated claims |
+| `.impeccable/surfaces/sakada-web-index-html.md` | Landing page brief + Option B "Bagsakan" direction contract (seed `0783fa8c`) |
 
 ## Conversation log
 
@@ -53,5 +85,166 @@
 - Launcher `scripts/impeccable` downloads an engine binary on first run from that repo's GitHub releases, checksum-verified (sha256).
 - Old custom Sakada version still lives at `.opencode/skills/impeccable/` (OpenCode only, not used by Claude Code).
 - Use: `/impeccable audit sakada-web/dashboard/farmer/index.html`, `/impeccable polish ...`, `/impeccable critique ...`, etc.
+
+### 2026-10-11: Landing page audit + critique
+- Ran `/impeccable audit` + `/impeccable critique` on `sakada-web/index.html`. Audit **14/20**, critique **18/36**.
+- Full report and numbered fix list (L1–L15) are in `claude design critique - landing page.md`. The archive copy for polish is in `.impeccable/critique/`.
+- Top: **L1–L3 (P0)** "Book a Delivery" never reaches register and the landing page has no Sign up. Then nav contrast, the unused hero-mobile.jpg, the opacity-0 hero, and the European tractor photo.
+- **Next:** user wants to apply the fixes one by one, starting at L1. No project files changed yet.
+
+### 2026-10-12: Landing page fixes mocked up in Figma
+- **Plan agreed:** Claude applies the critique fixes in Figma → user judges → once approved, implement in code.
+- **Figma file:** `https://www.figma.com/design/MeB3QcZVIg5ruuoddzFwlJ/Untitled` (fileKey `MeB3QcZVIg5ruuoddzFwlJ`). The first link (`re1rU3Z5cPt53vo5ThLspK`) was empty and is unused.
+- Capturing the live page into Figma (`generate_figma_design`) was **blocked by the permission classifier**, so the page was rebuilt from `index.html` + `nav.css` instead. The hero photo is a placeholder (L7: user supplies the photo).
+- **Built:** "Sakada tokens" color variables (mirror `base.css`). Components: Button (Primary/Ghost × Large/Small), Role chip, Step, Menu toggle (Closed/Open), Annotation badge. Frames: desktop `1:3`, mobile `4:27`, mobile menu open `4:69`, and a read-me panel `4:131` listing L1–L15 (shown vs code-only). Pink badges are review-only.
+- L11 used the 3-step how-it-works strip, because no real numbers (provinces, ₱/km) were given.
+- **Next:** user reviews in Figma; after approval, implement in `sakada-web` starting with L1–L3.
+
+### 2026-10-12 (later): Two options built with impeccable
+- User rule (saved to memory): **always use the impeccable skill for design work.**
+- Ran impeccable. It had no PRODUCT.md, so I interviewed the user and wrote **`PRODUCT.md`**: nationwide coverage; payment choice GCash (prepaid) or COD, **planned, not built**; the desktop site is viewed indoors by business owners, mobile is mixed.
+- Surface brief with the direction contract: `.impeccable/surfaces/sakada-web-index-html.md` (seed `0783fa8c`).
+- **Option A, Refine** (frame `1:74`): v1 desktop with impeccable fixes. Eyebrow removed, SVG arrows (Button got an `Arrow` boolean), display capped at 96px, badges removed.
+- **Option B, Full redesign "Bagsakan"** (frame `9:147`, components `9:122`, tokens "Sakada — Bagsakan (Option B)"). Woven sack-white ground, stencil-red Big Shoulders Stencil, green sack bands, kraft price placards in Permanent Marker, Archivo body. Working quote form with a sample fare (Cabanatuan→Balintawak, 115 km, 500 kg = ₱2,875), unbroken 5-stage tracking row, fare explainer, role rows, payment "coming soon".
+- Desktop only so far; no mobile frames for A or B.
+- **Pending after the user picks:** mobile frame, code build, impeccable finish review, detector, DESIGN.md. Copy inconsistency: v1/A says "6 delivery stages", but the code has 5 plus Cancelled.
+
+### 2026-10-12 (later): Mobile versions of Option A and B
+- New user rule (saved to memory): **update this log at the end of every answer.**
+- **Option A mobile** (frame `11:167`, x 2975): clone of the v1 mobile frame. Eyebrow and badges removed, CTA uses the SVG arrow, footer added. The shared Menu toggle component (`4:26`) now uses SVG menu/close icons instead of ☰/✕.
+- **Option B mobile** (frame `12:197`, x 3425): nav band with Sign up and a new `B / Menu toggle` component (`12:196`). Hero order: headline → lede → fare form (stacked placard + working) → role tags. Then the 5-bar tracking band (current stage + "Next"), stacked price placards, role rows with full-width buttons, payment "coming soon", footer, weave.
+- **Blocked:** Figma MCP Starter-plan tool-call limit reached, so the last fix batch did NOT apply. Still to do in Figma:
+  1. Option A mobile: the "Chips" row wraps Driver onto its own line. Set no-wrap, each chip Fill width.
+  2. Option B mobile: "Role tags" wrap. Make them vertical, each Fill width.
+  3. Option B mobile: break the equation as "₱150 + (115 km × ₱15)" / "+ (500 kg × ₱2) = ₱2,875".
+- Next: the user judges A vs B (desktop + mobile), then we build the chosen one in `sakada-web`.
+
+### 2026-10-12 (later): Figma plugin installed
+- Figma MCP re-authenticated (`/mcp`). Installed `figma@claude-plugins-official` (user scope), which gives the local `/figma-use`, `/figma-generate-design` etc. skills. Restart Claude Code to load them.
+- The 3 blocked mobile fixes above are still pending.
+
+### 2026-10-12 (later): Rebuilt A + B in a new Figma file, with mobile
+- **New file:** `https://www.figma.com/design/8q1102hOL3ZvFsiePuJrQv/Untitled`. This is now the main file; the older `MeB3QcZVIg5ruuoddzFwlJ` is superseded.
+- **Option A desktop** = frame `1:4` ("Option A — Refine (desktop)"). **Option A mobile** = `3:112`, below it. Components `3:11`, tokens "Sakada tokens (Option A)".
+- **Option B desktop** = frame `1:5` ("Option B — Bagsakan (desktop)"). **Option B mobile** = `4:275`, below it. Components `4:63`, tokens "Sakada — Bagsakan (Option B)".
+- Included all earlier fixes: A chips share one row on mobile; B role tags sit at the bottom of the hero (desktop) and stack full-width (mobile); the B equation breaks cleanly; SVG icons everywhere; no eyebrow.
+- Used 3 Figma MCP calls (Starter plan has a call limit).
+- Next: user judges A vs B, then we build the chosen option in `sakada-web` (L1–L3 first).
+- Session ended here. User said "that's all for now". See **▶ Resume here** at the top.
+
+### 2026-10-12 (later): Option B v2 — single-screen landing
+- User loves B but wants the landing page to be ONE screen with no scrolling, like A. The other sections belong on the nav pages (How It Works, For Farmers…).
+- New frame `15:156` "Option B v2 — Bagsakan, single screen (desktop)", 1440×900, placed to the right of the components. A (`1:4`) and B (`1:5`) were not modified.
+- Contents: nav band, then the hero (headline, lede, role tags | Get-a-fare form), then the seam, the 5-stage tracking band, and a slim footer. Cut: fare explainer, roles list, payment section.
+- To fit the form, "Book this delivery" now sits beside the placard under the fare breakdown, the form is 600 wide, and the footnote is one line ("GCash or COD: coming soon").
+- Not done yet: a mobile v2.
+
+### 2026-10-12 (later): "Sakada v2 lp" frame
+- User picked the **Option A layout**. New frame `18:184` "Sakada v2 lp" is a clone of `1:4`, placed to the right of the other frames. A and B are untouched.
+- Removed the photo-placeholder box. Uploaded the original `sakada-web/assets/hero.jpg` (tractor at sunset) as the hero photo fill on `18:186`. A's scrim is kept, so the text stays readable.
+- Size 1440×1164: hero + 3-step strip + footer, same as A.
+
+### 2026-10-12 (later): OpenCode build prompt for Sakada v2 lp
+- User approved "Sakada v2 lp" (`18:184`). New workflow: Claude designs, critiques, audits and reviews; OpenCode (MiMo v2.6 flash free) writes the code.
+- Wrote `opencode prompt - landing page v2.md` (root) with the full spec. Reference PNGs are in `design-ref/` (desktop 1440, mobile 390).
+- Fixed in the prompt: "6 delivery stages" → **5**. Book a Delivery / role chips → `auth/register.html(?role=)`. The hero aria-label now describes the tractor photo.
+- Next: user runs OpenCode, then Claude reviews the diff against the Figma frame.
+
+### 2026-10-12 (later): Reviewed OpenCode's landing page v2 build
+- At 1440 it matches the Figma `18:184`. Tests pass (41/41). The 5-stages copy, role links, SVG icons and mobile photo are all correct.
+- Found 4 issues and wrote them in `opencode prompt - landing page v2 fixes.md`:
+  - P1: mobile nav buttons jammed against the logo on ALL pages (`space-between` was removed from the shared `.nav`).
+  - P1: nav links wrap and collide at 861–1000px.
+  - P2: footer links under 44px tall on mobile.
+  - P3: duplicate global `:focus-visible` rule in nav.css.
+- Next: user runs the fix prompt in OpenCode, then Claude re-checks at 320/390/900/1024/1440 and about.html.
+
+### 2026-10-12 (later): Re-checked OpenCode's fixes, all 4 pass
+- Nav is fine at 320/390/900/1024/1100/1440. Hamburger shows at ≤1024. Footer links are 44px tall on mobile. The duplicate focus rule is gone (base.css offset is now 3px). Tests 41/41.
+- Inner pages: hamburger sits between the logo and Log In. That was already the case before v2, not a regression. Possible future polish.
+- Not committed yet. Next: user decides whether to commit and deploy.
+
+### 2026-10-12 (later): Landing page v2 signed off
+- User will commit and push manually. Confirmed nothing is left to fix on the landing page.
+- Optional later: match the inner-page navs to v2. Swap in a Filipino truck photo when the owner has one.
+
+### 2026-10-12 (later): OpenCode prompt for inner-page navs
+- Wrote `opencode prompt - inner page navs.md`. It copies the landing nav into 7 `pages/*.html` + `404.html`, keeps `.nav--static`, fixes paths, adds `aria-current`, sets the `.nav--static` bg to bg-black, and removes the unused `.nav-cta` (and maybe `.stat-strip`) CSS.
+- Also found a bug: `pages/contact.html` and `404.html` don't load `js/main.js`, so their hamburger is dead on mobile. Included in the prompt.
+- Next: user runs OpenCode, then Claude reviews.
+
+### 2026-10-12 (later): Reviewed OpenCode's inner-nav work
+- Looks right at 320/390/900/1440: nav matches the landing nav, black bg, current page in amber, main.js now loaded on contact + 404, `.nav-cta` CSS removed (`.stat-strip` kept because contact.html uses it). Tests 41/41.
+- **P1 bug:** all nav page links are broken. `pages/*.html` use `../how-it-works.html` (should be `how-it-works.html`). `404.html` uses `how-it-works.html` (should be `pages/how-it-works.html`). Confirmed with curl: 404s. Fix prompt: `opencode prompt - inner page navs fix.md`.
+- Next: user runs the fix, then Claude re-checks the links.
+
+### 2026-10-12 (later): Inner-nav link fix verified
+- Followed all 81 nav links on the 7 inner pages + 404 + index on a local server: 0 broken. aria-current is on the right 5 pages. Tests 41/41.
+- Landing v2 + inner navs are done. User pushes manually.
+
+### 2026-10-12 (later): How to add images in Claude Code
+- User asked how to insert an image into the chat. Explained: drag the file into the terminal, paste with Ctrl+V, or type its file path.
+
+### 2026-10-12 (later): Put the outline SAKADA wordmark back in Figma
+- Per the user's V1 screenshot, added a faint outline "SAKADA" to frame `18:184`'s hero (text node `24:209`). Barlow Condensed Black 260px, no fill, 1.5px cream stroke at 8% opacity, centered, y=120 (above the tractor). Same values as the old `.wordmark` CSS.
+- Code doesn't have it yet (the v2 build prompt told OpenCode to remove it). Offered an OpenCode prompt to restore it.
+
+### 2026-10-12 (later): Mobile v2 frame with wordmark
+- New frame `25:209` "Sakada v2 lp (mobile)", 390 wide, placed under the desktop `18:184`. Cloned from Option A mobile `3:112` (left untouched). Real `hero-mobile.jpg` photo, outline wordmark `25:270` (90px, same as the old CSS clamp minimum, y=109).
+- Fixed "all 6 delivery stages" → "all 5" in both v2 frames (instance text overrides).
+- Code still lacks the wordmark; OpenCode prompt offered.
+
+### 2026-10-12 (later): OpenCode prompt for the hero wordmark
+- Wrote `opencode prompt - hero wordmark.md`. It restores `.wordmark` in index.html + nav.css: top 14%, centered, clamp(90px, 18vw, 260px), 1.5px cream stroke at 8%, z-index 1 (under the hero content's 2), aria-hidden, pointer-events none.
+- Next: user runs OpenCode, then Claude checks 1440/1100/900/390/320.
+
+### 2026-10-12 (end): Session saved
+- User said "save our convo, we will resume later". Updated **▶ Resume here** at the top. Waiting on OpenCode's hero-wordmark run.
+
+### 2026-10-12 (later): Hero wordmark verified
+- OpenCode's `.wordmark` matches the spec exactly (index.html + nav.css). Checked at 1440×900, 1440×700, 1100, 900, 390, 320: centered, behind the hero content, no overflow, matches Figma. Tests 41/41.
+- Nits, not worth a round: blank space inside the empty `.hero-photo` div, and the HTML comment still says "rural road".
+- Landing v2 + inner navs + wordmark are all done. The user commits and pushes manually.
+
+### 2026-10-12 (later): Landing page confirmed done
+- User asked if the landing page is good. Answer: yes, it's finished and verified. Optional extras: Filipino truck photo, impeccable finish steps (detector + DESIGN.md), inner-page footer tap targets.
+
+### 2026-10-12 (later): Which impeccable command to test with
+- Recommended `/impeccable audit` (a11y, performance, responsive) for testing the landing page. `critique` is for UX/design judgment, `polish` for the final pre-ship pass.
+
+### 2026-10-12 (later): /impeccable audit of the landing page
+- Report: `claude audit - landing page.md`. Score **13/20 (Acceptable)**: P1×1, P2×6, P3×2. The detector's "flat type hierarchy" is a false positive (it doesn't follow @imports).
+- P1: headline hidden under the absolute nav on landscape/short screens (844×390: content top 0, nav 79). Screenshot: `design-ref/audit-landscape-844x390.png`.
+- P2s:
+  - og:image/url on sakadalogistics.ph don't answer (curl timeout)
+  - 10 chained @imports incl. dashboard/admin CSS
+  - 736 KB hero not preloaded; tablets get the desktop file
+  - menu lacks aria-controls / Escape / label swap
+  - `<main>` inside `<header>`
+  - lede contrast ~2.8:1 at 1440×700
+- P3s: Barlow 600 loaded-unused / 700 used-unloaded; hard-coded #17150c.
+- Next: offered to turn it into an OpenCode prompt.
+
+### 2026-10-12 (later): OpenCode prompt for the audit fixes
+- Wrote `opencode prompt - landing audit fixes.md` covering 9 items:
+  - `--nav-h` + hero padding-top
+  - `<header>`/`<main>` restructure
+  - menu a11y in main.js (aria-controls, label swap, Escape, outside/link click)
+  - og URLs → sakada-blue.vercel.app
+  - mobile hero ≤1024 + preload + recompress hero.jpg to ~1920px q72
+  - direct base/nav/pages links instead of style.css
+  - right-side scrim layer
+  - fonts 700;800;900
+  - `--text-on-amber`
+- Next: user runs OpenCode, then Claude re-runs the audit (check 844×390, 1440×700, menu on index + about).
+
+### 2026-10-12 (later): Re-audit after OpenCode's fixes — 17/20 (Good)
+- All 9 fixes verified in headless Chrome. Tests 41/41. hero.jpg is 1920×1440, 324 KB (was 736 KB).
+- Checks:
+  - 844×390: h1 top 79 = nav bottom, so it's visible (but flush against the nav, no gap)
+  - 1440×700: lede contrast worst spot 7.9:1
+  - menu: toggle, Escape (focus returns), outside click and link click all work on index + about
+  - index loads only base/nav/pages CSS; fonts 700;800;900; og → vercel
+- Left: P3 landscape headline touches the nav (suggest `padding-top: calc(var(--nav-h) + 24px)`). The detector's flat-hierarchy false positive remains.
 
 <!-- Add the next session's entry above this line -->
