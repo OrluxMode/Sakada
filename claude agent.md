@@ -26,34 +26,46 @@
 - Figma MCP is on the **Starter plan with a tool-call limit**. Batch the work into a few big `use_figma` calls.
 - Capturing the local or live site into Figma (`generate_figma_design`) gets blocked by the permission classifier. Rebuild from code instead.
 
-## ▶ Resume here (status as of 2026-10-14, everything pushed)
+## ▶ Resume here (status as of 2026-10-14, end of session)
 
-- **Workflow:** Claude designs (impeccable skill + Figma), critiques, reviews, and writes `opencode prompt - *.md` files; **OpenCode (MiMo v2.6 flash free)** builds; Claude verifies (diff vs prompt, headless Chrome 1440/390, `npm run lint`, `npx vitest run`, `npm run test:e2e`). The user pushes manually and runs SQL in Supabase. CI (GitHub Actions `test` + `e2e`) gates Vercel deploys via Deployment Checks.
-- **All work is pushed** (latest `df9315a "arrow fix"`; before it `123a8a6` ₱ + In Transit violet, `5620e0c` email validation, `ccbfc2c` contact page). #2 (E2E) dropped for now; Features/About redesign dropped. Icon pass (★☆ ⚠ ℹ✓✕ + emoji) dropped by the user. Waiting for the user's next task.
-- **Shipped so far:**
-  - landing (guest + logged-in nav on all pages)
-  - How It Works (synced to the canonical example)
-  - For Farmers / For Vendors / For Drivers (Figma pages "for farmers" → frames "for farmers polish", "for vendors", "for drivers")
-  - security N1–N23 + migrations 0015–0019
-  - driver name/vehicle on requester cards + "Book again" + driver vehicle form
-  - admin pagination, status pills, notification panel
-  - self-hosted fonts everywhere
-  - ESLint + Playwright smoke tests in CI
+- **Workflow** (confirmed again 2026-10-14):
+  - Claude designs (load **impeccable** at the start of EVERY design task, even tiny ones; Figma file `8q1102hOL3ZvFsiePuJrQv`), critiques, and writes `opencode prompt - *.md` files.
+  - **OpenCode (MiMo v2.6 flash free)** builds.
+  - Claude code-reviews and approves: diff vs prompt, real-browser 1440/390, `npm run lint`, `npx vitest run`, `npm run test:e2e`.
+  - Prefer OpenCode over Sonnet agents (token cost). Lean prompts; pre-test tricky CSS by injecting it into the live pages before writing the prompt.
+  - The user pushes manually and runs SQL in Supabase. CI (GitHub Actions `test` + `e2e`) gates Vercel deploys.
+- **⚠ Uncommitted, waiting for the user's push:** `css/pages.css` nav fix (the solid nav on the themed pages). The landing theme itself was pushed as `5054974`. Earlier uncommitted list (now pushed):
+  - `pages/{how-it-works,for-farmers,for-vendors,for-drivers,contact}.html` (body class `theme-dusk page-…`)
+  - `css/pages.css` (theme block at the end)
+  - `e2e/smoke.spec.mjs`
+  - `opencode prompt - landing theme pages.md`
+  - `.impeccable/critique/…how-it-works…` snapshot
+- **Pushed today:**
+  - `ccbfc2c` contact page redesign
+  - `5620e0c` validators on every form (js/validators.js + field-errors.js, gmail.co typo check)
+  - `123a8a6` ₱ glyph + In Transit violet #b09bee
+  - `df9315a` → arrow (₱ and → live in `assets/fonts/*-symbols.woff2`)
+- **Current look of the inner pages** (HIW, For Farmers/Vendors/Drivers, Contact):
+  - the landing's dusk photo + grade behind each hero (per-page crop)
+  - a 32px cream graph-paper grid top to bottom
+  - **solid black nav like the landing** (the grid starts below it); solid panels under the fare card / contact form
+- **The landing page is the theme reference and must not be touched.**
+- **Dropped by the user:** #2 login/booking E2E (for now); Features/About redesign; the icon/emoji pass (★☆ ⚠ ℹ✓✕, dashboard emoji); the Filipino truck photo.
 - **Product facts to keep using** (also in PRODUCT.md):
   - canonical example: Nueva Ecija → Marikina palengke, 120 km, 800 kg = ₱3,550, tolls included
-  - **the receiver pays the driver in cash at drop-off (like COD: the farmer ships, the buyer/vendor pays)**
-  - nationwide; in-app notifications only; admin can cancel until pickup
-- **Known limits / optional next:**
-  - ₱ isn't in the bundled fonts (falls back to the system font; fine)
-  - the other inner pages (Features, About, Contact) still use the old style and could get the same redesign
-  - full login/booking E2E needs a Supabase test project
-  - teal/blue status hues are close (site tokens)
+  - **the receiver pays the driver in cash at drop-off** (COD-style)
+  - nationwide; in-app notifications only; requesters cancel while Pending, admin until pickup
+  - **no public email or phone**: the contact form (admin-only) is the only channel; no reply-time/hours promises
+- **Rules:**
+  - every form must use the shared validators (memory `validate-every-form`)
+  - log to this file after every answer
 - **Recurring lessons:**
-  - impeccable critique scores plateau around 72–78%, and reviewers sometimes flip-flop. Verify reviewer claims in code before acting.
-  - Figma vectors re-anchor to their bbox.
-  - headless Chrome + `serve` drops query strings on `.html` redirects, so use clean URLs.
-- **Dropped by the user:** the Filipino truck photo. Keep the current hero.
-- **User decisions to respect:** keep the current tractor hero photo; Option A layout; the landing page is single-purpose.
+  - impeccable scores plateau around 70%, and reviewers sometimes flip-flop. Verify reviewer claims in code before acting.
+  - In Figma, find nodes by name/text, never by assumed clone ids (a guessed id once deleted the nav links).
+  - Chrome won't combine a `font-weight: 400 700` range face with single-weight unicode-range faces, so declare per weight.
+  - Screenshots taken right after a click can catch CSS transitions mid-way; wait ~300ms.
+  - Headless Chrome + `serve` drops query strings on `.html` redirects, so use clean URLs.
+- **User decisions to respect:** keep the tractor hero photo; the landing page is single-purpose and is the theme reference.
 - **Review toolkit that works:**
   - `npx serve . -l <port>` from `sakada-web/` (kill with `fuser -k <port>/tcp`)
   - `google-chrome --headless=new --window-size=W,H --screenshot=…`
@@ -1376,5 +1388,13 @@
   - HIW mobile (mobile photo, transparent chips, grid)
   - landing unchanged
 - **Uncommitted, waiting for the user's push.**
+
+- User said "save our convo, we will resume later". Rewrote **▶ Resume here**. Next session: confirm the user pushed the landing-theme change, then take the user's next task.
+
+### 2026-10-14: Nav fix after the landing-theme push
+- User pushed the theme as `5054974`, then found the grid showing inside the navbar ("the background reached the navbar, it should not").
+- Cause: `.theme-dusk .nav--static { background: transparent; }`. Claude deleted that line directly (tiny fix), so the nav is solid #0b0c09 again on the 5 pages, matching the landing. Verified at 1440/390; lint ok, e2e passed.
+- **Uncommitted, waiting for the user's push:** `css/pages.css` (1 line removed).
+- Lesson: on the inner pages the nav stays solid like the landing; the grid starts below it.
 
 <!-- Add the next session's entry above this line -->

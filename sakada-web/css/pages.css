@@ -761,7 +761,6 @@
   background-size: 32px 32px;
   background-position: var(--grid-x) 0;
 }
-.theme-dusk .nav--static { background: transparent; }
 
 .theme-dusk :is(.hiw-hero, .rp-hero, .ct-hero) {
   position: relative;
