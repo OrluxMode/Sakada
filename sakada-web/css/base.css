@@ -14,13 +14,13 @@
   --status-pending: #b8b4a6;
   --status-assigned: #e0972f;
   --status-picked-up: #4fa3b0;
-  --status-in-transit: #5b9bd5;
+  --status-in-transit: #b09bee;
   --status-delivered: #7ab05c;
   --status-cancelled: #e0542f;
   --status-pending-text: #d6d2c4;
   --status-assigned-text: #f0b25a;
   --status-picked-up-text: #9fd0d8;
-  --status-in-transit-text: #9cc3ee;
+  --status-in-transit-text: #d4c9fb;
   --status-delivered-text: #a9d18f;
   --status-cancelled-text: #f2a98a;
   --rail: rgba(184, 180, 166, 0.7);

@@ -29,7 +29,7 @@
 ## ▶ Resume here (status as of 2026-10-14, everything pushed)
 
 - **Workflow:** Claude designs (impeccable skill + Figma), critiques, reviews, and writes `opencode prompt - *.md` files; **OpenCode (MiMo v2.6 flash free)** builds; Claude verifies (diff vs prompt, headless Chrome 1440/390, `npm run lint`, `npx vitest run`, `npm run test:e2e`). The user pushes manually and runs SQL in Supabase. CI (GitHub Actions `test` + `e2e`) gates Vercel deploys via Deployment Checks.
-- **All work is pushed** (latest commit `a1f826c "for farmers, vendors and drivers"`, main = origin/main). Nothing pending.
+- **All work is pushed** (latest `5620e0c "fixed email validation"`, after `ccbfc2c` contact page). #2 (E2E) dropped by the user for now; #3 waits for the user's signal; Features/About redesign dropped. Waiting for the user's next task.
 - **Shipped so far:**
   - landing (guest + logged-in nav on all pages)
   - How It Works (synced to the canonical example)
@@ -1203,6 +1203,39 @@
 - Results: lint ok, **unit 105/105, e2e 33/33**.
 - Browser (390): register shows name/email/password errors + "Use name@gmail.com"; contact shows the soft gmial.com warning and the SK- code error. Red borders confirmed via computed style (the first screenshot was mid-transition).
 - Dashboards (booking/vehicle) can't be e2e-tested without login; covered by unit tests + code read.
+- **Uncommitted, waiting for the user's push.**
+
+### 2026-10-14: Contact + validation shipped
+- User pushed `ccbfc2c` (contact page) and `5620e0c` (email validation). Confirmed live: "all goods", validators work. Working tree clean.
+- Next: #2, the full login/booking E2E (needs a free Supabase test project). #3 (₱ font, teal/blue hues) still waits for the user's signal. Features/About redesign dropped.
+
+- User: "lets ignore the step 2, i will provide the next step". **#2 (login/booking E2E) is dropped for now.** #3 still waits for the user's signal. Waiting for the user's next task.
+
+### 2026-10-14: #3 started — ₱ font + In Transit colour
+- **₱:** neither bundled font has U+20B1, so the browser used a serif system ₱.
+  - Claude built one-glyph ₱ fonts with fontTools (wheel downloaded into the scratchpad; no pip on this machine): the font's own "P" + two bars that always cross the counter, thinner in heavy weights.
+  - 8 files (~0.5 KB each) **already copied** into `assets/fonts/`: barlow-condensed-{600,700,800,900}-peso, public-sans-peso-{400,500,600,700}.
+  - Verified in Chrome at every weight, including 16px "Est. ₱3,550".
+  - **Gotcha found:** Chrome won't combine a `font-weight: 400 700` range face with single-weight unicode-range faces, so Public Sans must be declared per weight (same file, downloaded once).
+- **Colour:** In Transit blue #5b9bd5 → violet **#b09bee** (text #d4c9fb). User approved.
+  - OKLab distance from Picked Up teal 0.068 → 0.158; deuteranopia 0.06 → 0.092
+  - dot 8.2:1, pill text 9.4:1
+  - The info toast blue stays.
+- User chose OpenCode for the CSS. Wrote **`opencode prompt - peso font and transit colour.md`**:
+  - fonts.css: Public Sans split per weight + 8 ₱ faces
+  - base.css: 2 tokens
+  - 1 e2e test: a U+20B1 face loads
+- Next: user runs OpenCode, then Claude verifies.
+
+### 2026-10-14: #3 verified (₱ font + In Transit violet)
+- OpenCode matched the prompt:
+  - fonts.css has 16 faces (4 Barlow, 4 Public Sans per weight, 8 ₱)
+  - base.css 2 tokens
+  - e2e ₱ test
+  - the 8 ₱ files are byte-identical to Claude's build
+- Results: lint ok, unit 105/105, **e2e 34/34**.
+- Real page (for-farmers, 1440): the ₱ in the hero, fare card and formula all use the new glyphs; the browser loads only the ₱ weights used. The stage line shows the violet In Transit.
+- Side note for later: "→" (U+2192) isn't in the bundled unicode-range, so it also falls back to a system font (small arrow). Not fixed.
 - **Uncommitted, waiting for the user's push.**
 
 <!-- Add the next session's entry above this line -->

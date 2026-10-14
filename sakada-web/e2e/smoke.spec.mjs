@@ -202,3 +202,15 @@ test.describe("email typos are caught", () => {
     await expect(page.locator("#emailError")).toContainText("doesn't look right");
   });
 });
+
+test("the ₱ sign uses our own font, not a system fallback", async ({ page }) => {
+  await page.goto("/pages/how-it-works.html");
+  await page.waitForLoadState("networkidle");
+  const loaded = await page.evaluate(async () => {
+    await document.fonts.ready;
+    return [...document.fonts]
+      .filter((f) => f.unicodeRange.toUpperCase().includes("U+20B1") && f.status === "loaded")
+      .map((f) => `${f.family} ${f.weight}`);
+  });
+  expect(loaded.length).toBeGreaterThan(0);
+});
