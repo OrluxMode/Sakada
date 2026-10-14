@@ -17,6 +17,7 @@ import {
 } from "./dashboard-shared.js";
 import { toastSuccess, toastError } from "./toast.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
+import { getMyVehicle, saveMyVehicle } from "./driver-profile.js";
 
 const STATUS_FLOW = {
   driver_assigned: { next: "picked_up", label: "Mark Picked Up" },
@@ -42,6 +43,37 @@ document.getElementById("greeting").textContent =
 document
   .getElementById("signOutBtn")
   .addEventListener("click", () => signOut("../../index.html"));
+
+const { data: vehicle } = await getMyVehicle(profile.id);
+if (vehicle) {
+  document.getElementById("vehicleType").value = vehicle.vehicle_type || "";
+  document.getElementById("vehiclePlate").value = vehicle.vehicle_plate || "";
+}
+
+document.getElementById("vehicleForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (getIsOffline()) {
+    toastError("Can't save — you're offline");
+    return;
+  }
+  const btn = document.getElementById("vehicleSaveBtn");
+  const typeValue = document.getElementById("vehicleType").value;
+  const plateValue = document.getElementById("vehiclePlate").value;
+  btn.disabled = true;
+  btn.textContent = "Saving…";
+
+  const { error } = await saveMyVehicle(profile.id, typeValue, plateValue);
+
+  if (error) {
+    toastError("Couldn't save your vehicle: " + error.message);
+  } else {
+    toastSuccess("Vehicle saved");
+    document.getElementById("vehiclePlate").value =
+      plateValue.trim().toUpperCase();
+  }
+  btn.disabled = false;
+  btn.textContent = "Save vehicle";
+});
 
 const messageEl = document.getElementById("formMessage");
 function showMessage(text, type) {

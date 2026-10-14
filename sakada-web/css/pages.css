@@ -302,9 +302,9 @@
   row-gap: 16px;
   align-items: start;
 }
-.hiw-fare-text { grid-area: text; }
-.hiw-fare-card { grid-area: card; }
-.hiw-load {
+.hiw-fare > .hiw-fare-text { grid-area: text; }
+.hiw-fare > .hiw-fare-card { grid-area: card; }
+.hiw-fare > .hiw-load {
   grid-area: load;
   max-width: 520px;
   padding-top: 20px;
@@ -581,4 +581,160 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ================================================
+   Role pages: For Farmers / For Vendors / For Drivers
+   ================================================ */
+.rp-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 640px) minmax(0, 1fr);
+  column-gap: 96px;
+  align-items: start;
+  padding: 76px clamp(20px, 5vw, 64px);
+  border-bottom: 1px solid var(--line);
+}
+.rp-hero-main { display: flex; flex-direction: column; gap: 28px; }
+.rp-hero-side { display: flex; flex-direction: column; gap: 20px; padding-top: 10px; }
+.rp-hero h1 { grid-area: h1; font-size: clamp(40px, 5.5vw, 64px); }
+.rp-lede { grid-area: lede; margin: 0; font-size: 18px; line-height: 1.65; color: var(--text-muted); }
+.rp-example { grid-area: example; }
+.rp-acts { grid-area: acts; display: flex; flex-direction: column; gap: 16px; }
+.rp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; }
+.rp-note { margin: 0; font-size: 16px; line-height: 1.6; color: var(--text-muted); }
+
+.rp-example {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--panel-dark);
+  border: 1px solid rgba(184, 180, 166, 0.35);
+  border-radius: var(--radius-md);
+}
+.rp-example-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.rp-example-label { font-size: 16px; font-weight: 600; color: var(--text-cream); }
+.rp-example-price {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 800;
+  font-size: 28px;
+  color: var(--accent-amber);
+}
+.rp-example p { margin: 0; font-size: 16px; color: var(--text-muted); }
+
+/* Fare / pay section */
+.rp-fare {
+  display: grid;
+  grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+  column-gap: 96px;
+  align-items: start;
+}
+.rp-fare-text { display: flex; flex-direction: column; gap: 32px; }
+.rp-fare-text .hiw-intro { margin-top: 12px; max-width: 520px; }
+.rp-points { display: flex; flex-direction: column; gap: 20px; }
+.rp-points h3,
+.rp-sample h3,
+.rp-qa h3 {
+  margin: 0 0 6px;
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+}
+.rp-points p,
+.rp-sample > p,
+.rp-qa p { margin: 0; font-size: 16px; line-height: 1.6; color: var(--text-muted); }
+.hiw-fare-card .rp-formula {
+  margin: 0;
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--text-cream);
+}
+.hiw-fare-card .hiw-fare-example { font-weight: 600; }
+.hiw-fare-total dt span {
+  display: block;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Sample dashboard cards */
+.rp-samples {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 40px 32px;
+  margin-top: 32px;
+  align-items: start;
+}
+.rp-sample { display: flex; flex-direction: column; gap: 16px; }
+.rp-sample--big { grid-column: 1; grid-row: 1 / span 2; }
+.rp-samples > .rp-sample:not(.rp-sample--big) { grid-column: 2; }
+.sample-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  background: var(--panel-dark);
+  border: 1px solid rgba(184, 180, 166, 0.5);
+  border-radius: var(--radius-md);
+}
+.sample-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sample-id { display: inline-flex; align-items: center; gap: 10px; }
+.sample-code {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 800;
+  font-size: 17px;
+  color: var(--accent-amber);
+}
+.sample-tag { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+.sample-route { margin: 0; font-size: 14px; color: var(--text-cream); }
+.sample-meta,
+.sample-line { margin: 0; font-size: 14px; color: var(--text-muted); }
+.sample-line strong { color: var(--text-cream); font-weight: 600; }
+.sample-stars { color: var(--accent-amber); }
+.sample-action { font-size: 14px; font-weight: 600; color: var(--text-muted); text-decoration: underline; }
+.sample-share { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--text-cream); }
+.sample-share::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-amber); }
+.sample-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 600 / 320;
+  border: 1px solid rgba(184, 180, 166, 0.55);
+  border-radius: 6px;
+  object-fit: cover;
+}
+.sample-caption { margin: 0; font-size: 13px; color: var(--text-muted); }
+.rp-after-cta { margin-top: 32px; }
+.hiw-close-actions { align-items: center; }
+
+/* Q&A */
+.rp-qa {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 32px;
+  margin-top: 32px;
+  border-top: 1px solid var(--line);
+}
+.rp-qa-item { padding: 28px 0; border-bottom: 1px solid var(--line); }
+.rp-qa p { max-width: 540px; }
+
+@media (max-width: 900px) {
+  .rp-hero-main,
+  .rp-hero-side { display: contents; }
+  .rp-hero {
+    grid-template-columns: 1fr;
+    grid-template-areas: "h1" "lede" "example" "acts";
+    row-gap: 20px;
+    padding: 72px clamp(20px, 5vw, 64px);
+  }
+  .rp-lede { font-size: 16px; }
+  .rp-actions { flex-direction: column; align-items: stretch; }
+  .rp-actions .btn-primary { width: 100%; justify-content: center; }
+  .rp-fare { grid-template-columns: 1fr; row-gap: 32px; }
+  .rp-samples { grid-template-columns: 1fr; }
+  .rp-sample--big,
+  .rp-samples > .rp-sample:not(.rp-sample--big) { grid-column: 1; grid-row: auto; }
+  .rp-qa { grid-template-columns: 1fr; }
+  .rp-after-cta,
+  .hiw-fare-card .btn-primary { width: 100%; justify-content: center; }
 }

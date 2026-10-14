@@ -18,6 +18,8 @@ import {
   HISTORY_STATUSES,
   renderRatingBlock,
   isQuoteStale,
+  renderDriverLine,
+  rebookValues,
 } from "../js/dashboard-shared.js";
 
 describe("HISTORY_STATUSES", () => {
@@ -171,5 +173,68 @@ describe("isQuoteStale", () => {
         quantityKg: "400",
       }),
     ).toBe(true);
+  });
+});
+
+describe("renderDriverLine", () => {
+  it("returns an empty string without a driver or a name", () => {
+    expect(renderDriverLine(undefined)).toBe("");
+    expect(renderDriverLine({ driver_name: null })).toBe("");
+  });
+
+  it("shows name, vehicle type and plate", () => {
+    const html = renderDriverLine({
+      driver_name: "Juan Dela Cruz",
+      vehicle_type: "Isuzu Elf",
+      vehicle_plate: "NBC 1234",
+    });
+    expect(html).toContain("Juan Dela Cruz");
+    expect(html).toContain("Isuzu Elf · NBC 1234");
+    expect(html).toContain('class="delivery-driver"');
+  });
+
+  it("says the vehicle isn't added yet when both fields are missing", () => {
+    const html = renderDriverLine({
+      driver_name: "Juan Dela Cruz",
+      vehicle_type: null,
+      vehicle_plate: null,
+    });
+    expect(html).toContain("Vehicle not added yet");
+  });
+
+  it("sanitizes the driver name", () => {
+    const html = renderDriverLine({
+      driver_name: "<img src=x onerror=alert(1)>Ana",
+      vehicle_type: null,
+      vehicle_plate: null,
+    });
+    expect(html).not.toContain("<img");
+  });
+});
+
+describe("rebookValues", () => {
+  it("copies route, goods and weight, stringifying the weight", () => {
+    expect(
+      rebookValues({
+        pickup_address: "A",
+        dropoff_address: "B",
+        goods_description: "Rice",
+        quantity_kg: 500,
+      }),
+    ).toEqual({
+      pickupAddress: "A",
+      dropoffAddress: "B",
+      goodsDescription: "Rice",
+      quantityKg: "500",
+    });
+  });
+
+  it("turns missing fields into empty strings", () => {
+    expect(rebookValues({})).toEqual({
+      pickupAddress: "",
+      dropoffAddress: "",
+      goodsDescription: "",
+      quantityKg: "",
+    });
   });
 });

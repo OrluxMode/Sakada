@@ -66,96 +66,120 @@
     </header>
 
     <main id="main">
-      <section class="page-hero">
-        <span class="eyebrow-role">For Drivers</span>
-        <h1>
-          Find loads. Accept jobs. Get paid for the trip you're already making.
-        </h1>
-        <p>
-          Browse real delivery requests from farmers and vendors near you,
-          accept the ones that fit your route, and update the job as you go.
-        </p>
-      </section>
+      <section class="rp-hero">
+      <div class="rp-hero-main">
+        <h1>Find loads. Accept jobs. Get paid for the trip you're already making.</h1>
+        <div class="rp-acts">
+          <div class="rp-actions">
+            <a class="btn-primary" href="../auth/register.html?role=driver" data-auth-cta="drive">Sign up to drive</a>
+            <a class="hiw-link" href="how-it-works.html">See how it works</a>
+          </div>
+          <p class="rp-note" data-auth="guest">Jobs come from anywhere in the country. Add your vehicle after you sign up so customers know which truck to look for.</p>
+        </div>
+      </div>
+      <div class="rp-hero-side">
+        <p class="rp-lede">Farmers and vendors post real deliveries. You see the route, the load, and the fare before you accept, then update each stage from your phone.</p>
+        <div class="rp-example">
+          <div class="rp-example-top"><span class="rp-example-label">Example job</span><span class="rp-example-price">₱3,550</span></div>
+          <p>Nueva Ecija → Marikina palengke</p>
+          <p>120 km · 800 kg · paid in cash at <span class="hiw-nowrap">drop-off</span></p>
+        </div>
+      </div>
+    </section>
 
-      <section class="section">
-        <h2>What you get</h2>
-        <div class="feature-grid">
-          <div>
-            <h3>See available deliveries</h3>
-            <p>
-              Pickup point, destination, goods, weight, and estimated fee —
-              before you accept anything.
-            </p>
+      <section class="hiw-section" aria-labelledby="pay-heading">
+        <div class="rp-fare">
+          <div class="rp-fare-text">
+            <div>
+              <h2 id="pay-heading">Know what a job pays before you accept</h2>
+              <p class="hiw-intro">Every job shows its fare up front, worked out from the road distance and the weight. Here's an example run from a farm in Nueva Ecija to the Marikina palengke.</p>
+            </div>
+            <div class="rp-points">
+              <div><h3>Cash at drop-off, nothing to haggle</h3><p>The customer receiving the goods pays you the booked fare when they arrive. Expressway tolls are already included.</p></div>
+              <div><h3>See the load first</h3><p>Pickup, drop-off, goods, and weight are on every job, so you only take what your truck can carry.</p></div>
+            </div>
           </div>
-          <div>
-            <h3>Accept jobs that fit your route</h3>
-            <p>
-              Pick the deliveries that make sense for where you're already
-              headed.
-            </p>
-          </div>
-          <div>
-            <h3>Update status with one tap</h3>
-            <p>
-              Mark Picked Up, In Transit, or Delivered — the customer sees it
-              instantly.
-            </p>
-          </div>
-          <div>
-            <h3>Build your rating history</h3>
-            <p>
-              Completed deliveries and ratings stay on your profile for future
-              jobs.
-            </p>
+          <div class="hiw-fare-card">
+            <p class="rp-formula">₱150 base + ₱15 per km + ₱2 per kg</p>
+            <p class="hiw-fare-example">Example: Nueva Ecija → Marikina palengke, 120 km, 800 kg</p>
+            <dl class="hiw-fare-rows">
+              <div><dt>Base fare</dt><dd>₱150</dd></div>
+              <div><dt>120 km × ₱15</dt><dd>₱1,800</dd></div>
+              <div><dt>800 kg × ₱2</dt><dd>₱1,600</dd></div>
+              <div><dt>Expressway tolls</dt><dd>Included</dd></div>
+              <div class="hiw-fare-total"><dt>Fare for this job<span>Paid to you in cash at drop-off</span></dt><dd>₱3,550</dd></div>
+            </dl>
+            <a class="btn-primary" href="../auth/register.html?role=driver" data-auth-cta="drive">Sign up to drive</a>
           </div>
         </div>
       </section>
 
-      <section class="section">
-        <h2>Taking a delivery, step by step</h2>
-        <ol class="step-list">
-          <li>
-            <span class="step-num" aria-hidden="true">1</span>
-            <div>
-              <h3>Browse available deliveries</h3>
-              <p>Check the route, load, and estimated fee.</p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">2</span>
-            <div>
-              <h3>Accept the delivery</h3>
-              <p>It moves to your assigned deliveries list.</p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">3</span>
-            <div>
-              <h3>Mark Picked Up</h3>
-              <p>Confirm you've collected the goods.</p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">4</span>
-            <div>
-              <h3>Mark In Transit</h3>
-              <p>Let the customer know you're on the way.</p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">5</span>
-            <div>
-              <h3>Mark Delivered</h3>
-              <p>Complete the job and get rated.</p>
-            </div>
-          </li>
+      <section class="hiw-section" aria-labelledby="flow-heading">
+        <h2 id="flow-heading">How a job works on your dashboard</h2>
+        <p class="hiw-intro">New jobs arrive as an in-app notification (no SMS) if you've signed in within the last 7 days. The cards below are samples of your dashboard. For every step, see <a class="hiw-link" href="how-it-works.html">How It Works.</a></p>
+        <ol class="hiw-stages">
+          <li class="hiw-stage" data-status="pending"><span class="hiw-dot" aria-hidden="true"></span><span class="hiw-stage-name">Pending</span><span class="hiw-stage-who">A farmer or vendor books</span></li>
+          <li class="hiw-stage" data-status="driver_assigned"><span class="hiw-dot" aria-hidden="true"></span><span class="hiw-stage-name">Driver Assigned</span><span class="hiw-stage-who">You accept the job</span></li>
+          <li class="hiw-stage" data-status="picked_up"><span class="hiw-dot" aria-hidden="true"></span><span class="hiw-stage-name">Picked Up</span><span class="hiw-stage-who">You mark the goods loaded</span></li>
+          <li class="hiw-stage" data-status="in_transit"><span class="hiw-dot" aria-hidden="true"></span><span class="hiw-stage-name">In Transit</span><span class="hiw-stage-who">You mark it on the road</span></li>
+          <li class="hiw-stage" data-status="delivered"><span class="hiw-dot" aria-hidden="true"></span><span class="hiw-stage-name">Delivered</span><span class="hiw-stage-who">You mark it arrived</span></li>
         </ol>
+        <p class="hiw-cancel"><span class="hiw-dot hiw-dot--cancelled" aria-hidden="true"></span>A booking can only be cancelled before pickup. After that, the job is yours to finish.</p>
+
+        <div class="rp-samples">
+          <div class="rp-sample">
+            <div><h3>See the job first</h3><p>Route, goods, weight, and the fare, before you tap Accept. If another driver takes it first, it simply leaves your list.</p></div>
+            <div class="sample-card" aria-hidden="true">
+              <div class="sample-top"><span class="sample-id"><span class="sample-code">SK-00142</span><span class="sample-tag">Sample</span></span><span class="status-pill" data-status="pending">Pending</span></div>
+              <p class="sample-route">Nueva Ecija → Marikina palengke</p>
+              <p class="sample-meta">Onions · 800 kg · Est. ₱3,550</p>
+              <span class="sample-action">Accept Delivery</span>
+            </div>
+          </div>
+          <div class="rp-sample rp-sample--big">
+            <div><h3>One tap per stage</h3><p>Mark Picked Up, In Transit, and Delivered as you go. While you're on the road, your location is shared so the customer can follow the truck.</p></div>
+            <div class="sample-card" aria-hidden="true">
+              <div class="sample-top"><span class="sample-id"><span class="sample-code">SK-00142</span><span class="sample-tag">Sample</span></span><span class="status-pill" data-status="in_transit">In Transit</span></div>
+              <p class="sample-route">Nueva Ecija → Marikina palengke</p>
+              <span class="sample-share">Sharing your location…</span>
+              <span class="sample-action">Mark Delivered</span>
+              <img class="sample-map" src="../assets/sample-live-map.png" width="600" height="320" alt="" loading="lazy" />
+              <p class="sample-caption">What your customer sees: Live location — updates automatically</p>
+            </div>
+          </div>
+          <div class="rp-sample">
+            <div><h3>Build your history</h3><p>After each job, you and the customer rate each other. Completed jobs and ratings stay in your history.</p></div>
+            <div class="sample-card" aria-hidden="true">
+              <div class="sample-top"><span class="sample-id"><span class="sample-code">SK-00131</span><span class="sample-tag">Sample</span></span><span class="status-pill" data-status="delivered">Delivered</span></div>
+              <p class="sample-route">Nueva Ecija → Marikina palengke</p>
+              <p class="sample-line">You rated the requester: <span class="sample-stars">★★★★★</span></p>
+            </div>
+          </div>
+        </div>
+        <a class="btn-primary rp-after-cta" href="../auth/register.html?role=driver" data-auth-cta="drive">Sign up to drive</a>
       </section>
 
-      <div class="cta-band">
-        <h2>Ready to start accepting deliveries?</h2>
-        <a class="btn-primary" href="../auth/register.html?role=driver" data-auth-cta="drive">Register as a Driver</a>
-      </div>
+      <section class="hiw-section" aria-labelledby="faq-heading">
+        <h2 id="faq-heading">Before you take your first job</h2>
+        <p class="hiw-intro">Straight answers to what drivers ask first. Something else? <a class="hiw-link" href="contact.html">Contact us.</a></p>
+        <div class="rp-qa">
+          <div class="rp-qa-item"><h3>How do I get paid?</h3><p>In cash, by the customer receiving the goods at drop-off: the fare shown on the job, tolls included. If anyone disputes it, the booked fare is in the booking, and you can contact us.</p></div>
+          <div class="rp-qa-item"><h3>Can I choose which jobs I take?</h3><p>Yes. Browse the available deliveries and accept only the ones that fit your route and your truck.</p></div>
+          <div class="rp-qa-item"><h3>What do customers see about me?</h3><p>Your name once you accept, plus your vehicle type and plate number if you add them on your dashboard.</p></div>
+          <div class="rp-qa-item"><h3>What if another driver accepts first?</h3><p>The job leaves the list. If you both tapped Accept at the same moment, you'll see that it was taken and can pick another.</p></div>
+        </div>
+      </section>
+
+      <section class="hiw-close" aria-labelledby="close-heading">
+        <div>
+          <h2 id="close-heading">Start taking jobs</h2>
+          <p>Real loads, the fare up front, and cash in hand at drop-off.</p>
+        </div>
+        <div class="hiw-close-actions">
+          <a class="btn-primary" href="../auth/register.html?role=driver" data-auth-cta="drive">Sign up to drive</a>
+          <a class="hiw-link" href="../auth/login.html" data-auth="guest">Already a driver? Log In</a>
+        </div>
+      </section>
     </main>
 
     <footer class="site-footer lp-footer">

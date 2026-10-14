@@ -10,6 +10,7 @@ import {
   cancelMyDelivery,
   createDelivery,
   getMyDeliveries,
+  getMyDeliveryDrivers,
   subscribeToDeliveryUpdates,
 } from "./deliveries.js";
 import { submitRating, getMyRatingsForDeliveries } from "./ratings.js";
@@ -20,6 +21,8 @@ import {
   wireRatingControls,
   setupNotifications,
   isQuoteStale,
+  renderDriverLine,
+  rebookValues,
 } from "./dashboard-shared.js";
 import { toastSuccess, toastError, toastInfo } from "./toast.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
@@ -248,6 +251,9 @@ async function loadDeliveries() {
     HISTORY_STATUSES.includes(d.status),
   );
 
+  const { data: drivers } = await getMyDeliveryDrivers();
+  const driversById = new Map((drivers || []).map((r) => [r.delivery_id, r]));
+
   activeEl.innerHTML = active.length
     ? active
         .map(
@@ -259,6 +265,7 @@ async function loadDeliveries() {
           </div>
           <div class="delivery-route">${sanitizeText(d.pickup_address)} → ${sanitizeText(d.dropoff_address)}</div>
           <div class="delivery-meta">${sanitizeText(d.goods_description)} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
+          ${renderDriverLine(driversById.get(d.id))}
           ${renderMapBlock(d)}
           ${d.status === "pending" ? `
           <div class="delivery-card-actions">
@@ -318,7 +325,11 @@ async function loadDeliveries() {
           </div>
           <div class="delivery-route">${sanitizeText(d.pickup_address)} → ${sanitizeText(d.dropoff_address)}</div>
           <div class="delivery-meta">${sanitizeText(d.goods_description)} · ${d.quantity_kg} kg · ₱${Number(d.estimated_cost).toLocaleString()}</div>
+          ${renderDriverLine(driversById.get(d.id))}
           ${renderRatingBlock(d, ratingsMap.get(d.id), "You rated this delivery", profile.id)}
+          <div class="delivery-card-actions">
+            <button type="button" class="btn-small" data-rebook-id="${sanitizeText(d.id)}">Book again</button>
+          </div>
         </div>
       `,
         )
@@ -331,6 +342,27 @@ async function loadDeliveries() {
       </div>`;
 
   wireRatingControls(historyEl, profile, submitRating, loadDeliveries);
+
+  const historyById = new Map(history.map((d) => [d.id, d]));
+  historyEl.querySelectorAll("[data-rebook-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const d = historyById.get(btn.dataset.rebookId);
+      if (!d) return;
+      const values = rebookValues(d);
+      for (const [id, value] of Object.entries(values)) {
+        const input = document.getElementById(id);
+        input.value = value;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      const date = document.getElementById("scheduledPickup");
+      date.value = "";
+      pendingQuote = null;
+      costPreview.classList.remove("visible");
+      form.scrollIntoView({ behavior: "smooth", block: "start" });
+      date.focus({ preventScroll: true });
+      toastInfo("Details copied. Pick a pickup date, then get a new estimate.");
+    });
+  });
 
   activeSubscriptions.forEach((channel) => channel.unsubscribe());
   activeSubscriptions.clear();

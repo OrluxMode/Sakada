@@ -31,6 +31,8 @@ A booking platform built for agri-delivery in the Philippines. The fare is compu
 - **Confirmed by the owner 2026-10-13:**
   - payment today goes directly to the driver, outside the app
   - the driver is paid exactly the booked fare: no haggling at drop-off, no Sakada cut stated
+  - **the receiver pays, like cash on delivery:** the farmer ships, and the buyer (usually a vendor) pays the driver in cash at drop-off; **expressway tolls are included** in the fare
+  - after a driver accepts (Driver Assigned), only an admin can cancel; requesters cancel only while Pending
   - there is no weight limit; drivers see the kg before accepting (truck tonnage on the site is only a guide)
   - notifications are in-app only (no SMS); a booking stays Pending until a driver accepts or the requester cancels
 

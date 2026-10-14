@@ -61,7 +61,7 @@ test.describe("logged out", () => {
 
   test("For Drivers button opens driver sign-up", async ({ page }) => {
     await page.goto("/pages/for-drivers.html");
-    await expect(page.locator('[data-auth-cta="drive"]')).toHaveAttribute(
+    await expect(page.locator('[data-auth-cta="drive"]').first()).toHaveAttribute(
       "href",
       /register\.html\?role=driver/,
     );
@@ -86,7 +86,7 @@ test.describe("logged in (faked)", () => {
   test("driver sees Find Deliveries on For Drivers", async ({ page }) => {
     await fakeLogin(page, "driver");
     await page.goto("/pages/for-drivers.html");
-    const btn = page.locator('[data-auth-cta="drive"]');
+    const btn = page.locator('[data-auth-cta="drive"]').first();
     await expect(btn).toHaveText("Find Deliveries");
     await expect(btn).toHaveAttribute("href", /dashboard\/driver\/index\.html$/);
   });

@@ -66,96 +66,118 @@
     </header>
 
     <main id="main">
-      <section class="page-hero">
-        <span class="eyebrow-role">For Vendors</span>
+      <section class="rp-hero">
+      <div class="rp-hero-main">
         <h1>Get your goods delivered, without the back-and-forth calls.</h1>
-        <p>
-          Book the delivery you need, see who's bringing it, and track it until
-          it reaches your stall or storefront.
-        </p>
-      </section>
+        <div class="rp-acts">
+          <div class="rp-actions">
+            <a class="btn-primary" href="../auth/register.html?role=vendor" data-auth-cta="book">Book a Delivery</a>
+            <a class="hiw-link" href="how-it-works.html">See how it works</a>
+          </div>
+          <p class="rp-note" data-auth="guest">Available nationwide. New here? You'll make an account first.</p>
+        </div>
+      </div>
+      <div class="rp-hero-side">
+        <p class="rp-lede">Book the pickup from your farmer or supplier, see who's bringing it, and track it until it reaches your stall or storefront, without phoning around for a truck.</p>
+        <div class="rp-example">
+          <div class="rp-example-top"><span class="rp-example-label">Example fare</span><span class="rp-example-price">₱3,550</span></div>
+          <p>Nueva Ecija farm → your Marikina palengke stall</p>
+          <p>120 km · 800 kg · tolls included</p>
+        </div>
+      </div>
+    </section>
 
-      <section class="section">
-        <h2>What you get</h2>
-        <div class="feature-grid">
-          <div>
-            <h3>Book incoming deliveries</h3>
-            <p>
-              Request a pickup from a farmer or supplier and set your own
-              drop-off point.
-            </p>
+      <section class="hiw-section" aria-labelledby="fare-heading">
+        <div class="rp-fare">
+          <div class="rp-fare-text">
+            <div>
+              <h2 id="fare-heading">Know the fare before you book</h2>
+              <p class="hiw-intro">Sakada works it out from the road distance and the weight. Here's an example: onions from a farm in Nueva Ecija to your stall at the Marikina palengke.</p>
+            </div>
+            <div class="rp-points">
+              <div><h3>No haggling at <span class="hiw-nowrap">drop-off</span></h3><p>The fare is locked in when you book. It already includes expressway tolls, and the driver is paid exactly that amount.</p></div>
+              <div><h3>Measured along the road</h3><p>The distance comes from the map's driving route, not a straight line, so the fare matches the trip the truck makes.</p></div>
+            </div>
           </div>
-          <div>
-            <h3>Track incoming shipments</h3>
-            <p>See exactly where your delivery is, from pickup to arrival.</p>
-          </div>
-          <div>
-            <h3>Delivery history</h3>
-            <p>
-              Every past delivery is on record — useful for restocking or
-              resolving a dispute.
-            </p>
-          </div>
-          <div>
-            <h3>Rate the service</h3>
-            <p>
-              Rate drivers after each delivery so the next request goes even
-              smoother.
-            </p>
+          <div class="hiw-fare-card">
+            <p class="rp-formula">₱150 base + ₱15 per km + ₱2 per kg</p>
+            <p class="hiw-fare-example">Example: Nueva Ecija → Marikina palengke, 120 km, 800 kg</p>
+            <dl class="hiw-fare-rows">
+              <div><dt>Base fare</dt><dd>₱150</dd></div>
+              <div><dt>120 km × ₱15</dt><dd>₱1,800</dd></div>
+              <div><dt>800 kg × ₱2</dt><dd>₱1,600</dd></div>
+              <div><dt>Expressway tolls</dt><dd>Included</dd></div>
+              <div class="hiw-fare-total"><dt>Fare for this trip<span>Locked in when you book</span></dt><dd>₱3,550</dd></div>
+            </dl>
+            <p>You pay the driver in cash when the goods reach you, the fare for this trip. Paying through Sakada (GCash or COD) is coming soon.</p>
+            <a class="btn-primary" href="../auth/register.html?role=vendor" data-auth-cta="book">Book a Delivery</a>
           </div>
         </div>
       </section>
 
-      <section class="section">
-        <h2>Booking a delivery, step by step</h2>
-        <ol class="step-list">
-          <li>
-            <span class="step-num" aria-hidden="true">1</span>
-            <div>
-              <h3>Create the delivery request</h3>
-              <p>Pickup point, your location, goods, and schedule.</p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">2</span>
-            <div>
-              <h3>Get an estimated cost</h3>
-              <p>Review the fee estimate, then confirm.</p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">3</span>
-            <div>
-              <h3>Wait for a driver to accept</h3>
-              <p>
-                You'll see "Driver Assigned" the moment someone takes the job.
-              </p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">4</span>
-            <div>
-              <h3>Track it to arrival</h3>
-              <p>
-                Follow the delivery through Picked Up, In Transit, and
-                Delivered.
-              </p>
-            </div>
-          </li>
-          <li>
-            <span class="step-num" aria-hidden="true">5</span>
-            <div>
-              <h3>Rate the driver</h3>
-              <p>Feedback is saved to your delivery history.</p>
-            </div>
-          </li>
+      <section class="hiw-section" aria-labelledby="after-heading">
+        <h2 id="after-heading">What you'll see after you book</h2>
+        <p class="hiw-intro">Your booking moves through five stages, with an in-app notification at each one (no SMS). The cards below are samples of your dashboard. For every step, see <a class="hiw-link" href="how-it-works.html">How It Works.</a></p>
+        <ol class="hiw-stages">
+          <li class="hiw-stage" data-status="pending"><span class="hiw-dot" aria-hidden="true"></span><span class="hiw-stage-name">Pending</span><span class="hiw-stage-who">You book it</span></li>
+          <li class="hiw-stage" data-status="driver_assigned"><span class="hiw-dot" aria-hidden="true"></span><span class="hiw-stage-name">Driver Assigned</span><span class="hiw-stage-who">A driver accepts</span></li>
+          <li class="hiw-stage" data-status="picked_up"><span class="hiw-dot" aria-hidden="true"></span><span class="hiw-stage-name">Picked Up</span><span class="hiw-stage-who">Goods leave your supplier</span></li>
+          <li class="hiw-stage" data-status="in_transit"><span class="hiw-dot" aria-hidden="true"></span><span class="hiw-stage-name">In Transit</span><span class="hiw-stage-who">On the road to you</span></li>
+          <li class="hiw-stage" data-status="delivered"><span class="hiw-dot" aria-hidden="true"></span><span class="hiw-stage-name">Delivered</span><span class="hiw-stage-who">Arrived at your stall</span></li>
         </ol>
+        <p class="hiw-cancel"><span class="hiw-dot hiw-dot--cancelled" aria-hidden="true"></span>You can cancel a booking yourself while it's still Pending.</p>
+
+        <div class="rp-samples">
+          <div class="rp-sample">
+            <div><h3>Know who's bringing it</h3><p>You see the driver's name, plus their vehicle and plate number if they've added them.</p></div>
+            <div class="sample-card" aria-hidden="true">
+              <div class="sample-top"><span class="sample-id"><span class="sample-code">SK-00142</span><span class="sample-tag">Sample</span></span><span class="status-pill" data-status="driver_assigned">Driver Assigned</span></div>
+              <p class="sample-line">Driver: <strong>Juan Dela Cruz</strong> · Isuzu Elf · NBC 1234</p>
+              <p class="sample-route">Nueva Ecija → Marikina palengke</p>
+              <p class="sample-meta">Onions · 800 kg · ₱3,550</p>
+            </div>
+          </div>
+          <div class="rp-sample rp-sample--big">
+            <div><h3>Follow it to your stall</h3><p>While your goods are picked up and in transit, a live map shows where the truck is, so you know when to expect it.</p></div>
+            <div class="sample-card" aria-hidden="true">
+              <div class="sample-top"><span class="sample-id"><span class="sample-code">SK-00142</span><span class="sample-tag">Sample</span></span><span class="status-pill" data-status="in_transit">In Transit</span></div>
+              <img class="sample-map" src="../assets/sample-live-map.png" width="600" height="320" alt="" loading="lazy" />
+              <p class="sample-caption">Live location — updates automatically</p>
+            </div>
+          </div>
+          <div class="rp-sample">
+            <div><h3>Rate it, then restock</h3><p>After delivery, rate your driver. One tap copies the route, goods, and weight, so your next restock is just a new date.</p></div>
+            <div class="sample-card" aria-hidden="true">
+              <div class="sample-top"><span class="sample-id"><span class="sample-code">SK-00131</span><span class="sample-tag">Sample</span></span><span class="status-pill" data-status="delivered">Delivered</span></div>
+              <p class="sample-line">You rated this delivery: <span class="sample-stars">★★★★★</span></p>
+              <span class="sample-action">Book again</span>
+            </div>
+          </div>
+        </div>
+        <a class="btn-primary rp-after-cta" href="../auth/register.html?role=vendor" data-auth-cta="book">Book a Delivery</a>
       </section>
 
-      <div class="cta-band">
-        <h2>Ready to book your next delivery?</h2>
-        <a class="btn-primary" href="../auth/register.html?role=vendor" data-auth-cta="book">Book a Delivery</a>
-      </div>
+      <section class="hiw-section" aria-labelledby="faq-heading">
+        <h2 id="faq-heading">Before you book your next delivery</h2>
+        <p class="hiw-intro">Straight answers to what vendors ask first. Something else? <a class="hiw-link" href="contact.html">Contact us.</a></p>
+        <div class="rp-qa">
+          <div class="rp-qa-item"><h3>Can I book a pickup from my supplier?</h3><p>Yes. Set the pickup at your farmer or supplier and the drop-off at your stall or store. You book it and pay the driver; your supplier just hands over the goods.</p></div>
+          <div class="rp-qa-item"><h3>When and how do I pay?</h3><p>In cash to the driver when the goods reach you: the fare for this trip, the same amount you saw when you booked. If the driver asks for more, show them the fare in your booking and contact us.</p></div>
+          <div class="rp-qa-item"><h3>What if no driver accepts?</h3><p>Your booking stays Pending until one does. You get an in-app notification when it's accepted, and you can cancel it yourself any time before.</p></div>
+          <div class="rp-qa-item"><h3>What if something goes wrong after a driver accepts?</h3><p>Contact us with your booking code. Until the goods are picked up, we can cancel the booking for you. Every past delivery stays in your history with its fare.</p></div>
+        </div>
+      </section>
+
+      <section class="hiw-close" aria-labelledby="close-heading">
+        <div>
+          <h2 id="close-heading">Book your next delivery</h2>
+          <p>The fare up front, a driver you know by name, and your stock on the map until it arrives.</p>
+        </div>
+        <div class="hiw-close-actions">
+          <a class="btn-primary" href="../auth/register.html?role=vendor" data-auth-cta="book">Book a Delivery</a>
+          <a class="hiw-link" href="../auth/login.html" data-auth="guest">Already booked before? Log In</a>
+        </div>
+      </section>
     </main>
 
     <footer class="site-footer lp-footer">

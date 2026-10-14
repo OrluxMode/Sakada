@@ -98,6 +98,14 @@ export async function getMyAssignedDeliveries(driverId) {
 }
 
 /**
+ * Driver name + vehicle for the caller's own deliveries (0019). Returns
+ * { data: [{ delivery_id, driver_name, vehicle_type, vehicle_plate }], error }.
+ */
+export async function getMyDeliveryDrivers() {
+  return await supabase.rpc("get_my_delivery_drivers");
+}
+
+/**
  * Push the driver's current position onto a delivery. No status-column
  * involvement, so the Phase 6 transition trigger doesn't even look at
  * this update — it only validates changes to `status`.

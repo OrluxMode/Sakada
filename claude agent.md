@@ -29,7 +29,7 @@
 ## ▶ Resume here (status as of 2026-10-13, everything pushed)
 
 - **Workflow:** Claude designs, critiques, audits, reviews and writes prompts. **OpenCode (MiMo v2.6 flash free)** writes the code from `opencode prompt - *.md` files in the project root. Then Claude verifies (git diff, headless Chrome screenshots/measurements, `npm test`, curl). The user commits/pushes **manually** and runs SQL in the Supabase SQL editor.
-- **All work is pushed** (latest commit `99ac2c7 "fixed landing page and logged navs"`, main = origin/main). Logged-in nav works on all 9 public pages; the For pages' buttons go to register?role= (guests) or the dashboard (logged in). The user confirmed live: GitHub Actions "Tests" is green, and Log Out / admin pages / bell work.
+- **All work is pushed** (latest commit `26dff6e "for safety deploying"`, main = origin/main). All pages use self-hosted fonts; ESLint + 26 Playwright smoke tests run in CI next to the 66 unit tests; **Vercel Deployment Checks block production on the `test` + `e2e` jobs** (user set it up). Logged-in nav works on all 9 public pages; the For pages' buttons go to register?role= (guests) or the dashboard (logged in). The user confirmed live: GitHub Actions "Tests" is green, and Log Out / admin pages / bell work.
 - **Shipped:**
   - landing v2 (audit 20/20) + logged-in landing
   - How It Works (critique 26/36)
@@ -37,7 +37,7 @@
   - admin pagination, status pills (`--status-*` tokens), notification panel
   - CI (`.github/workflows/test.yml`, 63 tests)
 - **Nothing is pending.**
-- **Optional later:** ESLint, blocking Vercel deploys on a red ✗, E2E tests (need a Supabase test account), `--shadow-*` tokens, and applying the impeccable flow to the other inner pages (For Farmers/Vendors/Drivers, Features, About, Contact still use the old step-list style and Google Fonts). Existing Google users wrongly set to farmer can be fixed by hand in Supabase.
+- **Optional later:** full login/booking E2E tests (need a separate Supabase test project), `--shadow-*` tokens, and bringing the other inner pages (For Farmers/Vendors/Drivers, Features, About, Contact) up to the How It Works design level (they still use the old step-list style). Existing Google users wrongly set to farmer can be fixed by hand in Supabase.
 - **Dropped by the user:** the Filipino truck photo. Keep the current hero (PRODUCT.md updated).
 - **User decisions to respect:** keep the current tractor hero photo; Option A layout; the landing page is single-purpose.
 - **Review toolkit that works:**
@@ -765,5 +765,282 @@
 - **Playwright:** config + `e2e/smoke.spec.mjs` identical to the prompt. Ran locally: **26/26 pass** in about 12 s (10 pages × load-without-errors + no-broken-links, CTAs, faked farmer/driver/bogus nav, phone menu). Unit tests 66/66.
 - **CI:** workflow identical (jobs `test` with lint+unit, and `e2e`); .gitignore covers the playwright output.
 - Not committed. After the push: check that both Actions jobs are green, then turn on Vercel Deployment Checks for "test" + "e2e".
+
+### 2026-10-13: Safety net live
+- Pushed as `26dff6e`. User added `test` + `e2e` to Vercel Deployment Checks. Nothing pending. Updated **▶ Resume here**.
+- Note for future prompts: CI now runs ESLint, so new JS must pass `npm run lint`; smoke tests in `sakada-web/e2e/` may need updating when nav/CTA markup changes.
+
+### 2026-10-13: For Farmers: critique started
+- User: run the impeccable critique on For Farmers, then apply the fixes in Figma at node `52:295` (page "for farmers" `52:294`, an empty 1440×1024 frame).
+- Slug `sakada-web-pages-for-farmers-html`. Two isolated reviews (A design on the live page, B detector + measurements) are running.
+- Suspected false claims on the page to confirm: "Know your driver… who they are and their vehicle details" (the sender dashboard showed no driver name earlier) and "repeat a booking".
+
+### 2026-10-13: For Farmers critique 14/32 + Figma redesign
+- **Critique: 14/32 (44%, Poor).** Snapshot `.impeccable/critique/2026-10-13T15-26-13Z__sakada-web-pages-for-farmers-html.md`.
+- **P0:** two false claims, confirmed in code: "Know your driver… vehicle details" (`getMyDeliveries` has no driver join, cards show no driver) and "repeat a booking" (no rebook action).
+- P1: no fare/payment; no CTA until the bottom, hero half empty.
+- P2: generic duplicated grid + steps, banned eyebrow, no status visual; body 14.5/15px.
+- **Figma:** desktop `52:295` "For Farmers (desktop)" 1440×2223, mobile `55:409` 390×3674 (x +1540) on page "for farmers" `52:294`.
+  - nav "For Farmers" in amber; no eyebrow
+  - two-column hero with Book a Delivery + "See how it works" link
+  - "Know the fare before you book": farmer example 40 km / 800 kg = ₱2,350, exact-fare + pay-the-driver lines
+  - "Before you hand over your harvest" Q&A (Pending/cancel, no weight limit, notifications + 5 status dots)
+  - 5-step row 01–05 (merged, true copy: "saved to your history with the route, weight, and fare")
+  - band "Book your next harvest run" + Contact link + Book / See how it works
+  - all body 16px
+- The false claims were removed, not designed in. Asked the user whether to build driver details / rebook for real.
+
+### 2026-10-13: For Farmers: build the features + critique v2 (in progress)
+- **User chose:** build the driver-details + book-again features; critique the new design.
+- **Figma:** step 03 now says "When one accepts, you see their name and vehicle."; step 05 says "…where you can book the same run again." (`55:379/387/493/501`).
+- **Found:** NO UI writes `driver_profiles.vehicle_type/plate`, so drivers need a vehicle form. Drivers can already update their own row (0005 "for all"). Requesters can't read driver profiles (0016), so a SECURITY DEFINER RPC is needed.
+- **Wrote `opencode prompt - driver details and book again.md`:**
+  - migration **0019** `get_my_delivery_drivers()` (name/type/plate only, own deliveries) + length checks
+  - `driver-profile.js`; `renderDriverLine` + `rebookValues` helpers + 5 tests
+  - driver line on requester cards (fails soft without 0019)
+  - "Book again" on history cards (prefill, clear date, reset quote)
+  - driver "Your vehicle" form; CSS
+  - **The user must run 0019 in Supabase before pushing.**
+- Critique v2 is running. Assessment A is back: 22/32. NB: A flagged "watch the trip live" as overclaiming, but the requester card does show a live location map during Picked Up / In Transit, so that's a false positive.
+
+### 2026-10-13: For Farmers critique v2: 22/32
+- **Trend 14 → 22/32 (69%, Acceptable).** Snapshot `.impeccable/critique/2026-10-13T15-36-01Z__sakada-web-pages-for-farmers-html.md`.
+- P1: the unique features (driver name/vehicle, book again) are buried; the page duplicates How It Works.
+- P2:
+  - step 05 title/body mismatch
+  - fare lock point unclear ("estimated" vs "the fare you pay")
+- P3: hyphen breaks, orphans, FAQ lines 77–80 chars, dead left columns, small inline links.
+- "Watch the trip live" was flagged, but it's a false positive: a live map ships.
+- Asked the user about fix scope. The features prompt is waiting to run.
+
+### 2026-10-13: For Farmers v3: all critique-v2 fixes applied in Figma
+- User: apply all fixes; run the features prompt in OpenCode in parallel.
+- Rebuilt desktop `52:295` (1440×2342) and mobile `55:409` (390×3882):
+  - **fare band:** the left column adds "The fare is locked when you book. / The driver is paid exactly that amount, with no haggling at drop-off."; the card total is renamed "Your fare"; the card keeps the example + pay-the-driver note
+  - **Q&A:** new first item "Who's picking up my harvest?" → name, vehicle, plate; "Something else? Contact us" in the left column; answers 560px
+  - **steps trimmed to 4:** Create (incl. "you see the fare before you confirm") / Wait for a driver ("you see who's coming") / Track it / "Rate it, then rebook it"
+  - **closing band:** "Same farm, same buyer next week? / Book the same run again from your delivery history. Only the date changes." + Book a Delivery + See how it works
+- Fixed the mobile closing headline overflow (`57:529` now wraps).
+- For code: nowrap on "drop-off"/"In-app", 44px hit area on the inline links.
+
+### 2026-10-13: Driver details + Book again verified; 0019 applied
+- User ran **0019 in Supabase** ("success, no rows returned").
+- OpenCode's work matches the prompt: 0019 + driver-profile.js identical; `renderDriverLine`/`rebookValues`; driver line on requester cards (falls back to an empty Map on error); Book again wired; vehicle form load/save. Lint clean, tests 72/72, node --check ok.
+- **Visual (static render without the auth redirect):** cards show "Driver: **Name** · Isuzu Elf · NBC 1234" / "Vehicle not added yet"; amber "Book again" button.
+- **Claude fixed one thing directly:** the "Available Deliveries" section had inline styles (margin-top 24, no border) that assumed it was first, so it jammed against the new vehicle form. Removed them, so it now has the normal dash-section divider.
+- Not committed. After the push: a driver saves a vehicle, accepts a booking → the farmer sees the name/vehicle; then try Book again.
+
+### 2026-10-13: Features confirmed working (local)
+- User: "its all working". Git shows the features are **not pushed yet** (last commit is still `26dff6e`). Reminded the user. Next: the For Farmers page build prompt, or one more critique; asked.
+
+### 2026-10-13: For Farmers: critique v3 → polish into a new frame (in progress)
+- **User's plan:** critique the Figma For Farmers v3 again, then run `/impeccable polish` from that critique into a NEW frame "for farmers polish". The existing `52:295`/`55:409` stay untouched.
+- Renders are in `/tmp/ff-crit3.UgNu/`. Two isolated reviews are running. polish.md read: polish = refinement, not redesign; fix in order (broken → states → flow/hierarchy → visual); close the critique snapshot only if all its Priority Issues are cleared.
+
+### 2026-10-14: For Farmers critique v3 (22/32) + polish frames
+- **Critique v3: 22/32** (trend 14 → 22 → 22). Snapshot `.impeccable/critique/2026-10-13T16-01-44Z__sakada-web-pages-for-farmers-html.md`.
+- P1: the page repeats How It Works and the farmer-only features are sentences.
+- P2: the driver claim is unconditional (vehicle is optional); "locked" vs "estimated"; the close aims at returning users; the legend isn't a sequence and lacks Cancelled.
+- P3: dead space.
+- **Polish frames** (old frames untouched): **"for farmers polish"** desktop `59:314` (1440×2439) + **"for farmers polish (mobile)"** `59:476` (390×4245).
+  - **hero:** adds "New here? You'll make an account first."
+  - **fare:** formula folded into the prose; "The fare is set when you book." block; card total "Estimated fare" (matches HIW); **Book a Delivery in the card**
+  - **new "What you'll see after you book":** 3 UI vignettes, equal height on desktop
+    - Driver Assigned card with "Driver: Juan Dela Cruz · Isuzu Elf · NBC 1234"
+    - In Transit card with a live-map sketch
+    - Delivered card with a Book again button
+    - captions: "…plus their vehicle and plate number if they've added them"
+  - steps section removed (links to How It Works instead)
+  - **FAQ:** 3 answers in a row ("What if no driver accepts?", weight, notifications) + an ordered status track (horizontal desktop / vertical mobile) + "Cancelled: only possible while it's still Pending."
+  - **close:** "Book it once. Next time, start from your last run." + Book a Delivery + link "Already booked before? Log in"; secondary actions are text links everywhere; H2 40px everywhere
+- Fixed after the first render: mobile sub-lines with links overflowed (now single wrapping texts), equal vignette card heights, closing heading width.
+- Did NOT close the critique snapshot: it's tied to the incumbent for-farmers.html, which isn't rebuilt yet. Close it after the code ships.
+- For code later: text-wrap balance/pretty for orphans, nowrap "drop-off"/"In-app", 44px hit areas on inline links.
+
+### 2026-10-14: Critique of "for farmers polish" (in progress)
+- User asked for a critique of the polish frames (`59:314` / `59:476`). Renders are in `/tmp/ffp-crit.K4k8/`. Two isolated reviews are running.
+
+### 2026-10-14: Polish critique: 23/32 (Good) + ₱ font finding
+- **Trend 14 → 22 → 22 → 23/32 (72%, Good).** Snapshot `.impeccable/critique/2026-10-13T16-16-53Z__sakada-web-pages-for-farmers-html.md`.
+- P1: the trust section skips "who is the driver / accountability". Ratings ship but aren't mentioned; payment timing is unknown, so ask the owner.
+- P2:
+  - "Estimated fare" vs "set when you book". The reviewers flip-flopped: v3 asked to match HIW "Estimated". Decide one term site-wide.
+  - sample cards look clickable / filler / the map dot is off the route
+  - the stage strip should become the spine above the cards
+  - mobile links <44px and a 2,625px CTA gap
+- **IMPORTANT, verified in Chrome (canvas width test):** **₱ (U+20B1) and → are NOT in any bundled woff2, including the latin-ext files added for How It Works.** They render in the fallback font. My earlier HIW verification ("₱ renders in our fonts") was WRONG (eyeballed). The latin-ext downloads were useless. Told the user. Fix options: find a Barlow/Public Sans build that includes ₱, or accept the system sans fallback, or style ₱ explicitly.
+
+### 2026-10-14: Polish round 2 applied to "for farmers polish"
+- **User answers:**
+  - the farmer pays the driver **at drop-off**
+  - use **"Fare for this trip"** on both pages
+  - polish again, then build
+- Rebuilt `59:314` (1440×2541) and `59:476` (390×4355) in place:
+  - **fare left:** "No haggling at drop-off / The fare is locked in when you book, and the driver is paid exactly that amount."
+  - **card:** "Fare for this trip / Locked in when you book" ₱2,350; "You pay the driver this amount when your goods arrive. In-app payment… coming soon."
+  - **After you book:** intro mentions 5 stages + notifications + "sample cards from the dashboard"; the stage spine (shown stages bright, others muted) + cancel line sits above the cards; sample "Book again" is an outline (not a CTA look); the map dot sits on the route; desktop cards are equal height with the last row pinned to the bottom; mobile adds "Book your first run" after the cards; mobile stage list is a vertical rail (no "›" glyphs)
+  - **trust Q&A 2×2:** "Who's driving my harvest?" (name/vehicle/plate + you rate your driver, it stays on their record), "When do I pay?" (when goods arrive, the fare for this trip), "What if no driver accepts?", "How heavy can my load be?"
+  - **close:** "Book your first run / A fair fare up front, a driver you can name, and your harvest on the map until it arrives." + Book a Delivery + "Already booked before? Log In"
+  - section padding unified (76 desktop / 72 mobile)
+- **Code follow-ups for the build:**
+  - HIW wording must change too ("Estimated fare" → "Fare for this trip"; pay at drop-off)
+  - fix the ₱/→ font fallback
+  - nowrap / text-wrap balance
+  - 44px hit areas on links
+- The critique snapshot is still open (tied to the incumbent file).
+
+### 2026-10-14: Critique of polish round 2 (in progress)
+- User asked for the critique again on "for farmers polish" (round 2). Renders are in `/tmp/ffp2.vUPv/`. Two isolated reviews are running.
+
+### 2026-10-14: Polish round 2 critique: 23/32 (plateau)
+- **Trend 14 → 22 → 22 → 23 → 23.** Snapshot `.impeccable/critique/2026-10-13T16-32-14Z__sakada-web-pages-for-farmers-html.md`.
+- **P1, Claude's own error:** the sample cards say Cabanatuan → Balintawak (~115 km by road) at ₱2,350, which is the 40 km example. The real fare at those rates is ≈ ₱3,475. HIW uses a third example (115 km/500 kg = ₱2,875). Use ONE canonical example on both pages.
+- P2:
+  - payment method (cash?) + drop-off disputes unanswered
+  - the Pending answer lacks the accept notification
+  - bright/dim stage labels are unexplained; the cancel ring looks like a stage
+  - the driver line is buried in card 1; sample Book again looks tappable
+- **Measured:**
+  - lines too long: stage intro 173 chars, FAQ 82–86, band 90
+  - FAQ dividers misaligned between columns
+  - mobile text links <44px
+  - pill/card borders now ≥3:1 (fixed)
+- Told the user the score has plateaued; the remaining fixes are concrete (mostly copy/data + measure), and the rest belongs in code.
+
+### 2026-10-14: Polish round 3 applied
+- **User answers:**
+  - example trip = **Nueva Ecija → Marikina palengke**
+  - payment = **cash**
+  - "fix, i want to perfect the critique score"
+- **Canonical example:** 120 km (Claude's road-distance estimate; told the user they can adjust), 800 kg → ₱150 + ₱1,800 + ₱1,600 = **₱3,550**. Used in the fare card, the intro ("an example run from a farm in Nueva Ecija to the Marikina palengke") and all 3 sample cards (route "Nueva Ecija → Marikina Palengke", meta "Onions · 800 kg · ₱3,550"). **HIW must switch to the same example in the build.**
+- Rebuilt `59:314` (1440×2619) / `59:476` (390×4807):
+  - **hero lede:** adds "and when"
+  - **fare left:** + "Measured along the road" block
+  - **card:** "Locked in when you book" now 16px; "For now, it's cash to the driver when your goods arrive. Paying through Sakada (GCash or cash on delivery) is coming soon."
+  - **After you book:** intro capped at 640px, "The cards below are samples of your dashboard."; stage labels uniform; plain cancel note (no ring); captions sit ABOVE content-height cards; the driver line moved to line 2 at 15px; rebook caption adds "You pick the date and confirm the new fare."; the mobile mid-CTA label is "Book a Delivery"
+  - **Q&A:** 2 aligned rows (row dividers shared), answers 560px:
+    - "Who's driving my harvest?"
+    - "When and how do I pay?" (cash on arrival, the same amount; if asked for more, show the booking fare + contact us)
+    - "What if no driver accepts?" (+ notification)
+    - weight
+  - close text width 600
+
+### 2026-10-14: Critique of polish round 3 (in progress)
+- User: run the critique again; **after this, fixes are done by Claude directly, NOT via `/impeccable polish`**. Renders are in `/tmp/ffp3.J4ws/`. Two isolated reviews are running.
+
+### 2026-10-14: Critique round 3 = 28/36 (78%); Claude's own fixes (round 4)
+- **Critique:** 28/36 (heuristic 10 scored 3 this time; on the old /32 basis = 25/32 = 78%). Snapshot `.impeccable/critique/2026-10-14T00-50-28Z__sakada-web-pages-for-farmers-html.md`. 0 P0/P1.
+- Issues:
+  - P2: the map looked broken; nothing after a driver accepts; tolls; samples labelled only once
+  - P3: generic hero; formula hidden in a paragraph
+- **User: fix by Claude directly, no /impeccable polish.** Applied in `59:314` (1440×2799) / `59:476` (390×4947):
+  - **hero:** a bordered example strip "Nueva Ecija → Marikina palengke · 800 kg ₱3,550"
+  - **fare:** the formula is now the card's top row (Barlow 26); "Example…" is SemiBold; pay note "you pay the driver in cash when your goods arrive"
+  - **sample cards:** a muted "Sample" tag next to the SK code; "Book again" is muted (not CTA-like); caption 3 trimmed to 2 lines; "palengke" lowercase everywhere; pill borders 75%
+  - **map redrawn:** faint roads, "Nueva Ecija"/"Marikina" pins, dashed route between them, truck dot ON the route with "Live location"
+    - Figma vectors re-anchor to their bbox, so set x/y + resize after creation
+  - **stage labels:** uniform, the last aligned like the others; cancel note "You can cancel a booking yourself while it's still Pending."
+  - **Q&A:** "Who's driving" replaced by **"What if something goes wrong after a driver accepts?" → "Contact us with your booking code. Until your goods are picked up, we can cancel the booking for you."** (true: admin can cancel pending/driver_assigned)
+  - **wording:** "trip"/"delivery" instead of "run" in the headings ("Book the same trip again", "Book your first delivery"); close "The fare up front, a driver you can name…"
+  - measure capped (intro 560, left col 520, answers 540, close 560)
+- **Open question for the owner:** are expressway tolls included in the fare? Not stated on the page until confirmed.
+
+### 2026-10-14: Tolls included + critique round 4 (in progress)
+- **User confirmed: expressway tolls are included in the fare.**
+  - Figma: the "No haggling" body now says "…It already includes expressway tolls…"; the card label says "Tolls included · locked in when you book" (`70:366/386/546/566`).
+  - PRODUCT.md now records tolls included, cash at drop-off, and admin-only cancel after Driver Assigned.
+- Critique of round 4 is running. Renders are in `/tmp/ffp4.C19y/`.
+
+- User (btw): after this critique finishes, apply its fixes in Figma directly (by Claude, not via polish), aiming for a perfect score.
+
+### 2026-10-14: Critique round 4 = 28/36; round 5 fixes applied (by Claude)
+- **Critique: 28/36 (78%).** Snapshot `.impeccable/critique/2026-10-14T01-06-21Z__sakada-web-pages-for-farmers-html.md`.
+- **P1:** the mobile ₱3,550 total was clipped. Cause: Claude's earlier longer label "Tolls included · locked in…" pushed it off.
+- P2: hero chip looked like an input and had no "Example"; receiver-pays rule unknown; stage labels had no glosses and the rail fell short.
+- P3: empty space under the H1.
+- **Round 5 in `59:314` (1440×2781) / `59:476` (390×5182):**
+  - **fare total:** fixed (the label column fills and wraps, the amount hugs; verified on mobile)
+  - **toll line:** a new row "Expressway tolls · Included"; the label is back to "Locked in when you book"
+  - **hero rearranged:** desktop left = H1 + Book a Delivery/See how it works + "Available nationwide. New here? You'll make an account first."; right = lede + a filled "Example fare ₱3,550 / Nueva Ecija → Marikina palengke · 120 km · 800 kg · tolls included" receipt line (no input look); mobile = H1 → lede → example → actions
+  - **lede:** "…without phoning around for a truck" (no longer "a single phone call")
+  - **timeline:** HIW glosses under each stage; the rail spans to the right edge; mobile vertical with glosses
+  - **in-app wording:** intro says "in-app notification at each one (no SMS)"; the Q&A says "in-app notification"
+  - **caption 3:** "Rate it, then book it again / After delivery, rate your driver. One tap copies…"
+  - **map:** one faint road; pin labels below/right of the pins clear of the route; "Live location" above the truck dot (on the route); map border at 55%
+  - cash note capped at 560px
+- **Still open (owner question):** if the farmer isn't at the drop-off, who pays the driver? Not invented on the page.
+
+### 2026-10-14: Real live-map image + critique round 5 (in progress)
+- User: critique again, apply again (aim: perfect score), and use the live tracking image as the reference for "Follow it on the road".
+- **The real UI** (`requester-dashboard.js` renderMapBlock): a Mapbox **dark-v11 static map**, 600×320, an amber `pin-l+e0972f` at the driver's current position, zoom 13, caption "Live location — updates automatically". No route line, so the old drawn sketch was inaccurate.
+- Fetched one real image (NLEX, Pampanga 15.056,120.689) with the project's Mapbox token into /tmp, uploaded it via `upload_assets` onto new rectangles `73:336` (desktop) / `73:338` (mobile), aspect 600:320, with the dashboard caption underneath. The drawn map was removed.
+- Frames are now desktop 2892 / mobile 5257 tall. Critique round 5 is running (renders in `/tmp/ffp5.VcsW/`).
+
+### 2026-10-14: Critique round 5 = 28/36; round 6 fixes applied
+- **Critique: 28/36 (78%).** Snapshot `.impeccable/critique/2026-10-14T01-29-43Z__sakada-web-pages-for-farmers-html.md`.
+- **P1:** payment copy assumed the farmer is at the drop-off.
+- P2: no designed moment (live map only 1/3 width); the "Rate it" card showed no rating and a fake Book again.
+- P3: repetition; teal/blue hues close (site tokens, left as is).
+- **Round 6 in `59:314` (1440×3153) / `59:476` (390×5159):**
+  - **payment:** now neutral: "payment is cash to the driver at drop-off" (card + FAQ), until the owner answers who pays when the farmer is absent
+  - **desktop sample section:** the **live-map card is the 2/3-width moment** (864px, real Mapbox image via imageHash `1383f6f3…`, re-applied as an IMAGE fill); "Know who's coming" + "Rate it" stack beside it
+  - **cards trimmed:** route/meta only on the driver card; the map and rate cards show the stage-specific content
+  - **rate card:** the real dashboard rating row "You rated this delivery: ★★★★★" (amber stars); "Book again" is flattened to an underlined muted label, no button chrome
+  - **Book a Delivery after the samples on desktop too** (same rule as mobile)
+  - **spacing:** intro→content gaps unified (fare left column: head group + 32 gap, no inner dividers); cancel note spacing 24
+  - **hero chip:** two lines (route / "120 km · 800 kg · tolls included") so no line starts with "·"; subtle border
+  - **close:** "a driver you know by name"
+- **Still pending from the owner:** who pays when the farmer isn't at the drop-off.
+
+### 2026-10-14: For Farmers approved; cancel ring added; For Vendors + For Drivers designed
+- **User is satisfied with "for farmers polish"** (`59:314` / `59:476`). Added the red hollow cancel ring beside "You can cancel a booking yourself while it's still Pending." (HIW style) in both frames (rows `75:338/75:340`).
+- **New Figma page "for vendors" (`76:294`):** desktop `76:295` (1440×3240), mobile `76:493` (390×5332). Same design.
+  - H1 kept "Get your goods delivered, without the back-and-forth calls."
+  - same canonical trip seen by the vendor ("Nueva Ecija farm → your Marikina palengke stall", ₱3,550)
+  - stage glosses vendor-side ("Goods leave your supplier", "On the road to you", "Arrived at your stall")
+  - cards "Follow it to your stall" (big map) / "Know who's bringing it" / "Rate it, then restock"
+  - FAQ: supplier pickup (you book & pay, supplier hands over), cash when the goods reach you, no driver, something wrong (+ history keeps the fare)
+  - close "Book your next delivery"
+- **New Figma page "for drivers" (`77:294`):** desktop `77:295` (1440×3259), mobile `77:501` (390×5239).
+  - H1 kept "Find loads. Accept jobs. Get paid for the trip you're already making."; CTA "Sign up to drive"
+  - "Example job ₱3,550 · paid in cash at drop-off"; note "Jobs come from anywhere in the country" (fixes the false "near you" on the live page)
+  - pay section: "Know what a job pays before you accept"; card "Fare for this job / Paid to you in cash at drop-off"
+  - "How a job works on your dashboard": notification rule (in-app, signed in within 7 days, per 0011); driver glosses; cancel ring note "A booking can only be cancelled before pickup…"
+  - sample cards from the real driver UI:
+    - big "One tap per stage" In Transit card with "Sharing your location…", Mark Delivered and the customer's live map
+    - "See the job first" Pending card with "Est. ₱3,550" + Accept Delivery
+    - "Build your history" with "You rated the requester: ★★★★★"
+  - FAQ: how paid (cash at drop-off, tolls included), choose jobs, what customers see (name + vehicle/plate if added), another driver accepts first (real handleAccept behaviour)
+  - close "Start taking jobs"
+- Next: user reviews; then the build prompt(s) for For Farmers / Vendors / Drivers (+ HIW wording/example sync, ₱ font fix, the receiver-pays question still open).
+
+### 2026-10-14: Receiver-pays rule + build prompt for the role pages
+- **User rule:** "the receiver pays (vendors) because the farmer will just ship… farmer = Shopee seller, vendor = buyer". Recorded in PRODUCT.md.
+- Figma farmer polish copy updated:
+  - card: "Like cash on delivery: you ship, and your buyer pays the driver in cash at drop-off…"
+  - FAQ: "Who pays the driver?" → "Your buyer does…"
+- Saved `sakada-web/assets/sample-live-map.png` (Mapbox dark-v11, 1200×640 @2x, 158 KB, NLEX Pampanga, amber pin) for the sample cards.
+- **Wrote `opencode prompt - role pages.md`:**
+  - one shared `rp-*` CSS block appended to pages.css (reuses the hiw-* classes + dashboard `.status-pill`)
+  - full `<main>` for For Farmers and For Drivers; For Vendors as an exact diff list
+  - HIW fare card synced to the canonical example + "Fare for this trip / Locked in when you book" + tolls row + receiver-pays line
+  - removes the useless latin-ext fonts (they don't contain ₱ and were downloaded for nothing)
+  - e2e strict-mode fixes (`.first()` on the drive CTAs)
+  - sample cards aria-hidden; "Log In" / notes `data-auth="guest"`
+- Next: user runs OpenCode, then Claude verifies (3 pages at 1440/390 vs Figma, lint/vitest/e2e, logged-in CTA behaviour, HIW sync).
+
+### 2026-10-14: Role pages build verified (+ Claude fixes)
+- OpenCode matched the prompt exactly:
+  - For Farmers + For Drivers `<main>` identical; CSS block identical; vendor diffs all present (0 `role=farmer` left)
+  - HIW fare card synced (₱3,550, "Fare for this trip", tolls row, receiver-pays line)
+  - latin-ext fonts removed; e2e `.first()` fixes
+- Lint ok, unit 72/72, e2e 26/26.
+- **Claude fixed directly (CSS/markup):**
+  1. `.rp-formula` was overridden by `.hiw-fare-card p` → selector now `.hiw-fare-card .rp-formula` (26px Barlow).
+  2. `.hiw-close-actions { align-items: center; }` (the Log In link floated).
+  3. **Hero restructured into two columns** on all 3 pages: `.rp-hero-main` (h1 + actions) and `.rp-hero-side` (lede + example), with `display: contents` on ≤900px so the mobile order stays h1 → lede → example → actions.
+     - Claude's first regex wrap misplaced the pay section; it was repaired by a block reorder (section/div counts verified 5/5, 39/39) and re-tested.
+- Screenshots at 1440 + 390 match Figma. The impeccable critique backlog for for-farmers closed automatically (file changed).
+- **Uncommitted, waiting for the push:** driver details/Book again (+0019 already run), the role pages, HIW sync, font cleanup.
 
 <!-- Add the next session's entry above this line -->

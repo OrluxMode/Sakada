@@ -54,10 +54,26 @@
 
       <div id="formMessage" class="form-message" role="alert"></div>
 
-      <div
-        class="dash-section"
-        style="margin-top: 24px; padding-top: 0; border-top: none"
-      >
+      <div class="dash-section vehicle-section">
+        <h2>Your vehicle</h2>
+        <p class="dash-hint">
+          Farmers and vendors see this once you accept their delivery, so they know
+          which truck to look for.
+        </p>
+        <form id="vehicleForm" class="vehicle-form">
+          <div class="field">
+            <label for="vehicleType">Vehicle type</label>
+            <input id="vehicleType" type="text" maxlength="40" placeholder="e.g. Isuzu Elf, 6-wheeler" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="vehiclePlate">Plate number</label>
+            <input id="vehiclePlate" type="text" maxlength="15" placeholder="e.g. NBC 1234" autocomplete="off" />
+          </div>
+          <button class="btn-primary" type="submit" id="vehicleSaveBtn">Save vehicle</button>
+        </form>
+      </div>
+
+      <div class="dash-section">
         <div
           style="
             display: flex;

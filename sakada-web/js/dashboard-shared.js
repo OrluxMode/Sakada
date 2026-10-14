@@ -199,3 +199,25 @@ export function isQuoteStale(quote, form) {
     quote.quantityKg !== parseFloat(form.quantityKg)
   );
 }
+
+/**
+ * "Driver: Juan Dela Cruz · Isuzu Elf · NBC 1234" for a requester's delivery
+ * card. `row` comes from getMyDeliveryDrivers(); returns "" when no driver
+ * is assigned yet. Everything is sanitized.
+ */
+export function renderDriverLine(row) {
+  if (!row || !row.driver_name) return "";
+  const parts = [sanitizeText(row.vehicle_type), sanitizeText(row.vehicle_plate)].filter(Boolean);
+  const vehicle = parts.length ? ` · ${parts.join(" · ")}` : " · Vehicle not added yet";
+  return `<div class="delivery-driver">Driver: <strong>${sanitizeText(row.driver_name)}</strong>${vehicle}</div>`;
+}
+
+/** Form values for "Book again": same route, goods and weight; new date. */
+export function rebookValues(d) {
+  return {
+    pickupAddress: d.pickup_address || "",
+    dropoffAddress: d.dropoff_address || "",
+    goodsDescription: d.goods_description || "",
+    quantityKg: d.quantity_kg != null ? String(d.quantity_kg) : "",
+  };
+}
