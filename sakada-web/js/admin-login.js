@@ -4,6 +4,8 @@ import {
   signOut,
 } from "./auth.js";
 import { toastError } from "./toast.js";
+import { checkEmail, emailChecker, checkPassword } from "./validators.js";
+import { validateFields, clearWhenFixed } from "./field-errors.js";
 
 const messageEl = document.getElementById("formMessage");
 function showMessage(text, type) {
@@ -13,9 +15,20 @@ function showMessage(text, type) {
 
 const form = document.getElementById("adminLoginForm");
 const submitBtn = document.getElementById("submitBtn");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const RULES = [
+  [emailInput, emailChecker()],
+  [passwordInput, checkPassword],
+];
+clearWhenFixed([
+  [emailInput, (v) => checkEmail(v)],
+  [passwordInput, checkPassword],
+]);
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (!validateFields(RULES)) return;
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="spinner"></span>Logging in…';
 

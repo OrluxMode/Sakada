@@ -122,7 +122,7 @@ test.describe("contact form", () => {
     await page.goto("/pages/contact.html");
     await page.getByRole("button", { name: "Send message" }).click();
     await expect(page.locator("#contactNameError")).toHaveText("Enter your name.");
-    await expect(page.locator("#contactEmailError")).toHaveText("Enter your email so we can reply.");
+    await expect(page.locator("#contactEmailError")).toHaveText("Enter your email.");
     await expect(page.locator("#contactMessageError")).toHaveText("Write your message.");
     await expect(page.locator("#contactName")).toBeFocused();
     expect(posted).toBe(false);
@@ -156,5 +156,49 @@ test.describe("contact form", () => {
     expect(body).not.toContain("hello@sakadalogistics.ph");
     expect(body).not.toContain("8800");
     expect(body).not.toContain("2 hours");
+  });
+});
+
+
+test.describe("email typos are caught", () => {
+  test("register blocks gmail.co and one tap fixes it", async ({ page }) => {
+    let called = false;
+    await page.route("**/auth/v1/**", (route) => {
+      called = true;
+      return route.abort();
+    });
+    await page.goto("/auth/register.html");
+    await page.fill("#fullName", "Ana Reyes");
+    await page.fill("#email", "name@gmail.co");
+    await page.fill("#password", "password123");
+    await page.getByRole("button", { name: "Create Account" }).click();
+    await expect(page.locator("#emailError")).toContainText("Did you mean name@gmail.com?");
+    expect(called).toBe(false);
+    await page.getByRole("button", { name: "Use name@gmail.com" }).click();
+    await expect(page.locator("#email")).toHaveValue("name@gmail.com");
+    await expect(page.locator("#emailError")).toBeHidden();
+  });
+
+  test("contact blocks gmail.co", async ({ page }) => {
+    let posted = false;
+    await page.route("**/rest/v1/contact_submissions**", (route) => {
+      posted = true;
+      return route.abort();
+    });
+    await page.goto("/pages/contact.html");
+    await page.fill("#contactName", "Ana Reyes");
+    await page.fill("#contactEmail", "name@gmail.co");
+    await page.fill("#contactMessage", "Hello");
+    await page.getByRole("button", { name: "Send message" }).click();
+    await expect(page.locator("#contactEmailError")).toContainText("Did you mean name@gmail.com?");
+    expect(posted).toBe(false);
+  });
+
+  test("login rejects a badly formed email", async ({ page }) => {
+    await page.goto("/auth/login.html");
+    await page.fill("#email", "juan@gmail");
+    await page.fill("#password", "x");
+    await page.getByRole("button", { name: "Log In" }).click();
+    await expect(page.locator("#emailError")).toContainText("doesn't look right");
   });
 });

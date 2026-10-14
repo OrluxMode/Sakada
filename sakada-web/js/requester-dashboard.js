@@ -26,6 +26,15 @@ import {
 } from "./dashboard-shared.js";
 import { toastSuccess, toastError, toastInfo } from "./toast.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
+import {
+  checkAddress,
+  checkGoods,
+  checkKg,
+  checkPickupDate,
+  checkNotes,
+  localDateString,
+} from "./validators.js";
+import { validateFields, clearWhenFixed } from "./field-errors.js";
 
 // One script serves both requester dashboards; the page says which role it's for.
 const ROLE = document.body.dataset.role;
@@ -67,6 +76,17 @@ const costPreview = document.getElementById("costPreview");
 const confirmBtn = document.getElementById("confirmBtn");
 
 let pendingQuote = null;
+const pickupDateInput = document.getElementById("scheduledPickup");
+pickupDateInput.min = localDateString(); // no pickups in the past
+const BOOKING_RULES = [
+  [document.getElementById("pickupAddress"), (v) => checkAddress(v, "pickup")],
+  [document.getElementById("dropoffAddress"), (v) => checkAddress(v, "drop-off")],
+  [document.getElementById("goodsDescription"), checkGoods],
+  [document.getElementById("quantityKg"), checkKg],
+  [pickupDateInput, (v) => checkPickupDate(v)],
+  [document.getElementById("notes"), checkNotes],
+];
+clearWhenFixed(BOOKING_RULES);
 
 ["pickupAddress", "dropoffAddress", "quantityKg"].forEach((id) => {
   document.getElementById(id).addEventListener("input", () => {
@@ -83,6 +103,7 @@ form.addEventListener("submit", async (e) => {
     toastError("Can't estimate — you're offline");
     return;
   }
+  if (!validateFields(BOOKING_RULES)) return;
   clearMessage();
   costPreview.classList.remove("visible");
   estimateBtn.disabled = true;
@@ -133,6 +154,7 @@ form.addEventListener("submit", async (e) => {
 
 confirmBtn.addEventListener("click", async () => {
   if (!pendingQuote) return;
+  if (!validateFields(BOOKING_RULES)) return;
   if (isQuoteStale(pendingQuote, {
     pickupAddress: document.getElementById("pickupAddress").value,
     dropoffAddress: document.getElementById("dropoffAddress").value,

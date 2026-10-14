@@ -91,7 +91,7 @@ export function renderRatingBlock(d, existingRating, ratedLabel, viewerId) {
       <div class="star-picker" data-delivery-id="${sanitizeText(d.id)}">
         ${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-star="${n}">★</button>`).join("")}
       </div>
-      <textarea class="rating-comment" data-comment-for="${sanitizeText(d.id)}" rows="2" placeholder="How was this delivery? (optional)"></textarea>
+      <textarea class="rating-comment" data-comment-for="${sanitizeText(d.id)}" rows="2" maxlength="500" placeholder="How was this delivery? (optional)"></textarea>
       <button class="btn-small" data-submit-rating="${sanitizeText(d.id)}" data-other-user-id="${sanitizeText(otherUserId)}" disabled>Submit Rating</button>
     </div>
   `;

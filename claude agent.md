@@ -1181,4 +1181,28 @@
   - Contact e2e re-run 6/6.
 - **Uncommitted, waiting for the user's push.** Next: #2, the full login/booking E2E with a Supabase test project.
 
+### 2026-10-14: Bug — contact accepted name@gmail.co → validators on every form
+- User deployed and found `name@gmail.co` accepted. Rule (saved to memory): **use input validators on every page.**
+- Cause: contact.js used a loose regex; every other form relied on the browser's `type=email` (accepts a@b.cc). `.co` is a real TLD, so only a provider-typo check catches it.
+- **Wrote `opencode prompt - input validation.md`:**
+  - new `js/validators.js` (pre-tested by Claude in the scratchpad):
+    - email: format check + provider typos. Blocked: gmail.co / yahoo.co / icloud.co / gmail.com.ph / .con. Warned once: gmial.com (accepted if re-sent).
+    - also name, new/login password, address, goods, kg, pickup date ≥ today, notes, vehicle type, plate, message, booking code
+  - new `js/field-errors.js`: per-field error under the input, aria-invalid/describedby, focus first, one-tap "Use name@gmail.com" fix
+  - forms.css error styles; `novalidate` on all forms
+  - wired into: contact (full new file), register, login, admin login, booking form (estimate + confirm, date min = today), driver vehicle form, rating comment maxlength 500
+  - `tests/validators.test.js` (33 tests, already passing on the draft) + 3 e2e typo tests; contact e2e empty-email text → "Enter your email."
+- Next: user runs OpenCode, then Claude verifies.
+
+### 2026-10-14: Input validation build verified
+- OpenCode matched the prompt:
+  - validators.js / field-errors.js / contact.js / validators.test.js identical to Claude's tested drafts
+  - novalidate on all 6 forms
+  - guards placed correctly: register/login/admin at the top of submit; booking estimate + confirm; vehicle after the offline check
+  - rating maxlength 500; forms.css block; e2e changes
+- Results: lint ok, **unit 105/105, e2e 33/33**.
+- Browser (390): register shows name/email/password errors + "Use name@gmail.com"; contact shows the soft gmial.com warning and the SK- code error. Red borders confirmed via computed style (the first screenshot was mid-transition).
+- Dashboards (booking/vehicle) can't be e2e-tested without login; covered by unit tests + code read.
+- **Uncommitted, waiting for the user's push.**
+
 <!-- Add the next session's entry above this line -->

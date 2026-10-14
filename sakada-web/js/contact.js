@@ -1,5 +1,7 @@
 
 import { supabase } from "./supabase-client.js";
+import { checkName, checkEmail, emailChecker, checkMessage, checkBookingCode } from "./validators.js";
+import { validateFields, clearWhenFixed, clearFieldErrors } from "./field-errors.js";
 
 const form = document.getElementById("contactForm");
 const fields = document.getElementById("contactFields");
@@ -17,32 +19,24 @@ const purpose = document.getElementById("contactPurpose");
 const codeField = document.getElementById("contactCodeField");
 const codeInput = document.getElementById("contactCode");
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Topics where a booking code is useful. Must stay inside the DB's
 // contact_purpose_valid list (booking, driver, vendor, support, other).
 const CODE_TOPICS = new Set(["booking", "support"]);
 const DESKTOP = window.matchMedia("(min-width: 901px)");
 
-const REQUIRED = [
-  {
-    input: nameInput,
-    error: document.getElementById("contactNameError"),
-    check: (v) => (v ? "" : "Enter your name."),
-  },
-  {
-    input: emailInput,
-    error: document.getElementById("contactEmailError"),
-    check: (v) => {
-      if (!v) return "Enter your email so we can reply.";
-      return EMAIL_RE.test(v) ? "" : "That email doesn't look right. Check it, like name@email.com.";
-    },
-  },
-  {
-    input: messageInput,
-    error: document.getElementById("contactMessageError"),
-    check: (v) => (v ? "" : "Write your message."),
-  },
+const checkCode = (v) => (codeField.hidden ? "" : checkBookingCode(v));
+const RULES = [
+  [nameInput, checkName],
+  [emailInput, emailChecker()],
+  [codeInput, checkCode],
+  [messageInput, checkMessage],
 ];
+clearWhenFixed([
+  [nameInput, checkName],
+  [emailInput, (v) => checkEmail(v)],
+  [codeInput, checkCode],
+  [messageInput, checkMessage],
+]);
 
 // Role pills are radios. Both questions are optional, so clicking the
 // selected pill again clears it.
@@ -61,37 +55,11 @@ document.querySelectorAll(".ct-pill").forEach((label) => {
 function syncTopic() {
   purpose.classList.toggle("is-empty", purpose.value === "");
   // A typed code stays in the field if the topic changes, but is only
-  // sent for booking topics (see the submit handler).
+  // checked and sent for booking topics.
   codeField.hidden = !CODE_TOPICS.has(purpose.value);
+  if (codeField.hidden) clearFieldErrors([codeInput]);
 }
 purpose.addEventListener("change", syncTopic);
-
-function showError(field, msg) {
-  field.error.textContent = msg;
-  field.error.hidden = !msg;
-  if (msg) field.input.setAttribute("aria-invalid", "true");
-  else field.input.removeAttribute("aria-invalid");
-}
-
-/** Shows every field error and returns the first invalid input, or null. */
-function validate() {
-  let first = null;
-  for (const field of REQUIRED) {
-    const msg = field.check(field.input.value.trim());
-    showError(field, msg);
-    if (msg && !first) first = field.input;
-  }
-  return first;
-}
-
-// Once a field has been flagged, clear its error as soon as it's fixed.
-REQUIRED.forEach((field) => {
-  field.input.addEventListener("input", () => {
-    if (field.input.hasAttribute("aria-invalid")) {
-      showError(field, field.check(field.input.value.trim()));
-    }
-  });
-});
 
 let sending = false;
 
@@ -121,12 +89,7 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (sending) return;
   sendError.hidden = true;
-
-  const firstInvalid = validate();
-  if (firstInvalid) {
-    firstInvalid.focus();
-    return;
-  }
+  if (!validateFields(RULES)) return;
 
   const name = nameInput.value.trim();
   const email = emailInput.value.trim();
@@ -163,7 +126,7 @@ againBtn.addEventListener("click", () => {
   form.reset();
   nameInput.value = name;
   emailInput.value = email;
-  REQUIRED.forEach((field) => showError(field, ""));
+  clearFieldErrors([nameInput, emailInput, codeInput, messageInput]);
   syncTopic();
   submitBtn.textContent = "Send message";
   sendError.hidden = true;

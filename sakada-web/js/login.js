@@ -3,6 +3,8 @@ import {
   loginWithGoogle,
   getCurrentProfile,
 } from "./auth.js";
+import { checkEmail, emailChecker, checkPassword } from "./validators.js";
+import { validateFields, clearWhenFixed } from "./field-errors.js";
 
 const DASHBOARD_PATHS = {
   farmer: "../dashboard/farmer/index.html",
@@ -19,9 +21,20 @@ function showMessage(text, type) {
 
 const form = document.getElementById("loginForm");
 const submitBtn = document.getElementById("submitBtn");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const RULES = [
+  [emailInput, emailChecker()],
+  [passwordInput, checkPassword],
+];
+clearWhenFixed([
+  [emailInput, (v) => checkEmail(v)],
+  [passwordInput, checkPassword],
+]);
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (!validateFields(RULES)) return;
   submitBtn.disabled = true;
   submitBtn.textContent = "Logging in...";
 

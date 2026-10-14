@@ -1,4 +1,6 @@
 import { registerWithEmail, loginWithGoogle } from "./auth.js";
+import { checkName, checkEmail, emailChecker, checkNewPassword } from "./validators.js";
+import { validateFields, clearWhenFixed } from "./field-errors.js";
 
 const tabs = document.querySelectorAll(".role-tabs button");
 const params = new URLSearchParams(window.location.search);
@@ -31,9 +33,23 @@ function showMessage(text, type) {
 
 const form = document.getElementById("registerForm");
 const submitBtn = document.getElementById("submitBtn");
+const nameInput = document.getElementById("fullName");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const RULES = [
+  [nameInput, checkName],
+  [emailInput, emailChecker()],
+  [passwordInput, checkNewPassword],
+];
+clearWhenFixed([
+  [nameInput, checkName],
+  [emailInput, (v) => checkEmail(v)],
+  [passwordInput, checkNewPassword],
+]);
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (!validateFields(RULES)) return;
   submitBtn.disabled = true;
   submitBtn.textContent = "Creating account...";
 

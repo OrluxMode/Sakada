@@ -88,3 +88,33 @@
   resize: vertical;
   min-height: 100px;
 }
+
+
+/* Per-field errors (js/field-errors.js) */
+.field-error {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #f2a98a;
+}
+.field-error[hidden] { display: none; }
+.field-error-fix {
+  padding: 10px 0;
+  margin: -10px 0;
+  border: 0;
+  background: none;
+  color: var(--accent-amber);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.field-error-fix:hover,
+.field-error-fix:focus-visible { color: var(--text-cream); }
+.field input[aria-invalid="true"],
+.field textarea[aria-invalid="true"],
+.field select[aria-invalid="true"] {
+  border-color: #e0542f;
+  box-shadow: 0 0 0 1px #e0542f;
+}

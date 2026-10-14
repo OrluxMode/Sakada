@@ -18,6 +18,8 @@ import {
 import { toastSuccess, toastError } from "./toast.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
 import { getMyVehicle, saveMyVehicle } from "./driver-profile.js";
+import { checkVehicleType, checkPlate } from "./validators.js";
+import { validateFields, clearWhenFixed } from "./field-errors.js";
 
 const STATUS_FLOW = {
   driver_assigned: { next: "picked_up", label: "Mark Picked Up" },
@@ -50,12 +52,19 @@ if (vehicle) {
   document.getElementById("vehiclePlate").value = vehicle.vehicle_plate || "";
 }
 
+const VEHICLE_RULES = [
+  [document.getElementById("vehicleType"), checkVehicleType],
+  [document.getElementById("vehiclePlate"), checkPlate],
+];
+clearWhenFixed(VEHICLE_RULES);
+
 document.getElementById("vehicleForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (getIsOffline()) {
     toastError("Can't save — you're offline");
     return;
   }
+  if (!validateFields(VEHICLE_RULES)) return;
   const btn = document.getElementById("vehicleSaveBtn");
   const typeValue = document.getElementById("vehicleType").value;
   const plateValue = document.getElementById("vehiclePlate").value;
