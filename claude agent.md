@@ -1459,4 +1459,22 @@
 - **Uncommitted, waiting for the user's push.**
 - Possible follow-up: the login page still uses the old card (14px inputs, Title Case "Log In", system-font buttons).
 
+### 2026-10-14: Login page prompt written
+- User: "yes bro" (bring login in line with the new signup).
+- Built and tested on a scratch copy:
+  - login.html uses the `.signup` layout (photo panel / thin band, 48px fields, show/hide, "Log in", busy spinners)
+  - login.js maps errors via the new `loginErrorCopy` in signup-result.js (invalid credentials, unconfirmed, offline, rate limit, unknown)
+  - signup.css: `.signup-admin` line + logo 44px
+  - 4 unit + 2 e2e tests
+  - no "Forgot password?" link: reset isn't built
+- Results: lint clean, unit 118/118, e2e 47/47; 1440/390 OK; detector clean. Admin login unchanged (old card, admin-only).
+- Wrote **`opencode prompt - login page.md`**. The signup build is also still uncommitted.
+- Next: user runs OpenCode, then Claude verifies the files byte-for-byte against the scratch copy `scratchpad/web2`.
+
+### 2026-10-14: Login build verified
+- User pushed the signup as `e283ca1`.
+- OpenCode's 6 login files are byte-identical to Claude's tested copy; nothing else changed (admin login untouched).
+- Results: lint clean, unit 118/118, e2e 47/47; the real page at 1440/390 has no page errors and no overflow.
+- **Uncommitted, waiting for the user's push.**
+
 <!-- Add the next session's entry above this line -->

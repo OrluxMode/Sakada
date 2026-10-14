@@ -1,4 +1,4 @@
-// Turns a Supabase sign-up result into what the sign-up page shows.
+// Turns a Supabase sign-up or log-in result into what the page shows.
 // Never show Supabase's own error.message: it's developer English.
 
 /**
@@ -18,15 +18,19 @@ export const OFFLINE_MESSAGE =
  * Plain copy for a sign-up (or Google) error.
  * `field` says which input the message belongs on; null = the form message.
  */
+function isOffline(error) {
+  return (
+    error?.name === "AuthRetryableFetchError" ||
+    /failed to fetch|networkerror|load failed/i.test(String(error?.message || ""))
+  );
+}
+
 export function signupErrorCopy(error) {
   const code = String(error?.code || "");
   const message = String(error?.message || "");
   const status = error?.status;
 
-  if (
-    error?.name === "AuthRetryableFetchError" ||
-    /failed to fetch|networkerror|load failed/i.test(message)
-  ) {
+  if (isOffline(error)) {
     return { kind: "offline", field: null, message: OFFLINE_MESSAGE };
   }
   if (
@@ -62,4 +66,21 @@ export function signupErrorCopy(error) {
     field: null,
     message: "We couldn't create your account. Try again in a minute.",
   };
+}
+
+/** Plain copy for a log-in (or Google) error, shown as the form message. */
+export function loginErrorCopy(error) {
+  const code = String(error?.code || "");
+  const message = String(error?.message || "");
+  if (isOffline(error)) return OFFLINE_MESSAGE;
+  if (code === "email_not_confirmed" || /not confirmed/i.test(message)) {
+    return "Confirm your email first: tap the link we sent you. It signs you in.";
+  }
+  if (code === "invalid_credentials" || /invalid login credentials/i.test(message)) {
+    return "That email and password don't match. Check both and try again.";
+  }
+  if (code.startsWith("over_") || error?.status === 429) {
+    return "Too many tries. Wait a few minutes, then try again.";
+  }
+  return "We couldn't log you in. Try again in a minute.";
 }

@@ -5,6 +5,7 @@ import {
 } from "./auth.js";
 import { checkEmail, emailChecker, checkPassword } from "./validators.js";
 import { validateFields, clearWhenFixed } from "./field-errors.js";
+import { loginErrorCopy } from "./signup-result.js";
 
 const DASHBOARD_PATHS = {
   farmer: "../dashboard/farmer/index.html",
@@ -14,15 +15,37 @@ const DASHBOARD_PATHS = {
 };
 
 const messageEl = document.getElementById("formMessage");
-function showMessage(text, type) {
+function showMessage(text) {
   messageEl.textContent = text;
-  messageEl.className = `form-message visible ${type}`;
+  messageEl.className = "form-message visible error";
+}
+function clearMessage() {
+  messageEl.textContent = "";
+  messageEl.className = "form-message";
+}
+
+// Busy state for the submit and Google buttons: spinner + new label.
+function setBusy(button, busy, label) {
+  button.disabled = busy;
+  button.classList.toggle("is-busy", busy);
+  button.setAttribute("aria-busy", String(busy));
+  button.querySelector(".btn-label").textContent = label;
 }
 
 const form = document.getElementById("loginForm");
 const submitBtn = document.getElementById("submitBtn");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
+
+// ---- Show / hide password ----
+const passwordToggle = document.getElementById("passwordToggle");
+passwordToggle.addEventListener("click", () => {
+  const show = passwordInput.type === "password";
+  passwordInput.type = show ? "text" : "password";
+  passwordToggle.setAttribute("aria-pressed", String(show));
+  passwordToggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
+});
+
 const RULES = [
   [emailInput, emailChecker()],
   [passwordInput, checkPassword],
@@ -31,27 +54,27 @@ clearWhenFixed([
   [emailInput, (v) => checkEmail(v)],
   [passwordInput, checkPassword],
 ]);
+form.addEventListener("input", clearMessage);
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  clearMessage();
   if (!validateFields(RULES)) return;
-  submitBtn.disabled = true;
-  submitBtn.textContent = "Logging in...";
+  setBusy(submitBtn, true, "Logging in…");
 
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
-
-  const { error } = await loginWithEmail({ email, password });
+  let error;
+  try {
+    ({ error } = await loginWithEmail({
+      email: emailInput.value.trim(),
+      password: passwordInput.value,
+    }));
+  } catch (err) {
+    error = err;
+  }
 
   if (error) {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Log In";
-    showMessage(
-      error.code === "email_not_confirmed" || /not confirmed/i.test(error.message)
-        ? "Confirm your email first: tap the link we sent you. It signs you in."
-        : error.message,
-      "error",
-    );
+    setBusy(submitBtn, false, "Log in");
+    showMessage(loginErrorCopy(error));
     return;
   }
 
@@ -60,9 +83,25 @@ form.addEventListener("submit", async (e) => {
     DASHBOARD_PATHS[profile?.role] || "../index.html";
 });
 
-document
-  .getElementById("googleBtn")
-  .addEventListener("click", async () => {
-    const { error } = await loginWithGoogle();
-    if (error) showMessage(error.message, "error");
-  });
+// ---- Google ----
+const googleBtn = document.getElementById("googleBtn");
+googleBtn.addEventListener("click", async () => {
+  clearMessage();
+  setBusy(googleBtn, true, "Opening Google…");
+  let error;
+  try {
+    ({ error } = await loginWithGoogle());
+  } catch (err) {
+    error = err;
+  }
+  if (error) {
+    setBusy(googleBtn, false, "Continue with Google");
+    showMessage(loginErrorCopy(error));
+  }
+});
+// Coming back with the Back button restores the page from cache: un-stick the buttons.
+window.addEventListener("pageshow", (e) => {
+  if (!e.persisted) return;
+  setBusy(googleBtn, false, "Continue with Google");
+  setBusy(submitBtn, false, "Log in");
+});

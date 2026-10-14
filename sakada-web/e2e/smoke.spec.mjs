@@ -198,7 +198,7 @@ test.describe("email typos are caught", () => {
     await page.goto("/auth/login.html");
     await page.fill("#email", "juan@gmail");
     await page.fill("#password", "x");
-    await page.getByRole("button", { name: "Log In" }).click();
+    await page.getByRole("button", { name: "Log in" }).click();
     await expect(page.locator("#emailError")).toContainText("doesn't look right");
   });
 });
@@ -316,5 +316,30 @@ test.describe("sign up", () => {
     await page.getByRole("button", { name: "Show password" }).click();
     await expect(page.locator("#password")).toHaveAttribute("type", "text");
     await expect(page.getByRole("button", { name: "Hide password" })).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+test.describe("log in", () => {
+  test("a wrong password gets plain words, not Supabase's message", async ({ page }) => {
+    await page.route("**/auth/v1/token**", (route) =>
+      route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({ code: 400, error_code: "invalid_credentials", msg: "Invalid login credentials" }),
+      }),
+    );
+    await page.goto("/auth/login.html");
+    await page.fill("#email", "ana@gmail.com");
+    await page.fill("#password", "wrongpass");
+    await page.getByRole("button", { name: "Log in" }).click();
+    await expect(page.locator("#formMessage")).toHaveText("That email and password don't match. Check both and try again.");
+    await expect(page.getByRole("button", { name: "Log in" })).toBeEnabled();
+  });
+
+  test("show password toggles the field", async ({ page }) => {
+    await page.goto("/auth/login.html");
+    await page.fill("#password", "password123");
+    await page.getByRole("button", { name: "Show password" }).click();
+    await expect(page.locator("#password")).toHaveAttribute("type", "text");
   });
 });

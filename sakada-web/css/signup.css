@@ -1,6 +1,7 @@
 /* ================================================
-   Sign up (auth/register.html). Everything is scoped to .signup,
-   so login and admin login keep the shared auth card.
+   Sign up + log in (auth/register.html, auth/login.html).
+   Everything is scoped to .signup, so admin login keeps the
+   shared auth card.
    Desktop: photo panel left, form right on the 32px grid.
    ≤ 900px: a thin photo band on top, then the form.
    ================================================ */
@@ -40,6 +41,9 @@
   gap: 16px;
 }
 .signup-top .logo {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   font-size: 28px;
 }
 .signup-back {
@@ -357,6 +361,25 @@
 }
 .signup .auth-footer-link a:hover,
 .text-link:hover {
+  color: var(--text-cream);
+}
+
+/* Log in page: the quiet admin line under "Create an account" */
+.signup-admin {
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.signup-admin a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  vertical-align: middle;
+  color: var(--text-muted);
+  text-underline-offset: 3px;
+}
+.signup-admin a:hover {
   color: var(--text-cream);
 }
 

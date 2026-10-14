@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isExistingAccount, signupErrorCopy, OFFLINE_MESSAGE } from "../js/signup-result.js";
+import { isExistingAccount, signupErrorCopy, loginErrorCopy, OFFLINE_MESSAGE } from "../js/signup-result.js";
 
 describe("isExistingAccount", () => {
   it("is true when Supabase returns a user with no identities", () => {
@@ -37,5 +37,25 @@ describe("signupErrorCopy", () => {
   });
   it("puts an invalid email on the email field", () => {
     expect(signupErrorCopy({ code: "email_address_invalid", message: 'Email address "a@b.c" is invalid' }).field).toBe("email");
+  });
+});
+
+describe("loginErrorCopy", () => {
+  it("says the email and password don't match, without saying which", () => {
+    expect(loginErrorCopy({ code: "invalid_credentials", message: "Invalid login credentials" })).toBe(
+      "That email and password don't match. Check both and try again.",
+    );
+  });
+  it("asks an unconfirmed user to tap the email link", () => {
+    expect(loginErrorCopy({ code: "email_not_confirmed", message: "Email not confirmed" })).toMatch(/^Confirm your email first/);
+  });
+  it("maps network failures and rate limits", () => {
+    expect(loginErrorCopy(new TypeError("Failed to fetch"))).toBe(OFFLINE_MESSAGE);
+    expect(loginErrorCopy({ status: 429, message: "x" })).toMatch(/^Too many tries/);
+  });
+  it("never passes Supabase's own message through", () => {
+    expect(loginErrorCopy({ message: "Database error querying schema", status: 500 })).toBe(
+      "We couldn't log you in. Try again in a minute.",
+    );
   });
 });
