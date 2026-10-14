@@ -214,3 +214,25 @@ test("₱ and → use our own fonts, not a system fallback", async ({ page }) =>
   });
   expect(loaded.some((r) => r.includes("U+20B1") && r.includes("U+2192"))).toBe(true);
 });
+
+test.describe("landing theme on the inner pages", () => {
+  for (const path of ["/pages/how-it-works.html", "/pages/for-farmers.html", "/pages/for-vendors.html", "/pages/for-drivers.html", "/pages/contact.html"]) {
+    test(`${path} has the dusk photo hero and the grid`, async ({ page }) => {
+      await page.goto(path);
+      const result = await page.evaluate(() => {
+        const hero = document.querySelector(".hiw-hero, .rp-hero, .ct-hero");
+        return {
+          themed: document.body.classList.contains("theme-dusk"),
+          grid: getComputedStyle(document.body).backgroundImage.includes("linear-gradient"),
+          photo: getComputedStyle(hero, "::before").backgroundImage.includes("hero"),
+        };
+      });
+      expect(result).toEqual({ themed: true, grid: true, photo: true });
+    });
+  }
+
+  test("the landing page is untouched", async ({ page }) => {
+    await page.goto("/index.html");
+    expect(await page.evaluate(() => document.body.classList.contains("theme-dusk"))).toBe(false);
+  });
+});

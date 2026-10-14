@@ -29,7 +29,7 @@
 ## ▶ Resume here (status as of 2026-10-14, everything pushed)
 
 - **Workflow:** Claude designs (impeccable skill + Figma), critiques, reviews, and writes `opencode prompt - *.md` files; **OpenCode (MiMo v2.6 flash free)** builds; Claude verifies (diff vs prompt, headless Chrome 1440/390, `npm run lint`, `npx vitest run`, `npm run test:e2e`). The user pushes manually and runs SQL in Supabase. CI (GitHub Actions `test` + `e2e`) gates Vercel deploys via Deployment Checks.
-- **All work is pushed** (latest `5620e0c "fixed email validation"`, after `ccbfc2c` contact page). #2 (E2E) dropped by the user for now; #3 waits for the user's signal; Features/About redesign dropped. Waiting for the user's next task.
+- **All work is pushed** (latest `df9315a "arrow fix"`; before it `123a8a6` ₱ + In Transit violet, `5620e0c` email validation, `ccbfc2c` contact page). #2 (E2E) dropped for now; Features/About redesign dropped. Icon pass (★☆ ⚠ ℹ✓✕ + emoji) dropped by the user. Waiting for the user's next task.
 - **Shipped so far:**
   - landing (guest + logged-in nav on all pages)
   - How It Works (synced to the canonical example)
@@ -1259,5 +1259,122 @@
 - Real page (for-farmers): "Nueva Ecija → Marikina palengke" uses the new arrow in the hero and the sample card; ₱ fine; In Transit pill violet.
 - **Uncommitted, waiting for the user's push** (8 symbols files added, 8 peso files git-rm'd, fonts.css, e2e).
 - Still open, optional: icon pass for ★☆ ⚠ ℹ✓✕ and the emoji (unicode/emoji used as icons).
+
+- User pushed the arrow glyph (df9315a arrow fix), "success". #3 complete. Nothing pending except the optional icon pass (★☆ ⚠ ℹ✓✕ + emoji).
+
+- User: ignore the dashboard emojis / icon pass (dropped). The user has a new task coming.
+
+### 2026-10-14: Grid background trial on How It Works (Figma)
+- User uploaded a reference image (node `108:335`, "background reference", on page "how it works") and asked to try it as the HIW background, output in Figma.
+- The image is a screenshot of another site, so Claude reproduced its **graph-paper grid** instead of using the screenshot (it has "DEVELOPMENT / AI AND AUTOMATION" bars).
+  - measured: ~28.7px cells (a scaled 32px grid), lines ~+10 lum, brighter crossings
+  - built a 32px cream tile: lines rgba(243,239,228,.05), crossings .10
+- Copies (originals untouched):
+  - desktop **`110:334`** "How It Works (desktop) — grid background" at x 5000
+  - mobile **`110:512`** at x 6540
+  - frame fill = #0b0c09 + tiled grid; Nav/Footer made transparent; Closing band keeps its #14150f panel
+  - grid aligns with the 64px margins
+- Note: the Figma HIW frames are older than the live page (₱2,875 example, blue In Transit). Judge only the background.
+- Next: user decides yes / no / tweak (stronger, fade, sections). If yes: OpenCode prompt (CSS background-image on the HIW page body, no image file needed).
+
+### 2026-10-14: Grid background critique = 21/32 (66%, Acceptable)
+- User: "i love it, use the impeccable critique on that". Dual-agent run on the Figma frames + the live HIW page with grid.css injected. Snapshot `.impeccable/critique/2026-10-14T06-52-59Z__sakada-web-pages-how-it-works-html.md`. Trend for HIW (different heuristic sets): 26/36 → 21/32.
+- **P1:** the grid (1.10:1) is nearly as strong as the real dividers (1.25:1); section rules near-miss grid lines (y894 vs 896 doubled rule).
+- **P1:** a generic dev-tool texture from an AI/dev reference, unearned. Suggest giving it meaning (fare section "worked out") or fading it in the hero only.
+- **P2:**
+  - the PNG tile blurs on 2x/3x phones; use a CSS linear-gradient
+  - the live fare card is transparent (verified in pages.css), so the grid shows behind the prices
+  - the hero chips are opaque patches
+- **P3:** the CTA band breaks the grid, then the footer resumes it; one page only.
+- Live overlay: no anti-patterns. Static: 1 pre-existing likely false positive (cramped-padding hiw-close). Text contrast fine. Grid invisible in glare/low-end LCD.
+- Next: user answers the scope questions.
+
+- **Critique fixes applied in Figma (user: top section fading out, HIW only, all 5 fixes):**
+  - full-page grid removed; new masked layer "Hero grid (fades out)": desktop `113:374` (1440×440 at y 79), mobile `113:377` (402×562 at x −12 so lines hit the 20px gutter)
+  - fade: full to 35%, zero by 90%, so it's gone before the first divider
+  - hero chips made transparent; nav/footer back to #0b0c09
+  - This resolves P1 (divider competition), P2 fare card (no grid behind it now) and P3 (ending).
+- **Build notes for the prompt:**
+  - draw the grid with a CSS `linear-gradient` (crisp at 2x/3x), not the PNG
+  - `mask-image: linear-gradient(#000 35%, transparent 90%)` on a hero `::before`
+  - `background-position` anchored to the gutter
+  - chips `background: transparent`
+  - disable under `forced-colors: active` / `prefers-contrast: more`
+- Next: user reviews, then the OpenCode prompt.
+
+- **User override: "make sure that the background covers the whole page from top to bottom."**
+  - Fade removed; layer renamed "Page grid (top to bottom)" (`113:374` desktop 1440×3057, `113:377` mobile 402×5372 at x −12), behind everything.
+  - nav + footer transparent (grid under them)
+  - Closing band = #14150f at 60% opacity, so the grid carries through faintly
+  - Fare card ("Sample fare") gets a solid #14150f panel (prices on a clean sheet)
+  - hero chips stay transparent
+- Build notes still apply: CSS linear-gradient grid on `body` (crisp at 2x/3x), background-position anchored to the gutter, nav/footer transparent on HIW, `.hiw-close` panel at 60%, `.hiw-fare-card` background var(--panel-dark), chips transparent, off under forced-colors / prefers-contrast: more.
+
+### 2026-10-14: Landing theme applied to the inner pages (Figma)
+- User loves the HIW grid. **Testers: the landing page theme should match the inner pages.** Clarified: the landing page is untouched and is the reference; HIW, For Farmers/Vendors/Drivers and Contact take their background theme from it.
+- Landing theme (nav.css `.hero-photo`): tractor-at-dusk photo (`hero.jpg` 1920×1440, mobile `hero-mobile.jpg` 1200×900) + 3 ink gradients.
+- Built on copies named "… — landing theme" (originals untouched):
+  - photo layer behind each page hero (starts under the nav)
+  - landing grade, slightly deeper because inner heroes are short and the lede sits mid-photo: L→R .75/.2/.15, top→bottom .45/.6/.96, right edge .65
+  - 32px grid top to bottom over everything
+  - nav/footer transparent; closing band #14150f @60%; "Sample fare" / "Form card" solid #14150f
+  - mobile grid at x −12 (20px gutter); mobile uses hero-mobile FILL
+- Per-page desktop crops (CROP imageTransform):
+
+| Page | Crop |
+|---|---|
+| HIW | tractor scene (ty .465) |
+| Farmers | left horizon (sx .62, ty .47) |
+| Vendors | tree + sky (tx .4, sx .6) |
+| Drivers | tractor + trailers close (tx .22, sx .5) |
+| Contact | sky + tree (ty .245) |
+
+- Figma uploads: hero hash d7b8bb4b…, mobile adec3ece…
+- Frames:
+  - HIW `110:334` / `110:512` (photo rects `116:374` / `116:375`)
+  - Farmers `119:338` / `119:542`
+  - Vendors `119:769` / `119:973`
+  - Drivers `119:1199` / `119:1407`
+  - Contact `119:1639` / `119:1726`
+- Next: user reviews. Then one OpenCode prompt:
+  - a shared `.page-photo` hero layer reusing hero.webp/jpg with a per-page `background-position`
+  - a CSS linear-gradient grid on body for these pages
+  - panels for the fare card / form card
+  - forced-colors off
+
+- User approved the landing-theme designs ("yes") and asked: OpenCode prompt vs a Sonnet prompt, which uses fewer tokens?
+- Claude's answer: **OpenCode.**
+  - The detailed prompt costs Claude ~8–12k tokens, but the build costs 0 Claude tokens.
+  - A Sonnet agent needs a shorter brief (~2–4k) but burns ~60–150k Claude-plan tokens doing the build.
+  - Sonnet is only worth it for judgement-heavy tasks.
+- Waiting for the go-ahead to write `opencode prompt - landing theme pages.md`.
+
+- User confirmed the original plan: Claude designs + writes OpenCode prompts + code-reviews/approves; OpenCode builds. Memory `opencode-rotation` updated with the token reasoning (prefer OpenCode over Sonnet agents; lean prompts; bounded reviews).
+
+### 2026-10-14: Landing theme build prompt written
+- Claude drafted the CSS and **tested it by injecting it into all 5 live pages** (1440 + 390). It worked first time: per-page crops, mobile photo, the grid continuous through the hero (photo grid offset by `--nav-h`), form/fare panels.
+- Wrote **`opencode prompt - landing theme pages.md`** (lean):
+  - `<body class="theme-dusk page-…">` on the 5 pages
+  - one CSS block appended to pages.css (all scoped to `.theme-dusk`, so the landing is untouched)
+  - 6 e2e tests
+- Design:
+  - body grid = CSS linear-gradients at 32px, anchored at the gutter
+  - hero `::before` = grid + 3 grade gradients + hero.webp/jpg with per-page size/position; mobile ≤1024px = hero-mobile, cover
+  - nav--static transparent; HIW chips transparent; fare card + ct-card panel; hiw-close panel @60%
+  - grid/photo off under forced-colors / prefers-contrast
+- Next: user runs OpenCode, then Claude reviews.
+
+### 2026-10-14: Landing theme build verified
+- OpenCode matched the prompt exactly:
+  - 5 `<body class="theme-dusk page-…">`
+  - CSS block identical and at the end of pages.css
+  - 6 e2e tests
+  - index.html untouched
+- Results: lint ok, unit 105/105, **e2e 40/40**.
+- Real files in the browser:
+  - For Vendors desktop (tree crop, grid, panel example card)
+  - HIW mobile (mobile photo, transparent chips, grid)
+  - landing unchanged
+- **Uncommitted, waiting for the user's push.**
 
 <!-- Add the next session's entry above this line -->

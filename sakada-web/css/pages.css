@@ -738,3 +738,81 @@
   .rp-after-cta,
   .hiw-fare-card .btn-primary { width: 100%; justify-content: center; }
 }
+
+/* ================================================
+   Landing theme on the inner pages (body.theme-dusk):
+   the landing's dusk photo + grade behind each page hero,
+   and a 32px graph-paper grid from top to bottom.
+   The landing page itself does not use this class.
+   ================================================ */
+.theme-dusk {
+  --grid-line: rgb(var(--cream-rgb) / 0.05);
+  --grid: linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  --grid-x: clamp(20px, 5vw, 64px); /* vertical lines meet the page gutter */
+  --dusk-img: image-set(
+    url("../assets/hero.webp") type("image/webp"),
+    url("../assets/hero.jpg") type("image/jpeg")
+  );
+  --dusk-size: cover;
+  --dusk-pos: center 45%;
+  background-color: var(--bg-black);
+  background-image: var(--grid);
+  background-size: 32px 32px;
+  background-position: var(--grid-x) 0;
+}
+.theme-dusk .nav--static { background: transparent; }
+
+.theme-dusk :is(.hiw-hero, .rp-hero, .ct-hero) {
+  position: relative;
+  isolation: isolate;
+}
+.theme-dusk :is(.hiw-hero, .rp-hero, .ct-hero)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* top layer first: grid (kept in step with the page grid; the hero
+     starts right under the nav), then the landing grade, then the photo */
+  background-image:
+    var(--grid),
+    linear-gradient(270deg, rgb(var(--ink-rgb) / 0.65) 0%, rgb(var(--ink-rgb) / 0) 50%),
+    linear-gradient(180deg, rgb(var(--ink-rgb) / 0.45) 0%, rgb(var(--ink-rgb) / 0.6) 55%, rgb(var(--ink-rgb) / 0.96) 100%),
+    linear-gradient(90deg, rgb(var(--ink-rgb) / 0.75) 0%, rgb(var(--ink-rgb) / 0.2) 45%, rgb(var(--ink-rgb) / 0.15) 70%),
+    var(--dusk-img);
+  background-size: 32px 32px, 32px 32px, auto, auto, auto, var(--dusk-size);
+  background-position:
+    var(--grid-x) calc(-1 * var(--nav-h)),
+    var(--grid-x) calc(-1 * var(--nav-h)),
+    0 0, 0 0, 0 0,
+    var(--dusk-pos);
+  background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+}
+
+/* One photo, a different crop per page (wide screens) */
+.theme-dusk.page-farmers { --dusk-size: 161% auto; --dusk-pos: 0% 46%; }
+.theme-dusk.page-vendors { --dusk-size: 167% auto; --dusk-pos: 100% 26%; }
+.theme-dusk.page-drivers { --dusk-size: 200% auto; --dusk-pos: 44% 41%; }
+.theme-dusk.page-contact { --dusk-pos: center 20%; }
+
+/* Surfaces that sit on the grid */
+.theme-dusk .hiw-hero .chip { background: transparent; }
+.theme-dusk .hiw-fare-card,
+.theme-dusk .ct-card { background: var(--panel-dark); }
+.theme-dusk .hiw-close { background: rgb(20 21 15 / 0.6); }
+
+@media (max-width: 1024px) {
+  .theme-dusk {
+    --dusk-img: image-set(
+      url("../assets/hero-mobile.webp") type("image/webp"),
+      url("../assets/hero-mobile.jpg") type("image/jpeg")
+    );
+  }
+  .theme-dusk[class] { --dusk-size: cover; --dusk-pos: center 60%; }
+}
+
+@media (forced-colors: active), (prefers-contrast: more) {
+  .theme-dusk { background-image: none; }
+  .theme-dusk :is(.hiw-hero, .rp-hero, .ct-hero)::before { display: none; }
+}
