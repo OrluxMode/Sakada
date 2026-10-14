@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Register — Sakada Logistics</title>
+    <title>Sign up — Sakada Logistics</title>
     <meta name="robots" content="noindex" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.supabase.co https://api.mapbox.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com wss://*.supabase.co; frame-src 'none';" />
     <link rel="stylesheet" href="../css/fonts.css" />
@@ -12,77 +12,117 @@
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
-    <main class="auth-page" id="main">
-      <div class="auth-card">
-        <a class="logo" href="../index.html"
-          >SAKA<span class="mark">DA</span></a
-        >
-        <h1>Create your account</h1>
-        <p class="auth-sub">Choose the account type that fits what you do.</p>
+    <div class="signup">
+      <aside class="signup-aside">
+        <div class="signup-top">
+          <a class="logo" href="../index.html">SAKA<span class="mark">DA</span></a>
+          <a class="signup-back" href="../index.html">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
+            <span class="signup-back-long">Back to home</span><span class="signup-back-short">Home</span>
+          </a>
+        </div>
+        <div class="signup-pitch" data-pitch="requester">
+          <p class="signup-headline"><span>Your harvest.</span> <span>Their truck.</span> <span>One booking.</span></p>
+          <p class="signup-lede">See the fare before you book: ₱150 base + ₱15 per km + ₱2 per kg, tolls included. Then follow every delivery from Pending to Delivered.</p>
+        </div>
+        <div class="signup-pitch" data-pitch="driver" hidden>
+          <p class="signup-headline"><span>See the load.</span> <span>Know the fare.</span> <span>Then accept.</span></p>
+          <p class="signup-lede">Every job shows the kg, the route and the fare before you take it. The receiver pays you that exact fare in cash at drop-off.</p>
+        </div>
+      </aside>
 
-        <div class="role-tabs" role="group" aria-label="Account type">
-          <button type="button" data-role="farmer" class="active" aria-pressed="true">
-            Farmer
+      <main class="signup-main" id="main">
+        <div class="signup-panel" id="signupFormPanel">
+          <h1>Create your account</h1>
+          <p class="signup-sub">Book a truck for your harvest, or take delivery jobs as a driver.</p>
+
+          <form id="registerForm" novalidate>
+            <fieldset class="role-field" aria-describedby="roleNote">
+              <legend>I am a…</legend>
+              <p class="role-note" id="roleNote">Farmers and vendors get the same booking tools. Drivers get a jobs account. You can't switch later.</p>
+              <div class="role-cards">
+                <label class="role-card">
+                  <input type="radio" name="role" value="farmer" checked />
+                  <span class="role-card-title">Farmer</span>
+                  <span class="role-card-desc">I grow and ship my harvest.</span>
+                </label>
+                <label class="role-card">
+                  <input type="radio" name="role" value="vendor" />
+                  <span class="role-card-title">Vendor</span>
+                  <span class="role-card-desc">I sell produce and book deliveries.</span>
+                </label>
+                <label class="role-card">
+                  <input type="radio" name="role" value="driver" />
+                  <span class="role-card-title">Driver</span>
+                  <span class="role-card-desc">I drive a truck and take delivery jobs.</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="field">
+              <label for="fullName">Full name</label>
+              <input id="fullName" type="text" required autocomplete="name" />
+            </div>
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" type="email" required autocomplete="email" inputmode="email" />
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <div class="password-wrap">
+                <input id="password" type="password" required minlength="8" autocomplete="new-password" aria-describedby="passwordHint" />
+                <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password" aria-pressed="false">
+                  <svg class="icon-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+                  <svg class="icon-eye-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2" /><path d="M6.6 6.6A17 17 0 0 0 2 12s3.5 8 10 8a9.7 9.7 0 0 0 5.4-1.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><path d="M2 2l20 20" /></svg>
+                </button>
+              </div>
+              <p class="field-error" id="passwordError" hidden></p>
+              <p class="signup-hint" id="passwordHint">At least 8 characters.</p>
+            </div>
+
+            <div id="formMessage" class="form-message" role="alert"></div>
+
+            <button class="btn-primary" type="submit" id="submitBtn">
+              <span class="btn-spinner" aria-hidden="true"></span>
+              <span class="btn-label">Create account</span>
+            </button>
+            <p class="signup-confirm-note">We'll email you a link to confirm your account.</p>
+          </form>
+
+          <div class="auth-divider">or</div>
+
+          <button class="google-btn" id="googleBtn" type="button">
+            <span class="btn-spinner" aria-hidden="true"></span>
+            <svg class="google-g" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9C16.66 14.2 17.64 11.9 17.64 9.2z" />
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.9v2.33A9 9 0 0 0 9 18z" />
+              <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.9A9 9 0 0 0 0 9c0 1.45.35 2.83.9 4.03l3.05-2.33z" />
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .9 4.97l3.05 2.33C4.66 5.17 6.65 3.58 9 3.58z" />
+            </svg>
+            <span class="btn-label">Continue with Google</span>
           </button>
-          <button type="button" data-role="vendor" aria-pressed="false">Vendor</button>
-          <button type="button" data-role="driver" aria-pressed="false">Driver</button>
+
+          <p class="auth-footer-link">
+            Already have an account? <a href="login.html">Log in</a>
+          </p>
         </div>
 
-        <div id="formMessage" class="form-message" role="alert"></div>
-
-        <form id="registerForm" novalidate>
-          <div class="field">
-            <label for="fullName">Full name</label>
-            <input id="fullName" type="text" required autocomplete="name" />
+        <section class="signup-panel signup-success" id="signupSuccess" tabindex="-1" aria-labelledby="successTitle" hidden>
+          <svg class="signup-success-icon" width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="23" fill="#e0972f" fill-opacity=".12" stroke="#e0972f" stroke-opacity=".5" /><path d="M12 17h24v15H12z" stroke="#f0b25a" stroke-width="2.5" stroke-linejoin="round" /><path d="M12 18l12 8 12-8" stroke="#f0b25a" stroke-width="2.5" stroke-linejoin="round" /></svg>
+          <h2 id="successTitle">Check your email</h2>
+          <p class="signup-success-text">We sent a link to <strong id="successEmail"></strong>. Tap it to confirm. It signs you in and opens your dashboard.</p>
+          <div class="signup-next">
+            <p class="signup-next-label">Then</p>
+            <p id="successNext"></p>
           </div>
-          <div class="field">
-            <label for="email">Email</label>
-            <input id="email" type="email" required autocomplete="email" />
-          </div>
-          <div class="field">
-            <label for="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              required
-              minlength="8"
-              autocomplete="new-password"
-            />
-          </div>
-          <button class="btn-primary" type="submit" id="submitBtn">
-            Create Account
-          </button>
-        </form>
-
-        <div class="auth-divider">or</div>
-
-        <button class="google-btn" id="googleBtn" type="button">
-          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-            <path
-              fill="#4285F4"
-              d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9C16.66 14.2 17.64 11.9 17.64 9.2z"
-            />
-            <path
-              fill="#34A853"
-              d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.9v2.33A9 9 0 0 0 9 18z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.9A9 9 0 0 0 0 9c0 1.45.35 2.83.9 4.03l3.05-2.33z"
-            />
-            <path
-              fill="#EA4335"
-              d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .9 4.97l3.05 2.33C4.66 5.17 6.65 3.58 9 3.58z"
-            />
-          </svg>
-          Continue with Google
-        </button>
-
-        <p class="auth-footer-link">
-          Already have an account? <a href="login.html">Log in</a>
-        </p>
-      </div>
-    </main>
+          <p class="signup-spam">Didn't get it? Check your spam or promotions folder.</p>
+          <p class="signup-success-links">
+            <span>Wrong email? <button type="button" class="text-link" id="startOver">Start over</button></span>
+            <span>Already confirmed? <a class="text-link" href="login.html">Log in</a></span>
+          </p>
+        </section>
+      </main>
+    </div>
 
     <script type="module" src="../js/register.js"></script>
   </body>

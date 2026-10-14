@@ -1397,4 +1397,66 @@
 - **Uncommitted, waiting for the user's push:** `css/pages.css` (1 line removed).
 - Lesson: on the inner pages the nav stays solid like the landing; the grid starts below it.
 
+- User: "goodd thank you so much bro! we will resume later". Session ended. Next session: confirm the user pushed the `css/pages.css` nav fix, then take the next task (see **▶ Resume here**).
+
+- New session 2026-10-14: user said "broo". Nav fix confirmed pushed as `19c7065`. Untracked: `.impeccable/critique/...register-html.md` (register critique). Asked the user for the next task.
+
+### 2026-10-14: Signup critique 23/40 + Figma fixes
+- User: run impeccable critique on the signup page and apply the fixes in Figma.
+- Dual-agent critique of `auth/register.html`: **23/40 (Acceptable)**. Snapshot `.impeccable/critique/2026-10-14T13-17-25Z__sakada-web-auth-register-html.md` (the 09:02 run said 29 but wrongly measured inputs ~44px; they are 39px/14px).
+- P1: permanent role (0006) looks trivial and is unexplained; sizes under floors (inputs 39/14px, tabs 37/13px, labels 13px, buttons in system font: no `font:inherit`); input/tab borders 1.3:1 (fails 1.4.11). P2: raw Supabase errors, no Log in path, no Google busy; password rule hidden, flat success.
+- Detector clean (CLI + browser with bypassCSP).
+- **Figma page "signup" (`121:377`), file `8q1102hOL3ZvFsiePuJrQv`:**
+  - desktop `131:294` (1440x921): left photo panel + "Your harvest. Their truck. One booking." + real fare formula; right form on the grid
+  - mobile `133:299` (390x1236): photo band, form with no card
+  - states `133:376`: email already registered + Log in instead / password shown; offline message + Google "Opening Google…"; success "Check your email" + next step + Go to log in
+  - fixes: "I am a…" radio cards with one-line descriptions + "You can't change this later"; 48px inputs, 16px text, borders cream .45; "At least 8 characters." hint + show/hide (44px); "We'll email you a link…" before submit; sentence-case "Create account"; Back to home link; Log in row 44px
+- Open question to the owner: merge Farmer + Vendor at signup (same dashboard)?
+- Next: user reviews in Figma, then Claude writes the OpenCode prompt.
+
+- User answered: keep 3 roles; next = critique the Figma signup design again (dual-agent run in progress on `131:294` / `133:299` / `133:376`). User typed /usage mid-run.
+
+### 2026-10-14: Signup Figma critique v2: 26/40
+- Dual-agent critique of the Figma signup frames. **26/40** (23 → 26). Snapshot in `.impeccable/critique/` (slug sakada-web-auth-register-html).
+- **P0 (verified in code):** "email already registered" can't fire. register.js checks only `error`; Supabase returns `identities: []` for existing emails, so the user would see a false "Check your email". Build must check `identities.length === 0`.
+- **P1 (verified):** the email link opens callback.html, which signs in → dashboard, so "then log in" and the amber "Go to log in" are wrong. Fix the success copy, show a role-specific next step, demote log in.
+- P1: the permanence note is too quiet; say Farmer + Vendor get the same booking tools. P2: mobile double headline; missing states (empty errors, gmail.co suggestion, Creating account…, ?role=driver; offline and Google split).
+- Measurements clean: text ≥4.5:1, borders 4.07:1, inputs 48px. Minor: Back to home 42px, "Log in instead" 18px.
+- Next: ask the user what to fix in Figma.
+
+### 2026-10-14: Signup critique-v2 fixes applied in Figma
+- User chose: all 5 + minor; mobile = thin photo band.
+- Desktop `131:294` (now 1440x976):
+  - removed the right-aligned note; added a 16px role note under "I am a…": "Farmers and vendors get the same booking tools. Drivers get a jobs account. You can't switch later."
+  - Vendor = "I sell produce and book deliveries."; role descriptions 15px
+  - Back to home 44px
+- Mobile `133:299` (390x1185): 124px photo band, logo + Home + one-line tagline; "Create your account" is the only big heading. Same role fixes.
+- **New** `145:299` desktop ?role=driver: Driver selected; "See the load. Know the fare. Then accept." + "Every job shows the kg, the route and the fare before you take it. The receiver pays you that exact fare in cash at drop-off."
+- **States rebuilt** as `145:380` (old `133:376` deleted), 8 states + build notes:
+  1. empty submit
+  2. gmail.co fix
+  3. email already registered (Log in instead, 44px)
+  4. Creating account…
+  5. offline
+  6. Google opening (+ "you keep the role you signed up with")
+  7. success farmer/vendor: "Tap it to confirm. It signs you in and opens your dashboard." + Start over / Already confirmed? Log in; no amber log-in button
+  8. success driver
+  - Build notes: identities.length === 0; map errors (rate limit, network); fieldset/radios + aria-describedby; success replaces the form; login.js maps "Email not confirmed"; button font inherit.
+- Next: user reviews; options are critique again or write the OpenCode prompt.
+
+### 2026-10-14: Signup OpenCode prompt written
+- User: "im satisfied bro, write the opencode build prompt".
+- Claude wrote and tested the full code on a scratch copy of sakada-web:
+  - files: register.html, new css/signup.css (all scoped to `.signup`), new js/signup-result.js, register.js, a small login.js change, new unit tests, 5 new e2e tests, and the old `.role-tabs` CSS removed
+  - results: lint clean, **unit 114/114, e2e 45/45**, Playwright at 1440/390/320; all states work, no overflow, targets ≥44px, detector clean
+- Wrote **`opencode prompt - signup page.md`** (10 sections, full file contents, copy exactly).
+- Found: the local `serve` drops `?role=` when it redirects `register.html` to the clean URL, so the e2e tests use `/auth/register?role=driver`. Vercel (no cleanUrls) keeps the query.
+- Next: user runs OpenCode, then Claude reviews (diff vs prompt, 1440/390 screenshots vs Figma, tests).
+
+### 2026-10-14: Signup build verified
+- OpenCode's 9 files are byte-identical to Claude's tested reference copy; no other files changed.
+- Results on the real project: lint clean, unit 114/114, e2e 45/45. Real page at 1440 and 390 (?role=driver) matches Figma, with no page errors. Login page unchanged.
+- **Uncommitted, waiting for the user's push.**
+- Possible follow-up: the login page still uses the old card (14px inputs, Title Case "Log In", system-font buttons).
+
 <!-- Add the next session's entry above this line -->

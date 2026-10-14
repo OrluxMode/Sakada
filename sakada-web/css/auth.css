@@ -39,35 +39,6 @@
   margin: 0 0 28px;
 }
 
-/* Scoped to .auth-card — these were global `.role-tabs button`, which
-   outranked contact.css `.role-tab` (0,2,1 vs 0,1,0) and bled amber
-   text onto the contact page's amber chip. */
-.auth-card .role-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-sm);
-  margin-bottom: var(--space-lg);
-}
-
-.auth-card .role-tabs button {
-  background: var(--bg-black);
-  border: 1px solid var(--line);
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  padding: 10px 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.auth-card .role-tabs button.active {
-  border-color: var(--accent-amber);
-  color: var(--accent-amber);
-}
-
 .auth-card .btn-primary {
   width: 100%;
   justify-content: center;

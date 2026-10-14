@@ -46,7 +46,12 @@ form.addEventListener("submit", async (e) => {
   if (error) {
     submitBtn.disabled = false;
     submitBtn.textContent = "Log In";
-    showMessage(error.message, "error");
+    showMessage(
+      error.code === "email_not_confirmed" || /not confirmed/i.test(error.message)
+        ? "Confirm your email first: tap the link we sent you. It signs you in."
+        : error.message,
+      "error",
+    );
     return;
   }
 

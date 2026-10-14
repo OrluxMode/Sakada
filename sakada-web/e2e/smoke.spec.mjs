@@ -171,7 +171,7 @@ test.describe("email typos are caught", () => {
     await page.fill("#fullName", "Ana Reyes");
     await page.fill("#email", "name@gmail.co");
     await page.fill("#password", "password123");
-    await page.getByRole("button", { name: "Create Account" }).click();
+    await page.getByRole("button", { name: "Create account" }).click();
     await expect(page.locator("#emailError")).toContainText("Did you mean name@gmail.com?");
     expect(called).toBe(false);
     await page.getByRole("button", { name: "Use name@gmail.com" }).click();
@@ -234,5 +234,87 @@ test.describe("landing theme on the inner pages", () => {
   test("the landing page is untouched", async ({ page }) => {
     await page.goto("/index.html");
     expect(await page.evaluate(() => document.body.classList.contains("theme-dusk"))).toBe(false);
+  });
+});
+
+test.describe("sign up", () => {
+  const signupUser = (identities) => ({
+    id: "u1",
+    aud: "authenticated",
+    role: "",
+    email: "ana@gmail.com",
+    identities,
+    user_metadata: {},
+    app_metadata: {},
+    created_at: "2026-10-14T00:00:00Z",
+  });
+  async function fillSignup(page) {
+    await page.fill("#fullName", "Ana Reyes");
+    await page.fill("#email", "ana@gmail.com");
+    await page.fill("#password", "password123");
+  }
+
+  test("?role=driver preselects Driver and shows the driver pitch", async ({ page }) => {
+    // The local `serve` drops the query when it redirects *.html to a clean
+    // URL, so open the clean URL (Vercel serves the .html file as-is).
+    await page.goto("/auth/register?role=driver");
+    await expect(page.getByRole("radio", { name: /Driver/ })).toBeChecked();
+    await expect(page.locator('[data-pitch="driver"]')).toBeVisible();
+    await page.getByRole("radio", { name: /Farmer/ }).check();
+    await expect(page.locator('[data-pitch="requester"]')).toBeVisible();
+  });
+
+  test("an existing email gets Log in instead, not a fake success", async ({ page }) => {
+    await page.route("**/auth/v1/signup**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(signupUser([])) }),
+    );
+    await page.goto("/auth/register.html");
+    await fillSignup(page);
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.locator("#emailError")).toContainText("This email already has an account.");
+    await expect(page.locator("#emailError a")).toHaveAttribute("href", "login.html");
+    await expect(page.locator("#signupSuccess")).toBeHidden();
+  });
+
+  test("success replaces the form and Start over brings it back", async ({ page }) => {
+    await page.route("**/auth/v1/signup**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(signupUser([{ id: "i1", provider: "email" }])),
+      }),
+    );
+    await page.goto("/auth/register?role=driver"); // clean URL: see the test above
+    await fillSignup(page);
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.locator("#signupSuccess")).toBeVisible();
+    await expect(page.locator("#successEmail")).toHaveText("ana@gmail.com");
+    await expect(page.locator("#successNext")).toContainText("Add your vehicle");
+    await expect(page.locator("#registerForm")).toBeHidden();
+    await page.getByRole("button", { name: "Start over" }).click();
+    await expect(page.locator("#registerForm")).toBeVisible();
+    await expect(page.locator("#email")).toHaveValue("ana@gmail.com");
+  });
+
+  test("a rate-limit error is shown in plain words", async ({ page }) => {
+    await page.route("**/auth/v1/signup**", (route) =>
+      route.fulfill({
+        status: 429,
+        contentType: "application/json",
+        body: JSON.stringify({ code: 429, error_code: "over_email_send_rate_limit", msg: "email rate limit exceeded" }),
+      }),
+    );
+    await page.goto("/auth/register.html");
+    await fillSignup(page);
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.locator("#formMessage")).toHaveText("Too many sign-ups right now. Try again in a few minutes.");
+  });
+
+  test("show password toggles the field", async ({ page }) => {
+    await page.goto("/auth/register.html");
+    await page.fill("#password", "password123");
+    await page.getByRole("button", { name: "Show password" }).click();
+    await expect(page.locator("#password")).toHaveAttribute("type", "text");
+    await expect(page.getByRole("button", { name: "Hide password" })).toHaveAttribute("aria-pressed", "true");
   });
 });
