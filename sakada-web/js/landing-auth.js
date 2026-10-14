@@ -54,8 +54,7 @@ export function applyLandingState(doc, state) {
   doc.querySelectorAll('[data-auth="guest"]').forEach((el) => (el.hidden = true));
   doc.querySelectorAll('[data-auth="member"]').forEach((el) => (el.hidden = false));
 
-  const dash = doc.querySelector("[data-dashboard-link]");
-  if (dash) dash.href = state.dashboard;
+  doc.querySelectorAll("[data-dashboard-link]").forEach((el) => (el.href = state.dashboard));
 
   const book = doc.querySelector("[data-book-link]");
   if (book) book.href = state.book;

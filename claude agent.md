@@ -26,19 +26,33 @@
 - Figma MCP is on the **Starter plan with a tool-call limit**. Batch the work into a few big `use_figma` calls.
 - Capturing the local or live site into Figma (`generate_figma_design`) gets blocked by the permission classifier. Rebuild from code instead.
 
-## ▶ Resume here (status as of 2026-10-13, everything pushed)
+## ▶ Resume here (status as of 2026-10-14, everything pushed)
 
-- **Workflow:** Claude designs, critiques, audits, reviews and writes prompts. **OpenCode (MiMo v2.6 flash free)** writes the code from `opencode prompt - *.md` files in the project root. Then Claude verifies (git diff, headless Chrome screenshots/measurements, `npm test`, curl). The user commits/pushes **manually** and runs SQL in the Supabase SQL editor.
-- **All work is pushed** (latest commit `26dff6e "for safety deploying"`, main = origin/main). All pages use self-hosted fonts; ESLint + 26 Playwright smoke tests run in CI next to the 66 unit tests; **Vercel Deployment Checks block production on the `test` + `e2e` jobs** (user set it up). Logged-in nav works on all 9 public pages; the For pages' buttons go to register?role= (guests) or the dashboard (logged in). The user confirmed live: GitHub Actions "Tests" is green, and Log Out / admin pages / bell work.
-- **Shipped:**
-  - landing v2 (audit 20/20) + logged-in landing
-  - How It Works (critique 26/36)
-  - security N1–N23 + migrations 0015–0018
-  - admin pagination, status pills (`--status-*` tokens), notification panel
-  - CI (`.github/workflows/test.yml`, 63 tests)
-- **Nothing is pending.**
-- **Optional later:** full login/booking E2E tests (need a separate Supabase test project), `--shadow-*` tokens, and bringing the other inner pages (For Farmers/Vendors/Drivers, Features, About, Contact) up to the How It Works design level (they still use the old step-list style). Existing Google users wrongly set to farmer can be fixed by hand in Supabase.
-- **Dropped by the user:** the Filipino truck photo. Keep the current hero (PRODUCT.md updated).
+- **Workflow:** Claude designs (impeccable skill + Figma), critiques, reviews, and writes `opencode prompt - *.md` files; **OpenCode (MiMo v2.6 flash free)** builds; Claude verifies (diff vs prompt, headless Chrome 1440/390, `npm run lint`, `npx vitest run`, `npm run test:e2e`). The user pushes manually and runs SQL in Supabase. CI (GitHub Actions `test` + `e2e`) gates Vercel deploys via Deployment Checks.
+- **All work is pushed** (latest commit `a1f826c "for farmers, vendors and drivers"`, main = origin/main). Nothing pending.
+- **Shipped so far:**
+  - landing (guest + logged-in nav on all pages)
+  - How It Works (synced to the canonical example)
+  - For Farmers / For Vendors / For Drivers (Figma pages "for farmers" → frames "for farmers polish", "for vendors", "for drivers")
+  - security N1–N23 + migrations 0015–0019
+  - driver name/vehicle on requester cards + "Book again" + driver vehicle form
+  - admin pagination, status pills, notification panel
+  - self-hosted fonts everywhere
+  - ESLint + Playwright smoke tests in CI
+- **Product facts to keep using** (also in PRODUCT.md):
+  - canonical example: Nueva Ecija → Marikina palengke, 120 km, 800 kg = ₱3,550, tolls included
+  - **the receiver pays the driver in cash at drop-off (like COD: the farmer ships, the buyer/vendor pays)**
+  - nationwide; in-app notifications only; admin can cancel until pickup
+- **Known limits / optional next:**
+  - ₱ isn't in the bundled fonts (falls back to the system font; fine)
+  - the other inner pages (Features, About, Contact) still use the old style and could get the same redesign
+  - full login/booking E2E needs a Supabase test project
+  - teal/blue status hues are close (site tokens)
+- **Recurring lessons:**
+  - impeccable critique scores plateau around 72–78%, and reviewers sometimes flip-flop. Verify reviewer claims in code before acting.
+  - Figma vectors re-anchor to their bbox.
+  - headless Chrome + `serve` drops query strings on `.html` redirects, so use clean URLs.
+- **Dropped by the user:** the Filipino truck photo. Keep the current hero.
 - **User decisions to respect:** keep the current tractor hero photo; Option A layout; the landing page is single-purpose.
 - **Review toolkit that works:**
   - `npx serve . -l <port>` from `sakada-web/` (kill with `fuser -k <port>/tcp`)
@@ -1042,5 +1056,129 @@
      - Claude's first regex wrap misplaced the pay section; it was repaired by a block reorder (section/div counts verified 5/5, 39/39) and re-tested.
 - Screenshots at 1440 + 390 match Figma. The impeccable critique backlog for for-farmers closed automatically (file changed).
 - **Uncommitted, waiting for the push:** driver details/Book again (+0019 already run), the role pages, HIW sync, font cleanup.
+
+### 2026-10-14 (end): Pushed and saved
+- User pushed `a1f826c`. Rewrote **▶ Resume here**: everything is shipped, nothing pending.
+
+### 2026-10-14: New session check-in
+- User said "bro"; Claude confirmed state (a1f826c pushed, nothing pending) and asked what's next.
+- User said "claude agent.md"; Claude re-read **▶ Resume here** and summarized the status and optional next steps.
+
+- User said "claude agent.md" again; Claude re-read **▶ Resume here**, confirmed nothing is pending (only this log is modified), and asked what's next.
+
+- User said "bro" again; Claude confirmed a1f826c is pushed, flagged the uncommitted PRODUCT.md receiver-pays note, and asked what's next.
+
+### 2026-10-14: Features / About / Contact designed in Figma (#1), E2E (#2) next, small fixes (#3) on hold
+- User picked next steps: **#1 redesign Features/About/Contact**, then **#2 full login/booking E2E** (after #1 ships; needs a Supabase test project). **#3 (₱ font + teal/blue hues) waits for the user's signal.**
+- **Owner facts (added to PRODUCT.md):**
+  - no public email, no hotline (hello@sakadalogistics.ph and +63 (2) 8800-SAKA were fake)
+  - the contact form is the only channel (`contact_submissions`, admin-only SELECT per 0014)
+  - remove all invented promises: 2-hour reply, hours, 24/7, guaranteed payouts, onboarding in under 24h, cold chain, the stat strip
+  - About = the problem and the product only, no team or origin story
+- **Figma (file `8q1102hOL3ZvFsiePuJrQv`), cloned from the "for vendors" frames:**
+  - page "features" `88:294`: desktop `88:295`, mobile `89:304`
+    - Before you book (3 points + fare card)
+    - While it's on the road (stages, big live map, "Know who's coming", "Get told at each stage" with the real trigger text "A driver accepted your delivery SK-00142.")
+    - After it arrives / If you drive (two columns)
+    - Also built in (weak signal, pay through Sakada "coming soon")
+    - close: "Book your first delivery" / "Want to drive? Sign up to drive"
+  - page "about" `90:294`: desktop `90:295`, mobile `91:302`
+    - hero + example trip
+    - "Same trip, two ways" table: Today, by phone vs With Sakada; stacked rows on mobile
+    - What we hold to (4 principles)
+    - Who it's for (3 roles linking to the For pages)
+    - close: "Questions about Sakada?" → Contact us
+  - page "contact" `93:294`: desktop `93:295`, mobile `93:765`
+    - hero "Get in touch."
+    - form card: role tabs Farmer/Vendor/Driver/Business partner; name, mobile, email, "What's it about?", message + SK- hint; "Send message"; "Only the Sakada team can read your message."
+    - "Before you write" quick answers (booking problem, driver asked for more, want to drive, how the fare works)
+- Mid-build slip: one fix script targeted a guessed node id, which deleted the features nav links and renamed the logo. Repaired by re-cloning the nav. Lesson: in Figma, find nodes by text or name, never by assumed clone ids.
+- Next: the user reviews the 3 Figma pages, then Claude writes `opencode prompt - features about contact.md`.
+
+- User: "remove the hotline / number, just stay the email, apply in all pages". Read as the contact form: **removed the Mobile number field** from contact desktop `93:295` and mobile `93:765`. Full name + Email now share one row (stacked on mobile). The phone appears on no other page. `contact_submissions.phone` is already nullable, so no migration is needed. The build prompt must drop `contactPhone` from contact.html and contact.js (no longer required). The admin table can keep its Phone column, which shows "—".
+
+### 2026-10-14: Features/About dropped; Contact critique = 22/40
+- **User: "disregard the features and abouts, i only want the contact."** The Figma pages "features" / "about" stay in the file but won't be built.
+- Ran `/impeccable critique` on the Contact Figma design (dual-agent). **22/40 (Acceptable).** Snapshot `.impeccable/critique/2026-10-14T05-04-51Z__sakada-web-pages-contact-html.md`.
+- **P0:** the states aren't designed, and the code they would inherit breaks owner rules:
+  - success says "within 2 hours"; error says "email us directly"
+  - contact.js reads `contactPhone`, which throws once the field is removed
+  - the JS resets the button to "Send Message" with an arrow
+- **P1:** on mobile, "Before you write" comes after Send.
+- **P1:** the booking answer skips self-cancel while Pending ("Cancel request" in My Deliveries) and never says where the SK- code is.
+- **P2:**
+  - preselected Farmer/Booking defaults, and the select options are unspecified (the code has 5, including "Driver Application")
+  - placeholder = body color; borders at 3.11:1; 14px hint and disclaimer
+- Claude verified the claims in code (contact.js lines 55/93/100; requester-dashboard "Cancel request").
+- Next: the user picks scope from the critique questions.
+
+- **Critique fixes applied (user: all 5; keep both questions with no defaults; keep "Business partner"):**
+  - lede: "we'll reply by email… booking code, like SK-00142… on the delivery card in My Deliveries"
+  - no tab preselected; topic shows "Choose one"
+  - placeholder #858175 (5.04:1); borders #b8b4a6 @60% (4.0:1); message hint removed; disclaimer 16px
+  - Q1 now covers self-cancel while Pending + "Go to My Deliveries"; Q2 covers the receiver case
+  - mobile: "Before you write" moved ABOVE the form as tap-to-open questions (first one open)
+  - new board **"contact — form states (desktop)" `103:306`** (below the desktop frame) with 6 states:
+    1. filled + focus ring (2px #f3efe4) + optional "Booking code" field (only for booking/support topics)
+    2. topic menu: A booking I made=booking / A problem at drop-off=support / Partnering with Sakada=vendor / Something else=other (fits the DB constraint, no migration)
+    3. required errors (#e0542f border, #f2a98a text)
+    4. Sending… (disabled, 60%)
+    5. couldn't send (message kept, "Try again")
+    6. sent in place ("Thanks, Ana. We'll reply to …", ghost "Send another")
+- Code-only items for the build prompt: drop `contactPhone` (JS + HTML); replace the "2 hours" / "email us directly" copy; role tabs as a radio group; reset aria-pressed/selection after send; link hit areas ≥44px; `inputmode=email` + `autocomplete`; errors via `aria-describedby`; the booking code goes into the message text (no DB column) unless the owner wants a column.
+- Next: user reviews, then optionally re-run the critique, then write `opencode prompt - contact page.md`.
+
+### 2026-10-14: Contact critique round 2 = 28/40 (up from 22)
+- Dual-agent run on desktop `93:295`, mobile `93:765`, states `103:306`. Snapshot in `.impeccable/critique/` (contact slug).
+- **P1:** the Booking code field is missing in states 4/5; the "Shown only when…" note looks like UI copy.
+- **P1:** role and topic aren't marked optional; there's no invalid-email error.
+- **P2:**
+  - mobile form ~1050px down (add a "Write to us" jump link)
+  - the fare answer omits receiver-pays; the sent follow-up assumes a booking
+- **P3:** tall, generic desktop hero.
+- Contrast: all pass except the "Sending…" label at 60% (keep the label full opacity) and the "value:" annotation (must not ship).
+- **Rejected reviewer claim:** "cancel until pickup unconfirmed". 0007 allows cancel only from pending/driver_assigned, so the copy is true.
+
+- **Round-2 fixes applied (user: all 5; role + topic optional; keep "Get in touch.")**
+  - "(optional)" on role and topic everywhere
+  - Booking code field added to states 4/5; its rule moved into the state 1 annotation (typed code kept if the topic changes, but not sent)
+  - "value:" removed from the menu options (stored values now live in the state 2 annotation)
+  - Sending: label at full opacity, fields dimmed
+  - new **state 7, email looks wrong**: "That email doesn't look right. Check it, like name@email.com."
+  - Q4 adds receiver-pays-cash; sent follow-up = "Forgot something? Send another message."
+  - desktop hero padding 40/32
+  - mobile hero link **"Write to us now"** jumps to the form
+- The board `103:306` now has 7 states.
+- Next: critique round 3, or write `opencode prompt - contact page.md`.
+
+### 2026-10-14: Contact design approved, build prompt written
+- User: "i love the design". Wrote **`opencode prompt - contact page.md`**:
+  - full new `<main>` + head metas
+  - whole new `contact.css` (scoped `.ct-*`; forms.css untouched)
+  - whole new `contact.js`:
+    - role radios that can be cleared
+    - topic optional; booking code field only for booking/support, prepended to the message (no DB change)
+    - per-field errors with aria-invalid/describedby + the email check
+    - Sending… with the fields locked
+    - Try again on failure
+    - sent-in-place + Send another (keeps name/email)
+    - answers always open on desktop, accordion on mobile
+  - `landing-auth.js`: dashboard link → querySelectorAll ("Go to My Deliveries")
+  - 4 new e2e tests: empty send, booking-code toggle, failed send keeps the message, no phone/fake details
+- Next: user runs OpenCode, then Claude verifies (diff vs prompt, 1440/390 screenshots vs Figma, the 7 states, lint/vitest/e2e). Then #2 (E2E with a Supabase test project).
+
+### 2026-10-14: Contact build verified
+- OpenCode matched the prompt exactly: main, contact.css, contact.js, landing-auth (querySelectorAll), the 4 e2e tests, head metas; no inline styles.
+- Results: lint ok, unit 72/72, **e2e 30/30**.
+- Real browser (Playwright 1440 + 390) matches Figma. All states work:
+  - errors and the email check
+  - fields locked while sending; failed send → Try again with the message kept
+  - sent in place, focus moves to "Message sent."
+- Payload = {name, email, role, purpose, message} with "Booking code: SK-00142" prepended; no phone.
+- **Claude fixed directly:**
+  1. "drop-off." wrapped in `hiw-nowrap` (it split across lines on desktop)
+  2. `#contactCode` shown uppercase (placeholder unchanged)
+  - Contact e2e re-run 6/6.
+- **Uncommitted, waiting for the user's push.** Next: #2, the full login/booking E2E with a Supabase test project.
 
 <!-- Add the next session's entry above this line -->

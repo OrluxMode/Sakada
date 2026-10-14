@@ -1,121 +1,190 @@
+
 import { supabase } from "./supabase-client.js";
 
 const form = document.getElementById("contactForm");
+const fields = document.getElementById("contactFields");
+const formWrap = document.getElementById("contactFormWrap");
 const submitBtn = document.getElementById("contactSubmit");
-const formMsg = document.getElementById("contactFormMsg");
-const roleTabs = document.querySelectorAll(".role-tab");
+const sendError = document.getElementById("contactSendError");
+const sent = document.getElementById("contactSent");
+const sentHeading = document.getElementById("contactSentHeading");
+const sentLead = document.getElementById("contactSentLead");
+const againBtn = document.getElementById("contactAgain");
+const nameInput = document.getElementById("contactName");
+const emailInput = document.getElementById("contactEmail");
+const messageInput = document.getElementById("contactMessage");
+const purpose = document.getElementById("contactPurpose");
+const codeField = document.getElementById("contactCodeField");
+const codeInput = document.getElementById("contactCode");
 
-let selectedRole = "farmer";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Topics where a booking code is useful. Must stay inside the DB's
+// contact_purpose_valid list (booking, driver, vendor, support, other).
+const CODE_TOPICS = new Set(["booking", "support"]);
+const DESKTOP = window.matchMedia("(min-width: 901px)");
 
-// Role tab switching
-roleTabs.forEach((tab) => {
-  tab.addEventListener("click", () => {
-    roleTabs.forEach((t) => {
-      t.classList.remove("active");
-      t.setAttribute("aria-pressed", "false");
-    });
-    tab.classList.add("active");
-    tab.setAttribute("aria-pressed", "true");
-    selectedRole = tab.dataset.role;
+const REQUIRED = [
+  {
+    input: nameInput,
+    error: document.getElementById("contactNameError"),
+    check: (v) => (v ? "" : "Enter your name."),
+  },
+  {
+    input: emailInput,
+    error: document.getElementById("contactEmailError"),
+    check: (v) => {
+      if (!v) return "Enter your email so we can reply.";
+      return EMAIL_RE.test(v) ? "" : "That email doesn't look right. Check it, like name@email.com.";
+    },
+  },
+  {
+    input: messageInput,
+    error: document.getElementById("contactMessageError"),
+    check: (v) => (v ? "" : "Write your message."),
+  },
+];
+
+// Role pills are radios. Both questions are optional, so clicking the
+// selected pill again clears it.
+document.querySelectorAll(".ct-pill").forEach((label) => {
+  const input = label.querySelector("input");
+  let wasChecked = false;
+  label.addEventListener("pointerdown", () => {
+    wasChecked = input.checked;
   });
+  input.addEventListener("click", () => {
+    if (wasChecked) input.checked = false;
+    wasChecked = false;
+  });
+});
 
-  // Keyboard navigation for tabs
-  tab.addEventListener("keydown", (e) => {
-    const tabs = Array.from(roleTabs);
-    const index = tabs.indexOf(tab);
+function syncTopic() {
+  purpose.classList.toggle("is-empty", purpose.value === "");
+  // A typed code stays in the field if the topic changes, but is only
+  // sent for booking topics (see the submit handler).
+  codeField.hidden = !CODE_TOPICS.has(purpose.value);
+}
+purpose.addEventListener("change", syncTopic);
 
-    let newIndex;
-    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-      e.preventDefault();
-      newIndex = (index + 1) % tabs.length;
-    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-      e.preventDefault();
-      newIndex = (index - 1 + tabs.length) % tabs.length;
-    } else if (e.key === "Home") {
-      e.preventDefault();
-      newIndex = 0;
-    } else if (e.key === "End") {
-      e.preventDefault();
-      newIndex = tabs.length - 1;
-    }
+function showError(field, msg) {
+  field.error.textContent = msg;
+  field.error.hidden = !msg;
+  if (msg) field.input.setAttribute("aria-invalid", "true");
+  else field.input.removeAttribute("aria-invalid");
+}
 
-    if (newIndex !== undefined) {
-      tabs[newIndex].focus();
-      tabs[newIndex].click();
+/** Shows every field error and returns the first invalid input, or null. */
+function validate() {
+  let first = null;
+  for (const field of REQUIRED) {
+    const msg = field.check(field.input.value.trim());
+    showError(field, msg);
+    if (msg && !first) first = field.input;
+  }
+  return first;
+}
+
+// Once a field has been flagged, clear its error as soon as it's fixed.
+REQUIRED.forEach((field) => {
+  field.input.addEventListener("input", () => {
+    if (field.input.hasAttribute("aria-invalid")) {
+      showError(field, field.check(field.input.value.trim()));
     }
   });
 });
 
-// Form submission
+let sending = false;
+
+function setSending(on) {
+  sending = on;
+  if (on) {
+    // Keep the button the same width while its label changes.
+    submitBtn.style.minWidth = `${submitBtn.offsetWidth}px`;
+    submitBtn.textContent = "Sending…";
+  } else {
+    submitBtn.style.minWidth = "";
+  }
+  fields.disabled = on;
+  submitBtn.disabled = on;
+  submitBtn.setAttribute("aria-busy", String(on));
+}
+
+function showSent(name, email) {
+  const firstName = name.split(/\s+/)[0];
+  sentLead.textContent = `Thanks, ${firstName}. We'll reply to ${email}.`;
+  formWrap.hidden = true;
+  sent.hidden = false;
+  sentHeading.focus();
+}
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (sending) return;
+  sendError.hidden = true;
 
-  // Validate
-  const name = document.getElementById("contactName").value.trim();
-  const phone = document.getElementById("contactPhone").value.trim();
-  const email = document.getElementById("contactEmail").value.trim();
-  const purpose = document.getElementById("contactPurpose").value;
-  const message = document.getElementById("contactMessageInput").value.trim();
-
-  if (!name || !phone || !email || !message) {
-    showFormMessage("Please fill in all required fields.", "error");
+  const firstInvalid = validate();
+  if (firstInvalid) {
+    firstInvalid.focus();
     return;
   }
 
-  // Loading state
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = `
-    <span class="spinner" aria-hidden="true"></span>
-    Sending…
-  `;
-  formMsg.className = "form-message";
+  const name = nameInput.value.trim();
+  const email = emailInput.value.trim();
+  const role = form.querySelector('input[name="contactRole"]:checked')?.value ?? null;
+  const topic = purpose.value || null;
+  const code = CODE_TOPICS.has(purpose.value) ? codeInput.value.trim().toUpperCase() : "";
+  const text = messageInput.value.trim();
+  // No booking-code column: the code goes at the top of the message.
+  const message = code ? `Booking code: ${code}\n\n${text}` : text;
 
-  const { error } = await supabase.from("contact_submissions").insert({
-    name,
-    email,
-    phone,
-    role: selectedRole,
-    purpose,
-    message,
-  });
-
-  // Reset button
-  submitBtn.disabled = false;
-  submitBtn.innerHTML = `
-    Send Message
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M3 13L13 3M13 3H5M13 3V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  `;
+  setSending(true);
+  let error = null;
+  try {
+    ({ error } = await supabase
+      .from("contact_submissions")
+      .insert({ name, email, role, purpose: topic, message }));
+  } catch (err) {
+    error = err;
+  }
+  setSending(false);
 
   if (error) {
-    showFormMessage(
-      "Something went wrong. Please try again or email us directly.",
-      "error"
-    );
+    submitBtn.textContent = "Try again";
+    sendError.hidden = false;
     return;
   }
-
-  showFormMessage(
-    "Message sent! We'll get back to you within 2 hours during business hours.",
-    "success"
-  );
-  form.reset();
-
-  // Reset role tab to farmer
-  roleTabs.forEach((t) => t.classList.remove("active"));
-  roleTabs[0].classList.add("active");
-  selectedRole = "farmer";
+  showSent(name, email);
 });
 
-function showFormMessage(text, type) {
-  formMsg.textContent = text;
-  formMsg.className = `form-message visible ${type}`;
+againBtn.addEventListener("click", () => {
+  // Keep who they are; clear what they wrote.
+  const name = nameInput.value;
+  const email = emailInput.value;
+  form.reset();
+  nameInput.value = name;
+  emailInput.value = email;
+  REQUIRED.forEach((field) => showError(field, ""));
+  syncTopic();
+  submitBtn.textContent = "Send message";
+  sendError.hidden = true;
+  sent.hidden = true;
+  formWrap.hidden = false;
+  messageInput.focus();
+});
 
-  // Auto-dismiss success messages after 8 seconds
-  if (type === "success") {
-    setTimeout(() => {
-      formMsg.className = "form-message";
-    }, 8000);
-  }
+// "Before you write": always open on desktop; an accordion on mobile
+// with the first question open.
+const answers = document.querySelectorAll(".ct-qa");
+function syncAnswers() {
+  answers.forEach((d, i) => {
+    d.open = DESKTOP.matches ? true : i === 0;
+  });
 }
+answers.forEach((d) => {
+  d.addEventListener("toggle", () => {
+    if (DESKTOP.matches && !d.open) d.open = true;
+  });
+});
+DESKTOP.addEventListener("change", syncAnswers);
+syncAnswers();
+syncTopic();

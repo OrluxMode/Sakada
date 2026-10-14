@@ -111,3 +111,50 @@ test.describe("phone", () => {
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 });
+
+test.describe("contact form", () => {
+  test("empty send shows field errors and sends nothing", async ({ page }) => {
+    let posted = false;
+    await page.route("**/rest/v1/contact_submissions**", (route) => {
+      posted = true;
+      return route.abort();
+    });
+    await page.goto("/pages/contact.html");
+    await page.getByRole("button", { name: "Send message" }).click();
+    await expect(page.locator("#contactNameError")).toHaveText("Enter your name.");
+    await expect(page.locator("#contactEmailError")).toHaveText("Enter your email so we can reply.");
+    await expect(page.locator("#contactMessageError")).toHaveText("Write your message.");
+    await expect(page.locator("#contactName")).toBeFocused();
+    expect(posted).toBe(false);
+  });
+
+  test("booking code field only shows for booking topics", async ({ page }) => {
+    await page.goto("/pages/contact.html");
+    await expect(page.locator("#contactCodeField")).toBeHidden();
+    await page.selectOption("#contactPurpose", "booking");
+    await expect(page.locator("#contactCodeField")).toBeVisible();
+    await page.selectOption("#contactPurpose", "other");
+    await expect(page.locator("#contactCodeField")).toBeHidden();
+  });
+
+  test("a failed send keeps the message and offers Try again", async ({ page }) => {
+    await page.route("**/rest/v1/contact_submissions**", (route) => route.abort());
+    await page.goto("/pages/contact.html");
+    await page.fill("#contactName", "Ana Reyes");
+    await page.fill("#contactEmail", "ana.reyes@email.com");
+    await page.fill("#contactMessage", "Test message");
+    await page.getByRole("button", { name: "Send message" }).click();
+    await expect(page.locator("#contactSendError")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+    await expect(page.locator("#contactMessage")).toHaveValue("Test message");
+  });
+
+  test("has no phone field and no fake contact details", async ({ page }) => {
+    await page.goto("/pages/contact.html");
+    await expect(page.locator("#contactPhone")).toHaveCount(0);
+    const body = await page.locator("body").innerText();
+    expect(body).not.toContain("hello@sakadalogistics.ph");
+    expect(body).not.toContain("8800");
+    expect(body).not.toContain("2 hours");
+  });
+});

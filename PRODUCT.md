@@ -35,6 +35,10 @@ A booking platform built for agri-delivery in the Philippines. The fare is compu
   - after a driver accepts (Driver Assigned), only an admin can cancel; requesters cancel only while Pending
   - there is no weight limit; drivers see the kg before accepting (truck tonnage on the site is only a guide)
   - notifications are in-app only (no SMS); a booking stays Pending until a driver accepts or the requester cancels
+- **Confirmed by the owner 2026-10-14 (Contact / About):**
+  - there is **no public email and no phone hotline**; the contact form (saved to `contact_submissions`, read in the admin dashboard) is the only channel
+  - no response-time, office-hours, 24/7, "guaranteed payout", onboarding-time or cold-chain promises
+  - About tells the problem and the product only: no team, founder or origin story
 
 ## Brand Commitments
 - Name: Sakada Logistics. Logo is a "SAKADA" wordmark with "DA" in the accent color.
