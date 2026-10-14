@@ -1238,4 +1238,26 @@
 - Side note for later: "→" (U+2192) isn't in the bundled unicode-range, so it also falls back to a system font (small arrow). Not fixed.
 - **Uncommitted, waiting for the user's push.**
 
+### 2026-10-14: Arrow glyph + impeccable rule reinforced
+- User pushed #3 as `123a8a6`. User: "fix the arrow" + "keep in your memory that when you are designing make sure to use the impeccable skill". Memory `use-impeccable-when-designing` updated: load impeccable at the start of EVERY design task, even tiny glyph/colour fixes.
+- Ran impeccable polish. The glyph scan found:
+  - → (12 files) falls back. Fixed.
+  - Also falling back, NOT fixed (needs an icon pass; impeccable bans unicode/emoji as icons): ★☆ (ratings), ⚠ (offline banner), ℹ✓✕ (toasts), emoji 📋📍📦🚛 (dashboards).
+- Built → per weight from each font's hyphen: 0.70em long (Public Sans) / 0.62em (Barlow), 45° mitred open head ≥2.4 strokes, 0.07em side bearings. Two preview rounds.
+- **₱ and → now share one file per weight:** `*-symbols.woff2` (~0.5–0.6 KB). Claude added the 8 symbols files and `git rm`'d the 8 `*-peso` files.
+- Wrote **`opencode prompt - arrow glyph.md`**:
+  - fonts.css: rename src -peso→-symbols; unicode-range U+20B1, U+2192
+  - e2e test checks both
+- fonts.css still points at the deleted peso files until OpenCode runs.
+
+### 2026-10-14: Arrow glyph verified
+- OpenCode:
+  - fonts.css: 8 faces → `*-symbols.woff2` with `U+20B1, U+2192`; no "peso" left; all 8 paths exist
+  - comment updated; e2e test replaced
+  - "symbols" count is 9 because of the comment (Claude's prompt said 8; not an error)
+- Results: lint ok, unit 105/105, **e2e 34/34**.
+- Real page (for-farmers): "Nueva Ecija → Marikina palengke" uses the new arrow in the hero and the sample card; ₱ fine; In Transit pill violet.
+- **Uncommitted, waiting for the user's push** (8 symbols files added, 8 peso files git-rm'd, fonts.css, e2e).
+- Still open, optional: icon pass for ★☆ ⚠ ℹ✓✕ and the emoji (unicode/emoji used as icons).
+
 <!-- Add the next session's entry above this line -->

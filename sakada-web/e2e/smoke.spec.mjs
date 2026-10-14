@@ -203,14 +203,14 @@ test.describe("email typos are caught", () => {
   });
 });
 
-test("the ₱ sign uses our own font, not a system fallback", async ({ page }) => {
-  await page.goto("/pages/how-it-works.html");
+test("₱ and → use our own fonts, not a system fallback", async ({ page }) => {
+  await page.goto("/pages/for-farmers.html");
   await page.waitForLoadState("networkidle");
   const loaded = await page.evaluate(async () => {
     await document.fonts.ready;
     return [...document.fonts]
-      .filter((f) => f.unicodeRange.toUpperCase().includes("U+20B1") && f.status === "loaded")
-      .map((f) => `${f.family} ${f.weight}`);
+      .filter((f) => f.status === "loaded")
+      .map((f) => f.unicodeRange.toUpperCase());
   });
-  expect(loaded.length).toBeGreaterThan(0);
+  expect(loaded.some((r) => r.includes("U+20B1") && r.includes("U+2192"))).toBe(true);
 });
