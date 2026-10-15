@@ -1,0 +1,230 @@
+/* ================================================
+   Driver dashboard (v4 design, Figma "driver dashboard" v4).
+   The page is body.rq.dv: it reuses the farmer/vendor parts in
+   requester.css (tabs, cards, sheets, banners, buttons) and adds the
+   driver-only pieces here, all scoped to .dv.
+   Phones: one view at a time, a sticky bar with the next step, tabs.
+   ≥1024px: top bar, current job on the left, New jobs on the right.
+   ================================================ */
+.dv { --dv-bar-h: 124px; }
+.dv[data-view="jobs"] #view-jobs { display: block; }
+.dv .dv-grow { flex: 1; min-width: 0; }
+.dv .dv-chev { color: var(--rq-meta); flex: none; }
+.dv .dv-gap { margin-bottom: 12px; }
+.dv .dv-full { width: 100%; }
+
+/* Header (phones) */
+.dv-head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.dv-who { display: flex; flex-direction: column; min-width: 0; font-size: 17px; line-height: 1.3; }
+.dv-who .rq-muted { font-size: 15px; }
+.dv #homeTitle { margin-bottom: 12px; }
+
+/* Location and other banners above the job */
+.dv #locBanner .rq-banner { margin-bottom: 12px; }
+.dv .rq-banner > svg { flex: none; margin-top: 2px; }
+.dv .rq-banner--bad { color: var(--text-cream); }
+.dv .rq-banner--bad > svg { color: var(--status-cancelled); }
+.dv .rq-banner--warn > svg { color: #f0b25a; }
+.dv .rq-banner--plain { border-color: var(--rq-edge); color: var(--text-cream); }
+.dv .rq-banner--plain > svg { color: #f0b25a; }
+.dv .rq-banner p { margin: 0; }
+.dv .dv-blocked { flex-direction: column; gap: 12px; }
+
+/* Two jobs: switcher chips */
+.dv-chips { display: flex; gap: 8px; margin-bottom: 8px; }
+.dv-chip {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px;
+  border-radius: 10px; border: 1px solid var(--rq-edge); background: var(--panel-dark);
+  color: var(--text-cream); font-size: 16px; cursor: pointer;
+  flex: 1 1 0; min-width: 0; justify-content: center;
+}
+.dv-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv-chip[aria-pressed="true"] {
+  border-color: var(--accent-amber); background: rgb(224 151 47 / 0.12); color: #f0b25a; font-weight: 700;
+}
+.dv-chip-code { display: none; }
+.dv-dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%; }
+.dv-dot--green { background: var(--status-delivered); }
+.dv-dot--grey { background: #8d8a80; }
+.dv-dot--red { background: var(--status-cancelled); }
+.dv-share-line { font-size: 15px; line-height: 1.45; margin-bottom: 12px !important; }
+
+/* The job card */
+.dv .dv-job { border-color: var(--accent-amber); gap: 14px; }
+.dv .rq-card-title { font-family: inherit; font-weight: 600; letter-spacing: 0; }
+.dv .dv-job-title { font-size: 19px; }
+.dv-stack { display: grid; gap: 2px; min-width: 0; }
+.dv .dv-stack .rq-muted { display: block; }
+.dv .dv-stepper .rq-stepper-labels { display: flex; gap: 4px; }
+.dv .rq-step-label { flex: 1; font-size: 15px; color: var(--rq-meta); }
+.dv .rq-step-label.is-current { color: #f0b25a; font-weight: 700; }
+.dv .dv-stepper .rq-step--done { background: var(--accent-amber); }
+.dv .dv-stepper .rq-step--current { height: 10px; }
+.dv .dv-stepper .rq-step--next { background: #6b6a62; border: 0; }
+.dv-done { display: flex; gap: 10px; align-items: flex-start; font-size: 16px; line-height: 1.4; color: var(--rq-meta); }
+.dv-done svg { color: var(--status-delivered); flex: none; margin-top: 2px; }
+
+.dv-grid { display: grid; gap: 12px; }
+.dv-side { display: grid; gap: 12px; align-content: start; }
+.dv-side:empty { display: none; }
+.dv-stop { padding: 14px; border-radius: 10px; background: var(--bg-black); }
+.dv-stop-label { display: flex; align-items: center; gap: 10px; font-size: 16px; color: var(--rq-meta); }
+.dv-ring { width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--accent-amber); box-sizing: border-box; flex: none; }
+.dv-ring--green { border-color: var(--status-delivered); }
+.dv-stop-place { margin: 10px 0 14px !important; font-size: 18px; font-weight: 600; line-height: 1.35; }
+.dv .dv-maps { min-height: 52px; }
+.dv .dv-maps-hint { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin-top: 10px !important; font-size: 15px; }
+.dv-collect {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 10px;
+  background: rgb(224 151 47 / 0.1); border: 1px solid var(--accent-amber); font-size: 15px; line-height: 1.35;
+}
+.dv-collect svg { color: #f0b25a; flex: none; }
+.dv-collect-amount { font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 30px; line-height: 1.1; }
+.dv-notes { display: flex; gap: 12px; padding: 14px; border-radius: 10px; background: var(--bg-black); font-size: 16px; line-height: 1.45; }
+.dv-notes svg, .dv-cash-line svg { color: #f0b25a; flex: none; margin-top: 2px; }
+.dv-notes .rq-muted { font-size: 15px; }
+.dv-cash-line { display: flex; gap: 12px; font-size: 16px; line-height: 1.4; }
+.dv-cash-line strong { color: #f0b25a; }
+.dv-card-action { display: none; }
+.dv .dv-jobs-row, .dv .dv-rate-row { margin-top: 12px; }
+.dv .dv-jobs-row svg:first-child, .dv .dv-rate-row svg:first-child { color: #f0b25a; flex: none; }
+.dv #helpRow { margin-top: 12px; }
+
+/* Buttons that can't be used right now look it */
+.dv .rq-btn.dv-wait,
+.dv .rq-btn.dv-wait:hover {
+  background: none; border: 1.5px dashed var(--rq-edge); color: var(--rq-meta); opacity: 1;
+}
+
+/* Phone: the next step sits in a bar above the tabs */
+.dv-bar {
+  position: fixed; left: 0; right: 0; z-index: 39;
+  bottom: calc(var(--rq-tab-h) + env(safe-area-inset-bottom));
+  padding: 12px 20px; background: #15160f; border-top: 1px solid var(--rq-edge);
+}
+.dv-bar[hidden] { display: none; }
+.dv-bar-top { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 10px; font-size: 15px; }
+.dv-share { display: inline-flex; align-items: center; gap: 6px; color: var(--rq-meta); font-size: 14px; white-space: nowrap; }
+.dv .dv-bar-btn { min-height: 56px; font-size: 18px; }
+.dv.dv-has-bar { padding-bottom: calc(var(--rq-tab-h) + var(--dv-bar-h) + 24px + env(safe-area-inset-bottom)); }
+
+/* New jobs badge on the tab */
+.dv-tab-icon { position: relative; display: inline-flex; }
+.dv-tab-icon .rq-badge { top: -8px; right: -14px; }
+
+/* Snackbar: Undo, saving, saved, next-step hints */
+.dv-snack {
+  position: fixed; left: 12px; right: 12px; z-index: 45; overflow: hidden;
+  bottom: calc(var(--rq-tab-h) + 12px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 12px 10px 16px;
+  border-radius: 10px; background: #26271f; border: 1px solid var(--rq-edge);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45); font-size: 16px; line-height: 1.35;
+}
+.dv-snack[hidden] { display: none; }
+.dv.dv-has-bar .dv-snack { bottom: calc(var(--rq-tab-h) + var(--dv-bar-h) + 12px + env(safe-area-inset-bottom)); }
+.dv-snack > svg { color: #f0b25a; flex: none; }
+.dv-snack .spinner { flex: none; }
+.dv-snack--bad { border-color: var(--status-cancelled); background: #2a1a14; }
+.dv-snack--bad > svg { color: var(--status-cancelled); }
+.dv-undo {
+  flex: none; min-height: 44px; padding: 0 16px; border-radius: 8px;
+  background: none; border: 1px solid var(--accent-amber); color: #f0b25a; font: inherit; font-weight: 700; cursor: pointer;
+}
+.dv-snack-timer {
+  position: absolute; left: 0; bottom: 0; height: 3px; width: 100%;
+  background: var(--accent-amber); transform-origin: left; animation: dv-undo-timer linear forwards;
+}
+@keyframes dv-undo-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .dv-snack-timer { animation: none; opacity: 0.6; } }
+
+/* New jobs */
+.dv-jobs-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.dv .dv-refresh { display: inline-flex; gap: 8px; text-decoration: none; }
+.dv .dv-refresh--desk { display: none; }
+.dv-jobs-sub { margin: 6px 0 4px !important; font-size: 16px; line-height: 1.45; }
+.dv-checked { display: flex; align-items: center; gap: 8px; margin-bottom: 12px !important; font-size: 15px; }
+#jobsMessage > * { margin-bottom: 12px; }
+.dv-cap {
+  display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 10px;
+  border: 1px solid var(--rq-field-line); font-size: 16px; line-height: 1.45;
+}
+.dv-cap svg { color: var(--text-cream); flex: none; margin-top: 2px; }
+.dv .dv-offer { gap: 12px; }
+.dv-offer-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.dv-price { flex: none; text-align: right; }
+.dv-price strong { display: block; font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 30px; line-height: 1; }
+.dv-price .rq-muted { font-size: 14px !important; display: block !important; }
+.dv .dv-offer-route p { font-size: 16px; line-height: 1.4; }
+.dv .dv-offer-route p + p { margin-top: 8px; }
+.dv .dv-offer-route .rq-route-dots { margin: 8px 0 12px; }
+.dv .dv-offer-route .rq-route-dots::after { bottom: -12px; }
+.dv-offer-short { display: none !important; }
+.dv-offer-facts { font-size: 16px; color: var(--rq-meta); }
+
+/* Home: first visit, idle, rate prompt, cancelled by Sakada */
+.dv .dv-first { border-color: var(--accent-amber); }
+.dv .dv-first .rq-display, .dv .rq-card > .rq-display { font-size: 30px; }
+.dv-steps { list-style: none; counter-reset: step; margin: 0; padding: 0; display: grid; gap: 14px; }
+.dv-steps li {
+  counter-increment: step; display: grid; grid-template-columns: 28px 1fr; gap: 12px;
+  font-size: 16px; line-height: 1.45; color: var(--rq-meta);
+}
+.dv-steps li::before {
+  content: counter(step); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  border: 1.5px solid var(--accent-amber); color: #f0b25a; font-weight: 700; font-size: 14px;
+}
+.dv-rated { display: grid; gap: 12px; margin-bottom: 24px; }
+.dv-rated:focus { outline: 2px solid var(--accent-amber); outline-offset: 4px; border-radius: 10px; }
+.dv-rated .rq-banner { margin-bottom: 0; }
+.dv-rate-bare { display: grid; gap: 10px; }
+.dv-rate-row-wrap { display: grid; gap: 12px; }
+.dv .dv-cancelled { border-color: var(--status-cancelled); }
+
+/* History */
+.dv .rq-card .rq-muted .status-pill + .status-pill { margin-left: -4px; }
+.dv-paid .rq-muted { margin-left: auto; text-align: right; }
+.dv .dv-unpaid { color: #f2a98a; }
+
+/* Profile */
+.dv .dv-vehicle { margin: 24px 0 0; gap: 16px; }
+.dv .dv-vehicle .rq-section-title { margin: 0; }
+.dv .dv-vehicle > .rq-muted { font-size: 16px; line-height: 1.5; }
+.dv .dv-vehicle .rq-hint { margin-top: 8px; }
+.dv #signOutBtn svg { flex: none; }
+
+/* ---------- Desktop ---------- */
+@media (min-width: 1024px) {
+  .dv .dv-head { display: none; }
+  .dv .dv-bar { display: none; }
+  .dv.dv-has-bar { padding-bottom: 64px; }
+  .dv .rq-account { min-height: 48px; }
+  .dv .rq-topbar .dv-who { font-size: 16px; }
+  .dv .rq-topbar .dv-who .rq-muted { font-size: 14px; }
+  .dv .rq-display { font-size: 36px; }
+  .dv-chip-code { display: inline; }
+  .dv-chips .dv-chip { flex: 0 1 auto; padding: 0 16px; }
+  .dv-rate-row-wrap { grid-template-columns: auto 1fr auto; align-items: center; }
+  .dv-rate-row-wrap .dv-rate-bare { grid-column: 1; grid-template-columns: auto auto; align-items: center; }
+  .dv-rate-row-wrap .dv-later { grid-column: 3; width: auto; min-width: 120px; }
+  .dv-share-line--solo { display: block; }
+  .dv .rq-layout { grid-template-columns: minmax(0, 1fr) 420px; }
+  /* New jobs is always visible on desktop; #jobs just focuses it */
+  .dv #view-jobs { display: block; position: sticky; top: 24px; }
+  .dv #view-jobs .rq-display { font-size: 30px; }
+  .dv[data-view="jobs"] #view-home { display: block; }
+  .dv .dv-refresh--desk { display: inline-flex; }
+  .dv .dv-checked .dv-refresh { display: none; }
+  .dv .dv-jobs-sub { font-size: 15px; }
+  .dv-offer .dv-offer-route { display: none; }
+  .dv-offer-short { display: block !important; margin-top: -8px !important; font-size: 15px; }
+  .dv-offer .rq-card-title { font-size: 17px; }
+  .dv .dv-accept { background: none; border: 1px solid var(--accent-amber); color: #f0b25a; }
+  .dv .dv-accept:hover { background: rgb(224 151 47 / 0.12); }
+  .dv .dv-job { padding: 24px; }
+  .dv-grid { grid-template-columns: 1fr 1fr; gap: 20px; }
+  .dv .dv-maps { width: auto; }
+  .dv-card-action { display: flex; align-items: center; gap: 16px; margin-top: 4px; }
+  .dv-card-action .rq-btn { width: auto; min-height: 56px; padding: 0 24px; font-size: 18px; }
+  .dv .dv-jobs-row { display: none; }
+  .dv-snack, .dv.dv-has-bar .dv-snack { left: 64px; right: auto; width: 440px; bottom: 24px; }
+}

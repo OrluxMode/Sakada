@@ -333,3 +333,90 @@ describe("contactUrl", () => {
   it("leaves the link alone without a code", () =>
     expect(contactUrl("../../pages/contact.html", "")).toBe("../../pages/contact.html"));
 });
+
+describe("driver dashboard helpers", () => {
+  it("renderDriverStepper: 4 steps with the current one marked", async () => {
+    const { renderDriverStepper } = await import("../js/dashboard-shared.js");
+    const html = renderDriverStepper("picked_up");
+    expect(html).toContain('aria-label="Step 2 of 4, Picked up"');
+    expect(html.match(/rq-step--done/g)).toHaveLength(1);
+    expect(html.match(/rq-step--next/g)).toHaveLength(2);
+    expect(renderDriverStepper("pending")).toBe("");
+  });
+
+  it("driverAction: the next step per status; delivered opens the cash check", async () => {
+    const { driverAction } = await import("../js/dashboard-shared.js");
+    expect(driverAction("driver_assigned")).toMatchObject({ next: "picked_up", label: "I've picked up the load" });
+    expect(driverAction("picked_up")).toMatchObject({ next: "in_transit", seen: "In transit" });
+    expect(driverAction("in_transit")).toMatchObject({ next: "delivered", cashCheck: true });
+    expect(driverAction("delivered")).toBeNull();
+  });
+
+  it("activeJobs + pickCurrentJob: keeps the picked job, else the moving one", async () => {
+    const { activeJobs, pickCurrentJob } = await import("../js/dashboard-shared.js");
+    const list = [
+      { id: "b", status: "in_transit", created_at: "2026-10-14T02:00:00Z" },
+      { id: "a", status: "driver_assigned", created_at: "2026-10-14T01:00:00Z" },
+      { id: "c", status: "delivered", created_at: "2026-10-13T01:00:00Z" },
+    ];
+    const active = activeJobs(list);
+    expect(active.map((d) => d.id)).toEqual(["a", "b"]);
+    expect(pickCurrentJob(active, null).id).toBe("b");
+    expect(pickCurrentJob(active, "a").id).toBe("a");
+    expect(pickCurrentJob(active, "gone").id).toBe("b");
+    expect(pickCurrentJob([], null)).toBeNull();
+  });
+
+  it("mapsUrl prefers coordinates", async () => {
+    const { mapsUrl } = await import("../js/dashboard-shared.js");
+    expect(mapsUrl(14.65, 121.1, "Marikina")).toBe("https://www.google.com/maps/dir/?api=1&destination=14.65%2C121.1");
+    expect(mapsUrl(null, null, "Gapan City")).toContain("destination=Gapan%20City");
+  });
+
+  it("pickupDayLabel: today, tomorrow, a date, or null", async () => {
+    const { pickupDayLabel } = await import("../js/dashboard-shared.js");
+    const today = new Date(2026, 9, 15, 9);
+    expect(pickupDayLabel(new Date(2026, 9, 15, 0).toISOString(), today)).toBe("today");
+    expect(pickupDayLabel(new Date(2026, 9, 16, 0).toISOString(), today)).toBe("tomorrow");
+    expect(pickupDayLabel(new Date(2026, 9, 20, 0).toISOString(), today)).toBe("Oct 20");
+    expect(pickupDayLabel(null, today)).toBeNull();
+  });
+
+  it("shortPlace keeps the first part", async () => {
+    const { shortPlace } = await import("../js/dashboard-shared.js");
+    expect(shortPlace("Marikina Public Market, Marikina")).toBe("Marikina Public Market");
+    expect(shortPlace("")).toBe("");
+  });
+
+  it("jobErrorCopy maps errors to plain words", async () => {
+    const { jobErrorCopy } = await import("../js/dashboard-shared.js");
+    expect(jobErrorCopy({ message: "Too many requests. Please wait a minute and try again." }).kind).toBe("rate");
+    expect(jobErrorCopy({ message: "You already have 2 active jobs. Finish one to accept more." }).kind).toBe("cap");
+    expect(jobErrorCopy({ code: "PGRST116", message: "JSON object requested, multiple (or no) rows returned" }).kind).toBe("gone");
+    expect(jobErrorCopy({ message: "TypeError: Failed to fetch" }).kind).toBe("offline");
+    const unknown = jobErrorCopy({ message: "permission denied for table deliveries" });
+    expect(unknown.kind).toBe("unknown");
+    expect(unknown.message).not.toContain("permission");
+  });
+
+  it("locationProblem reads the geolocation error code", async () => {
+    const { locationProblem } = await import("../js/dashboard-shared.js");
+    expect(locationProblem(null)).toBe("unsupported");
+    expect(locationProblem({ code: 1 })).toBe("blocked");
+    expect(locationProblem({ code: 2 })).toBe("off");
+    expect(locationProblem({ code: 3 })).toBe("weak");
+  });
+
+  it("undoSeconds gives keyboard users longer", async () => {
+    const { undoSeconds } = await import("../js/dashboard-shared.js");
+    expect(undoSeconds(false)).toBe(8);
+    expect(undoSeconds(true)).toBe(10);
+  });
+
+  it("paymentLine says whether the receiver paid", async () => {
+    const { paymentLine } = await import("../js/dashboard-shared.js");
+    expect(paymentLine({ payment_status: "paid" })).toBe("delivered and paid in cash");
+    expect(paymentLine({ payment_status: "unpaid" })).toMatch(/not paid/);
+    expect(paymentLine({ payment_status: null })).toBe("delivered");
+  });
+});

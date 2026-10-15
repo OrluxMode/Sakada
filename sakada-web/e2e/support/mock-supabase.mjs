@@ -43,6 +43,7 @@ function delivery(n, status, extra = {}) {
     estimated_cost: 3550,
     distance_km: 120,
     status,
+    payment_status: null,
     current_lat: status === "in_transit" || status === "picked_up" ? 15.1 : null,
     current_lng: status === "in_transit" || status === "picked_up" ? 121.0 : null,
     created_at: `2026-10-${String(10 + (n % 5)).padStart(2, "0")}T0${n % 9}:00:00.000Z`,
@@ -65,7 +66,7 @@ export function fixtures(overrides = {}) {
   const deliveries = [
     delivery(1, "pending"),
     delivery(2, "driver_assigned"),
-    delivery(3, "in_transit"),
+    delivery(3, "in_transit", { notes: "Receiver is at stall 14. Ask for Aling Bebeng." }),
     delivery(4, "delivered"),
     delivery(5, "cancelled", { driver_id: null }),
     delivery(6, "pending", { requester_id: IDS.vendor, goods_description: "Tomatoes, 40 crates", quantity_kg: 600, estimated_cost: 2550 }),
@@ -203,6 +204,15 @@ export async function mockSupabase(page, role, overrides = {}) {
     } else if (req.method() === "PATCH") {
       const patch = req.postDataJSON();
       rows = table.filter((r) => matches(r, params));
+      // 0020: a driver holds at most 2 active jobs.
+      if (path === "deliveries" && patch.status === "driver_assigned") {
+        const held = table.filter(
+          (r) => r.driver_id === patch.driver_id && ["driver_assigned", "picked_up", "in_transit"].includes(r.status),
+        ).length;
+        if (held >= 2) {
+          return route.fulfill({ status: 400, json: { code: "P0001", message: "You already have 2 active jobs. Finish one to accept more." } });
+        }
+      }
       rows.forEach((r) => Object.assign(r, patch, { updated_at: new Date().toISOString() }));
     } else if (req.method() === "POST") {
       const body = req.postDataJSON();

@@ -2,7 +2,7 @@
 // These are the safety net for the dashboard redesign: each page loads with
 // no errors and shows its real data.
 import { test, expect } from "@playwright/test";
-import { mockSupabase } from "./support/mock-supabase.mjs";
+import { mockSupabase, fixtures, IDS } from "./support/mock-supabase.mjs";
 
 function trackErrors(page) {
   const errors = [];
@@ -12,6 +12,11 @@ function trackErrors(page) {
   });
   return errors;
 }
+
+// The driver holds one job (SK-00002, accepted); SK-00001 and SK-00006 are open.
+const oneJob = () => fixtures().deliveries.filter((d) => d.delivery_code !== "SK-00003");
+const PHONE = { width: 390, height: 844 }; // the next-step bar is phone-only
+const code = (db, c) => db.deliveries.find((d) => d.delivery_code === c);
 
 test.describe("dashboards (fake sign-in)", () => {
   test("farmer sees their deliveries grouped by stage", async ({ page }) => {
@@ -114,15 +119,115 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect.poll(() => db.notifications[0].is_read).toBe(true);
   });
 
-  test("driver sees available jobs, their own jobs and their vehicle", async ({ page }) => {
+  test("driver sees their 2 jobs, the cap on new jobs and their vehicle", async ({ page }) => {
     const errors = trackErrors(page);
     await mockSupabase(page, "driver");
     await page.goto("/dashboard/driver/index.html");
-    await expect(page.locator("#userName")).toHaveText("Carlo Santos");
-    await expect(page.getByText("SK-00001")).toBeVisible(); // available (pending, no driver)
-    await expect(page.getByText("SK-00003")).toBeVisible(); // assigned to them, in transit
+    await expect(page.locator("#homeTitle")).toHaveText("2 jobs in progress");
+    await expect(page.locator(".dv-job")).toContainText("SK-00003"); // on the road, so it's shown first
+    await expect(page.locator(".dv-job")).toContainText("Receiver is at stall 14");
+    await expect(page.getByRole("img", { name: "Step 3 of 4, In transit" })).toBeVisible();
+    await page.goto("/dashboard/driver/index.html#jobs");
+    await expect(page.locator("#jobsList")).toContainText("SK-00001");
+    await expect(page.locator("#jobsMessage")).toContainText("You have 2 jobs");
+    await expect(page.locator("[data-accept-id]")).toHaveCount(0); // Accept is off at the cap
+    await page.goto("/dashboard/driver/index.html#profile");
     await expect(page.locator("#vehicleType")).toHaveValue("6-wheeler truck");
     expect(errors).toEqual([]);
+  });
+
+  test("driver marks picked up; it saves after the Undo time", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.clock.install();
+    const db = await mockSupabase(page, "driver", { deliveries: oneJob() });
+    await page.goto("/dashboard/driver/index.html");
+    const bar = page.locator("#actionBar");
+    await bar.getByRole("button", { name: "I've picked up the load" }).click();
+    await expect(page.locator("#snackbar")).toContainText("Marked picked up");
+    expect(code(db, "SK-00002").status).toBe("driver_assigned"); // not yet: Undo is still open
+    await page.clock.runFor(9000);
+    await expect.poll(() => code(db, "SK-00002").status).toBe("picked_up");
+    await expect(page.locator("#snackbar")).toContainText('The sender sees "Picked up"');
+    await expect(bar.getByRole("button", { name: "I'm driving to drop-off" })).toBeVisible();
+  });
+
+  test("Undo leaves the job as it was", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.clock.install();
+    const db = await mockSupabase(page, "driver", { deliveries: oneJob() });
+    await page.goto("/dashboard/driver/index.html");
+    await page.locator("#actionBar").getByRole("button", { name: "I've picked up the load" }).click();
+    await page.locator("#snackbar").getByRole("button", { name: "Undo" }).click();
+    await page.clock.runFor(12000);
+    expect(code(db, "SK-00002").status).toBe("driver_assigned");
+    await expect(page.locator("#actionBar").getByRole("button", { name: "I've picked up the load" })).toBeVisible();
+  });
+
+  test("delivered without payment closes the job and flags it Unpaid", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    const db = await mockSupabase(page, "driver");
+    await page.goto("/dashboard/driver/index.html");
+    await page.locator("#actionBar").getByRole("button", { name: "I've delivered it" }).click();
+    const sheet = page.locator("#deliveredSheet");
+    await expect(sheet).toContainText("₱3,550 in cash?");
+    await sheet.getByRole("button", { name: "Delivered, not paid" }).click();
+    await expect.poll(() => code(db, "SK-00003").status).toBe("delivered");
+    expect(code(db, "SK-00003").payment_status).toBe("unpaid");
+    await expect(page.locator(".dv-rated")).toContainText("Marked Unpaid");
+    await page.goto("/dashboard/driver/index.html#history");
+    await expect(page.locator("#historyList [data-delivery-id]", { hasText: "SK-00003" })).toContainText("Unpaid");
+  });
+
+  test("driver accepts a job after a confirm", async ({ page }) => {
+    const db = await mockSupabase(page, "driver", { deliveries: oneJob() });
+    await page.goto("/dashboard/driver/index.html#jobs");
+    await page.locator("[data-offer-id]", { hasText: "SK-00001" }).getByRole("button", { name: "Accept job" }).click();
+    await expect(page.locator("#acceptSheet")).toContainText("Once you accept, only Sakada can cancel it.");
+    await page.locator("#acceptConfirm").click();
+    await expect.poll(() => code(db, "SK-00001").status).toBe("driver_assigned");
+    expect(code(db, "SK-00001").driver_id).toBe(IDS.driver);
+    await expect(page.locator("#homeTitle")).toHaveText("2 jobs in progress");
+    await expect(page.locator(".dv-job")).toContainText("SK-00001");
+  });
+
+  test("a job someone else took shows 'no longer available'", async ({ page }) => {
+    const db = await mockSupabase(page, "driver", { deliveries: oneJob() });
+    await page.goto("/dashboard/driver/index.html#jobs");
+    await page.locator("[data-offer-id]", { hasText: "SK-00001" }).getByRole("button", { name: "Accept job" }).click();
+    Object.assign(code(db, "SK-00001"), { status: "driver_assigned", driver_id: "someone-else" });
+    await page.locator("#acceptConfirm").click();
+    await expect(page.locator("#jobsMessage")).toContainText("This job is no longer available");
+    await expect(page.locator("#jobsList")).not.toContainText("SK-00001");
+  });
+
+  test("the database's 2-job rule shows in plain words", async ({ page }) => {
+    const db = await mockSupabase(page, "driver", { deliveries: oneJob() });
+    await page.goto("/dashboard/driver/index.html#jobs");
+    await page.locator("[data-offer-id]", { hasText: "SK-00001" }).getByRole("button", { name: "Accept job" }).click();
+    Object.assign(code(db, "SK-00006"), { status: "driver_assigned", driver_id: IDS.driver }); // took one on another phone
+    await page.locator("#acceptConfirm").click();
+    await expect(page.locator("#jobsMessage")).toContainText("You have 2 jobs");
+    expect(code(db, "SK-00001").status).toBe("pending");
+  });
+
+  test("a new driver adds their vehicle before accepting", async ({ page }) => {
+    const db = await mockSupabase(page, "driver", {
+      deliveries: fixtures().deliveries.filter((d) => d.status === "pending"),
+      driver_profiles: [{ id: IDS.driver, vehicle_type: null, vehicle_plate: null, is_available: true }],
+    });
+    await page.goto("/dashboard/driver/index.html");
+    await expect(page.getByRole("heading", { name: "Add your vehicle" })).toBeVisible();
+    await page.goto("/dashboard/driver/index.html#jobs");
+    await expect(page.locator("#jobsMessage")).toContainText("Add your vehicle first");
+    await expect(page.locator("[data-accept-id]")).toHaveCount(0);
+    await page.goto("/dashboard/driver/index.html#profile");
+    await page.fill("#vehicleType", "Isuzu Elf");
+    await page.fill("#vehiclePlate", "abc 123");
+    await page.locator("#vehicleSaveBtn").click();
+    await expect(page.locator("#snackbar")).toContainText("Vehicle saved");
+    expect(db.driver_profiles[0].vehicle_plate).toBe("ABC 123");
+    await page.goto("/dashboard/driver/index.html#jobs");
+    await expect(page.locator("[data-accept-id]").first()).toBeVisible();
   });
 
   test("admin sees the stats and the deliveries table", async ({ page }) => {
@@ -132,6 +237,15 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.locator("#userName")).toHaveText("Dina Admin");
     await expect(page.getByRole("cell", { name: "SK-00001" })).toBeVisible();
     expect(errors).toEqual([]);
+  });
+
+  test("admin sees deliveries the receiver didn't pay for", async ({ page }) => {
+    const deliveries = fixtures().deliveries;
+    Object.assign(deliveries[3], { payment_status: "unpaid" }); // SK-00004, delivered
+    await mockSupabase(page, "admin", { deliveries });
+    await page.goto("/dashboard/admin/index.html");
+    await expect(page.locator("#statUnpaid")).toHaveText("1");
+    await expect(page.getByRole("row", { name: /SK-00004/ })).toContainText("Unpaid");
   });
 
   test("a farmer opening the driver dashboard is sent home", async ({ page }) => {

@@ -333,3 +333,152 @@ export function bookingErrorCopy(error) {
 export function contactUrl(base, code) {
   return code ? `${base}?code=${encodeURIComponent(code)}` : base;
 }
+
+// ---------- Driver dashboard (v4 design) ----------
+
+/** A driver's four stages. Pending isn't theirs yet, so the line starts at Accepted. */
+export const DRIVER_STAGES = ["driver_assigned", "picked_up", "in_transit", "delivered"];
+const DRIVER_STAGE_LABELS = ["Accepted", "Picked up", "In transit", "Delivered"];
+export const ACTIVE_JOB_STATUSES = ["driver_assigned", "picked_up", "in_transit"];
+/** Owner rule (2026-10-15); the database enforces it too (0020). */
+export const MAX_ACTIVE_JOBS = 2;
+
+/** The 4-step line on a driver's job card; labels show on every screen size. */
+export function renderDriverStepper(status) {
+  const current = DRIVER_STAGES.indexOf(status);
+  if (current < 0) return "";
+  const bars = DRIVER_STAGES.map((s, i) => {
+    const state = i < current ? "done" : i === current ? "current" : "next";
+    return `<span class="rq-step rq-step--${state}"></span>`;
+  }).join("");
+  const labels = DRIVER_STAGE_LABELS.map(
+    (l, i) => `<span class="rq-step-label${i === current ? " is-current" : ""}">${l}</span>`,
+  ).join("");
+  return `
+    <div class="rq-stepper dv-stepper" role="img" aria-label="Step ${current + 1} of 4, ${DRIVER_STAGE_LABELS[current]}">
+      <div class="rq-stepper-bars" aria-hidden="true">${bars}</div>
+      <div class="rq-stepper-labels" aria-hidden="true">${labels}</div>
+    </div>`;
+}
+
+/**
+ * The one next step for a job, as the big button says it. `done` is the
+ * undo line, `saving`/`seen` the snackbar copy. Delivered has no undo: it
+ * opens the cash check instead.
+ */
+export function driverAction(status) {
+  return (
+    {
+      driver_assigned: {
+        next: "picked_up",
+        label: "I've picked up the load",
+        icon: "box",
+        done: "Marked picked up",
+        saving: "Picked up",
+        seen: "Picked up",
+      },
+      picked_up: {
+        next: "in_transit",
+        label: "I'm driving to drop-off",
+        icon: "truck",
+        done: "Marked driving to drop-off",
+        saving: "Driving to drop-off",
+        seen: "In transit",
+      },
+      in_transit: {
+        next: "delivered",
+        label: "I've delivered it",
+        icon: "check",
+        cashCheck: true,
+      },
+    }[status] || null
+  );
+}
+
+/** Jobs still in progress, oldest accepted first. */
+export function activeJobs(list) {
+  return (list || [])
+    .filter((d) => ACTIVE_JOB_STATUSES.includes(d.status))
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+}
+
+/**
+ * Which job the Home card shows: the one the driver picked if it's still
+ * active, else the one on the road (it's moving), else the oldest.
+ */
+export function pickCurrentJob(active, selectedId) {
+  if (!active?.length) return null;
+  return (
+    active.find((d) => d.id === selectedId) ||
+    active.find((d) => d.status === "in_transit" || d.status === "picked_up") ||
+    active[0]
+  );
+}
+
+/** Google Maps directions to a stop. Coordinates win over the typed address. */
+export function mapsUrl(lat, lng, address) {
+  const destination = lat != null && lng != null ? `${lat},${lng}` : String(address || "");
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+}
+
+/** "today", "tomorrow" or "Oct 16" for a pickup date; null when not set. */
+export function pickupDayLabel(iso, today = new Date()) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(d) - day(today)) / 86400000);
+  if (diff === 0) return "today";
+  if (diff === 1) return "tomorrow";
+  return d.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+}
+
+/** First part of an address: "Marikina Public Market, Marikina" -> "Marikina Public Market". */
+export function shortPlace(address) {
+  return String(address || "").split(",")[0].trim();
+}
+
+/**
+ * Plain words for a failed accept or status step. Never shows error.message.
+ * kind: offline | rate | cap | gone | unknown.
+ */
+export function jobErrorCopy(error) {
+  const message = String(error?.message || "");
+  if (error?.name === "AuthRetryableFetchError" || /failed to fetch|networkerror|load failed/i.test(message)) {
+    return { kind: "offline", message: "That didn't save. Check your signal and tap again. Nothing changed on the job." };
+  }
+  if (/too many requests/i.test(message) || error?.status === 429) {
+    return { kind: "rate", message: "Too many tries in a minute. Wait a minute, then try again." };
+  }
+  if (/2 active jobs/i.test(message)) {
+    return { kind: "cap", message: "You have 2 jobs. Finish one to accept more." };
+  }
+  if (error?.code === "PGRST116" || /multiple \(or no\) rows|no rows/i.test(message)) {
+    return { kind: "gone", message: "This job changed. Someone else got it first, or it was cancelled." };
+  }
+  return { kind: "unknown", message: "That didn't save. Check your signal and tap again. Nothing changed on the job." };
+}
+
+/**
+ * Why location isn't being shared, from a GeolocationPositionError (or null
+ * when the browser has no geolocation at all).
+ * blocked = this site isn't allowed; off = the phone's Location is off;
+ * weak = no fix in time.
+ */
+export function locationProblem(error) {
+  if (!error) return "unsupported";
+  if (error.code === 1) return "blocked";
+  if (error.code === 2) return "off";
+  return "weak";
+}
+
+/** How long the Undo snackbar waits: longer for keyboard users. */
+export function undoSeconds(viaKeyboard) {
+  return viaKeyboard ? 10 : 8;
+}
+
+/** "delivered and paid in cash" / "delivered, not paid" / "delivered" (older jobs). */
+export function paymentLine(d) {
+  if (d.payment_status === "paid") return "delivered and paid in cash";
+  if (d.payment_status === "unpaid") return "delivered, not paid. Sakada is following up";
+  return "delivered";
+}

@@ -179,6 +179,10 @@ async function loadDeliveries() {
   document.getElementById("statCompleted").textContent = data.filter(
     (d) => d.status === "delivered",
   ).length;
+  // Delivered without payment (driver chose "Delivered, not paid"): Sakada follows up.
+  document.getElementById("statUnpaid").textContent = data.filter(
+    (d) => d.payment_status === "unpaid",
+  ).length;
 
   deliveryCodeById = new Map(data.map((d) => [d.id, d.delivery_code]));
 
@@ -205,7 +209,7 @@ function renderDeliveries() {
         <td>${sanitizeText(d.pickup_address)} → ${sanitizeText(d.dropoff_address)}</td>
         <td>${sanitizeText(requesterName)}</td>
         <td>${sanitizeText(driverName)}</td>
-        <td><span class="status-pill" data-status="${sanitizeText(d.status)}">${statusLabel(d.status)}</span></td>
+        <td><span class="status-pill" data-status="${sanitizeText(d.status)}">${statusLabel(d.status)}</span>${d.payment_status === "unpaid" ? ' <span class="status-pill" data-status="unpaid">Unpaid</span>' : ""}</td>
         <td>₱${Number(d.estimated_cost).toLocaleString()}</td>
         <td>${canCancel ? `<button class="btn-small danger" data-cancel-id="${sanitizeText(d.id)}">Cancel</button>` : ""}</td>
       </tr>

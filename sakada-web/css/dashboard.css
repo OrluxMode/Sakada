@@ -210,6 +210,11 @@
   --pill: var(--status-cancelled);
   --pill-text: var(--status-cancelled-text);
 }
+/* Delivered but the receiver didn't pay (0020): Sakada follows up */
+.status-pill[data-status="unpaid"] {
+  --pill: var(--status-cancelled);
+  --pill-text: var(--status-cancelled-text);
+}
 
 .delivery-route {
   font-size: 14px;

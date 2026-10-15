@@ -49,7 +49,22 @@
     - States `203:1322`, Desktop `203:1589`
     - Critique trend 27 → 28 → 29 (v3); v4 not scored.
   - **✅ v4 designs APPROVED by the user (2026-10-15).**
-  - **Farmer/vendor Phase 1: BUILT + TESTED on the scratch copy (`scratchpad/web5`). Prompt written: `opencode prompt - farmer dashboard.md`** (11 steps). **OpenCode ran; VERIFIED 2026-10-15** (identical to web5, lint clean, 133/133, 57/57, browser 1440/390 0 errors). **Waiting for the user to push** (Phase 0 + produce-only + farmer dashboard). **Next after that: driver Phase 1.**
+  - **Farmer/vendor Phase 1: PUSHED `fe40ac0`, CI green.**
+  - **Driver Phase 1: OpenCode ran; VERIFIED 2026-10-15** (identical to web6 after removing 1 extra blank line in dashboard.css; lint clean, 143/143, 65/65, browser 390/1440 0 errors). **Waiting for: the user to run 0020 in Supabase (if not done), then push.** Earlier notes: BUILT + TESTED on `scratchpad/web6` (2026-10-15). Prompt: `opencode prompt - driver dashboard.md` (14 steps, incl. migration 0020).**
+    - **Order:** the user runs 0020 in the Supabase SQL editor FIRST (the new page sends `payment_status`), then OpenCode, then Claude verifies, then push.
+    - Verify: byte-diff vs web6 (11 web files + the migration vs `scratchpad/pg/0020_driver_jobs_and_payment.sql`), lint, vitest **143**, e2e **65**, browser 1440/390.
+    - 0020 adds:
+      - `payment_status` (paid/unpaid; set only with in_transit → delivered, once)
+      - `status_changed_at` (trigger-stamped)
+      - a 2-active-job cap trigger with an advisory lock
+      - the guard functions from 0016, now with `payment_status`
+      - tested in PGlite (`scratchpad/pg/t20.mjs`)
+  - **Driver v4 updated for the owner rules (2026-10-15), APPROVED by the user:**
+    - States `203:1322` tile 12: the Delivered sheet is now "Yes, delivered and paid" / "Delivered, not paid" (`211:294`) / "Not yet"
+    - tile 8 is now "owner rule: max 2"
+    - new tile 21 `211:296`: "Delivered. Marked Unpaid." + rate
+    - the States frame is now 2074 tall
+  - (old) Farmer/vendor Phase 1: BUILT + TESTED on the scratch copy (`scratchpad/web5`). Prompt written: `opencode prompt - farmer dashboard.md`** (11 steps). **OpenCode ran; VERIFIED 2026-10-15** (identical to web5, lint clean, 133/133, 57/57, browser 1440/390 0 errors). **Waiting for the user to push** (Phase 0 + produce-only + farmer dashboard). **Next after that: driver Phase 1.**
   - **Build notes (farmer):**
     - tabs = hash sections `#home/#book/#history/#profile` in one page
     - `renderStageStepper` + `initialsFor` in `dashboard-shared.js`
@@ -65,7 +80,14 @@
     - detect Sakada-cancelled jobs on reload; support 2 active jobs
     - vehicle-required check before accept (new client check)
   - **Decisions:** goods = fresh produce only (vegetables/fruits, no rice/grains); Delivered has a cash confirm; no in-app contact; farmer + vendor share one dashboard; drivers may hold 2 jobs; the delivered card stays on farmer Home until rated; notes don't ask for the receiver's phone.
-  - **❓ Owner question OPEN (2):** cap drivers at 2 active jobs? and: 0007 only allows in_transit → delivered, so **an unpaid delivery can never be closed**, even by admin. How should it be resolved?
+  - **✅ Owner answers (2026-10-15, in PRODUCT.md):**
+    - max **2 active jobs** per driver
+    - Delivered is allowed even if unpaid (the job closes on delivery, not payment)
+    - unpaid stays **Unpaid** and is flagged for follow-up
+    - for the driver build this needs:
+      - migration: `payment_status` (paid/unpaid) on deliveries + a 2-active-job check on accept
+      - the driver's Delivered sheet: "Paid in cash" / "Not paid"
+      - admin sees an Unpaid flag
   - **Later:** Phase 2 (2a driver stats, 2b online toggle via `is_available`, 2c search by code, 2d rating average, 2e avatar), Phase 3 admin dashboard, Phase 4 PWA.
 - **🔔 Low-priority reminder (user asked to be reminded):** restyle **admin login** (`auth/admin-login.html`) to match the new signup/login pages. It still uses the old card: 39px inputs, "Log In" in Title Case, buttons in the browser's default font. Admin-only, so low priority. Bring it up when the bigger work is done.
 - **Pushed today:**
@@ -1733,5 +1755,41 @@
   - lint clean, unit 133/133, e2e 57/57
   - browser at 1440/390 (farmer and vendor, Home/Book/History): 0 console errors, no sideways scroll
   - next: the user pushes, then the driver build
+
+- 2026-10-15: User answered both owner questions:
+  - max 2 active jobs per driver
+  - an unpaid delivery can still be marked Delivered
+  - payment stays Unpaid and is flagged for follow-up
+  - the job closes on delivery, not payment
+  - recorded in PRODUCT.md; this changes the driver build plan (see Resume here)
+
+- 2026-10-15: User pushed farmer/vendor (`fe40ac0`, green). With impeccable, updated the driver v4 States for the owner rules:
+  - the Delivered sheet gets "Delivered, not paid", and "Not yet" becomes a quiet text button
+  - the 2-job tile is now a firm rule
+  - new tile 21 "Delivered. Marked Unpaid." + rate
+  - asked the user to OK it before the build
+
+- 2026-10-15: User: "approved, build the driver dashboard". Built on the scratch copy `web6`:
+  - new `css/driver.css` (reuses the `.rq` parts); rewrote `dashboard/driver/index.html` + `js/driver-dashboard.js`
+  - 10 driver helpers + 10 unit tests in `dashboard-shared.js`; `markDelivered()` in `deliveries.js`
+  - admin: Unpaid stat + pill; mock: 2-job cap + notes
+  - 8 new driver e2e tests + 1 admin test
+  - the page: Undo on steps (saved via localStorage if the page closes), cash check with "Delivered, not paid", accept sheet, location states, offline, Sakada-cancelled, first visit
+  - migration 0020 (payment_status, status_changed_at, 2-job cap), tested in PGlite
+  - bugs found and fixed:
+    - `notifications` was read before it was declared
+    - the vehicle load wiped what the driver had already typed
+    - chip gaps, card-title font, collect/notes spacing
+  - lint clean, unit 143/143, e2e 65/65; impeccable detect: the same flat-type false positive
+  - wrote `opencode prompt - driver dashboard.md`; simulated its edit steps → identical to web6
+
+- 2026-10-15: User asked for the SQL as a file. Copied 0020 into `sakada-backend/supabase/migrations/0020_driver_jobs_and_payment.sql`; prompt step 1 now says "already there, skip". The user runs it in the Supabase SQL editor.
+
+- 2026-10-15: User: "opencode is done, check it" (driver). Verified:
+  - every file identical to web6, except one extra blank line OpenCode added in `css/dashboard.css` (removed)
+  - the migration file is identical
+  - lint clean, unit 143/143, e2e 65/65
+  - browser at 390/1440: 0 errors, no sideways scroll
+  - next: run 0020 in Supabase, then push
 
 <!-- Add the next session's entry above this line -->

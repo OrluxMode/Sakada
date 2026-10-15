@@ -88,6 +88,23 @@ export async function updateDeliveryStatus(
     .single();
 }
 
+/**
+ * The driver's Delivered step, with whether the receiver paid. The job
+ * closes either way (owner rule, 2026-10-15); unpaid ones are flagged for
+ * Sakada to follow up. The 0020 guard only lets payment_status be set
+ * together with in_transit -> delivered.
+ */
+export async function markDelivered(deliveryId, driverId, paid) {
+  return await supabase
+    .from("deliveries")
+    .update({ status: "delivered", payment_status: paid ? "paid" : "unpaid" })
+    .eq("id", deliveryId)
+    .eq("driver_id", driverId)
+    .eq("status", "in_transit")
+    .select()
+    .single();
+}
+
 /** Deliveries a driver has accepted, most recent first. */
 export async function getMyAssignedDeliveries(driverId) {
   return await supabase

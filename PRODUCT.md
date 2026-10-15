@@ -24,6 +24,10 @@ A booking platform built for agri-delivery in the Philippines. The fare is compu
 - Fare estimate (in code, `js/mapbox-client.js`): **₱150 base + ₱15 per km + ₱2 per kg**, using Mapbox routing.
 - Bookings capture goods description, quantity in kg, pickup and drop-off addresses.
 - **Goods scope (confirmed by the owner 2026-10-15): fresh produce only, vegetables and fruits.** No rice or other grains. Use produce in every example (e.g. tomatoes, onions, cabbage, eggplant, mangoes, bananas).
+- **Driver and payment rules (confirmed by the owner 2026-10-15):**
+  - A driver can hold **at most 2 active jobs** at once.
+  - A driver can mark a delivery **Delivered even if the receiver didn't pay**. The job closes on delivery, not on payment.
+  - A delivery that wasn't paid stays marked **Unpaid** and is **flagged for follow-up**.
 
 ## Capabilities and Constraints
 - Live: email + Google sign-up with role (farmer / vendor / driver), booking, fare estimate, real-time status, notifications, driver ratings, admin dashboard.
