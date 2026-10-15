@@ -151,3 +151,12 @@ answers.forEach((d) => {
 DESKTOP.addEventListener("change", syncAnswers);
 syncAnswers();
 syncTopic();
+
+// Opened from a dashboard card ("Send Sakada a message" with ?code=SK-00003):
+// pick the booking topic and fill in the code.
+const presetCode = new URLSearchParams(window.location.search).get("code");
+if (presetCode && /^SK-\d{1,8}$/i.test(presetCode)) {
+  purpose.value = "booking";
+  codeInput.value = presetCode.toUpperCase();
+  syncTopic();
+}

@@ -218,13 +218,13 @@ describe("rebookValues", () => {
       rebookValues({
         pickup_address: "A",
         dropoff_address: "B",
-        goods_description: "Rice",
+        goods_description: "Eggplant",
         quantity_kg: 500,
       }),
     ).toEqual({
       pickupAddress: "A",
       dropoffAddress: "B",
-      goodsDescription: "Rice",
+      goodsDescription: "Eggplant",
       quantityKg: "500",
     });
   });
@@ -237,4 +237,99 @@ describe("rebookValues", () => {
       quantityKg: "",
     });
   });
+});
+
+import {
+  renderStageStepper,
+  initialsFor,
+  groupActive,
+  homeSummary,
+  formatPeso,
+  fareBreakdown,
+  pickupPassed,
+  bookingErrorCopy,
+  contactUrl,
+} from "../js/dashboard-shared.js";
+
+describe("renderStageStepper", () => {
+  it("labels the current step for screen readers", () => {
+    const html = renderStageStepper("in_transit");
+    expect(html).toContain('aria-label="Step 4 of 5, In transit"');
+    expect(html.match(/rq-step--done/g)).toHaveLength(3);
+    expect(html.match(/rq-step--current/g)).toHaveLength(1);
+    expect(html).toContain("Next: Delivered");
+  });
+  it("shows Pending as waiting, not as progress", () => {
+    const html = renderStageStepper("pending");
+    expect(html).toContain("Step 1 of 5, Waiting for a driver");
+    expect(html).toContain("rq-step--waiting");
+  });
+  it("draws nothing for cancelled", () => {
+    expect(renderStageStepper("cancelled")).toBe("");
+  });
+});
+
+describe("initialsFor", () => {
+  it("uses first and last name", () => expect(initialsFor("Ana Maria Reyes")).toBe("AR"));
+  it("handles one name and blanks", () => {
+    expect(initialsFor("carlo")).toBe("C");
+    expect(initialsFor("  ")).toBe("?");
+  });
+});
+
+describe("groupActive and homeSummary", () => {
+  const list = [
+    { status: "pending" },
+    { status: "driver_assigned" },
+    { status: "picked_up" },
+    { status: "in_transit" },
+  ];
+  it("splits active deliveries into Home sections", () => {
+    const g = groupActive(list);
+    expect(g.onRoad).toHaveLength(2);
+    expect(g.assigned).toHaveLength(1);
+    expect(g.waiting).toHaveLength(1);
+  });
+  it("leaves zeros out of the summary", () => {
+    expect(homeSummary({ onRoad: 1, waiting: 2 })).toBe("1 on the road · 2 waiting");
+    expect(homeSummary({})).toBe("");
+  });
+});
+
+describe("formatPeso and fareBreakdown", () => {
+  it("formats pesos", () => expect(formatPeso(3550)).toBe("₱3,550"));
+  it("shows the real distance", () =>
+    expect(fareBreakdown(118.43, 800)).toBe("₱150 base + 118.4 km × ₱15 + 800 kg × ₱2, rounded. Tolls included."));
+});
+
+describe("pickupPassed", () => {
+  const today = new Date(2026, 9, 17);
+  it("is true for a waiting delivery whose date is before today", () => {
+    expect(pickupPassed({ status: "pending", scheduled_pickup_at: "2026-10-16T00:00:00" }, today)).toBe(true);
+  });
+  it("is false for today, for other statuses, and with no date", () => {
+    expect(pickupPassed({ status: "pending", scheduled_pickup_at: "2026-10-17T08:00:00" }, today)).toBe(false);
+    expect(pickupPassed({ status: "driver_assigned", scheduled_pickup_at: "2026-10-10T00:00:00" }, today)).toBe(false);
+    expect(pickupPassed({ status: "pending", scheduled_pickup_at: null }, today)).toBe(false);
+  });
+});
+
+describe("bookingErrorCopy", () => {
+  it("maps each known error to plain words", () => {
+    expect(bookingErrorCopy({ message: 'Couldn\'t find "San Roque". Try adding a city or province.', which: "pickup" })).toMatchObject({ kind: "not-found", field: "pickup" });
+    expect(bookingErrorCopy({ message: "No driving route found between those two points." })).toMatchObject({ kind: "no-route", field: "dropoff" });
+    expect(bookingErrorCopy({ message: "Too many requests. Please wait a minute and try again." }).kind).toBe("rate");
+    expect(bookingErrorCopy({ message: "The route distance does not match the pickup and drop-off locations." }).kind).toBe("mismatch");
+    expect(bookingErrorCopy(new TypeError("Failed to fetch")).kind).toBe("offline");
+  });
+  it("never passes the raw message through", () => {
+    expect(bookingErrorCopy({ message: "duplicate key value violates unique constraint" }).message).not.toMatch(/duplicate/);
+  });
+});
+
+describe("contactUrl", () => {
+  it("adds the booking code", () =>
+    expect(contactUrl("../../pages/contact.html", "SK-00003")).toBe("../../pages/contact.html?code=SK-00003"));
+  it("leaves the link alone without a code", () =>
+    expect(contactUrl("../../pages/contact.html", "")).toBe("../../pages/contact.html"));
 });

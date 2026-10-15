@@ -52,7 +52,7 @@ fade-ins on every section — motion is spent once, at the hero.
 ## Photography direction
 
 Golden-hour or blue-hour lighting, real working scenes: loaded trucks or
-tricycles on provincial roads, rice paddies, vendors at a palengke, farmers
+tricycles on provincial roads, vegetable farms and orchards, vendors at a palengke, farmers
 loading produce. Same cinematic mood as the reference, different subject.
 Current placeholder image is Unsplash-licensed (attribution in index.html
 comment) — swap for commissioned/licensed photography before real launch.

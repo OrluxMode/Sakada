@@ -157,8 +157,8 @@ export function checkAddress(value, which) {
 
 export function checkGoods(value) {
   const v = value.trim();
-  if (!v) return "Say what you're sending, like onions or rice.";
-  if (v.length < 2) return "Say what you're sending, like onions or rice.";
+  if (!v) return "Say what you're sending, like tomatoes or mangoes.";
+  if (v.length < 2) return "Say what you're sending, like tomatoes or mangoes.";
   if (v.length > 120) return "Keep this under 120 characters.";
   return "";
 }

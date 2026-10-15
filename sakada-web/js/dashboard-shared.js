@@ -221,3 +221,115 @@ export function rebookValues(d) {
     quantityKg: d.quantity_kg != null ? String(d.quantity_kg) : "",
   };
 }
+
+// ---------- Requester dashboard (v4 design) ----------
+
+/** The five delivery stages in order. Cancelled sits outside the line. */
+export const STAGES = ["pending", "driver_assigned", "picked_up", "in_transit", "delivered"];
+const STAGE_LABELS = ["Waiting", "Driver assigned", "Picked up", "In transit", "Delivered"];
+
+/**
+ * The 5-step progress line. Done steps are dim amber, the current step is a
+ * taller solid bar, upcoming steps are outlines, so it doesn't rely on colour
+ * alone. Screen readers get one label ("Step 4 of 5, In transit"); the bars
+ * are hidden from them.
+ */
+export function renderStageStepper(status) {
+  const current = STAGES.indexOf(status);
+  if (current < 0) return "";
+  const bars = STAGES.map((s, i) => {
+    const state = i < current ? "done" : i === current ? "current" : "next";
+    return `<span class="rq-step rq-step--${state}${status === "pending" && i === 0 ? " rq-step--waiting" : ""}"></span>`;
+  }).join("");
+  const labels = STAGE_LABELS.map(
+    (l, i) => `<span class="rq-step-label${i === current ? " is-current" : ""}">${l}</span>`,
+  ).join("");
+  const next = STAGE_LABELS[current + 1];
+  const now = status === "pending" ? "Waiting for a driver" : STAGE_LABELS[current];
+  return `
+    <div class="rq-stepper" role="img" aria-label="Step ${current + 1} of 5, ${now}">
+      <div class="rq-stepper-bars" aria-hidden="true">${bars}</div>
+      <div class="rq-stepper-labels" aria-hidden="true">${labels}</div>
+      <p class="rq-stepper-line" aria-hidden="true"><strong>${now}</strong>${next ? ` · Next: ${next}` : ""}</p>
+    </div>`;
+}
+
+/** "Ana Reyes" -> "AR"; one name -> one letter; empty -> "?". */
+export function initialsFor(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const first = parts[0][0];
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (first + last).toUpperCase();
+}
+
+/** Splits active deliveries into the three Home sections. */
+export function groupActive(deliveries) {
+  const list = deliveries || [];
+  return {
+    onRoad: list.filter((d) => d.status === "picked_up" || d.status === "in_transit"),
+    assigned: list.filter((d) => d.status === "driver_assigned"),
+    waiting: list.filter((d) => d.status === "pending"),
+  };
+}
+
+/** "1 on the road · 1 driver assigned · 1 waiting · 1 to rate" (zeros left out). */
+export function homeSummary({ onRoad = 0, assigned = 0, waiting = 0, toRate = 0 }) {
+  return [
+    onRoad && `${onRoad} on the road`,
+    assigned && `${assigned} driver assigned`,
+    waiting && `${waiting} waiting`,
+    toRate && `${toRate} to rate`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** 3550 -> "₱3,550". */
+export function formatPeso(amount) {
+  return `₱${Math.round(Number(amount) || 0).toLocaleString("en-PH")}`;
+}
+
+/** The fare formula with this booking's numbers, as shown on the quote. */
+export function fareBreakdown(distanceKm, quantityKg) {
+  return `₱150 base + ${Number(distanceKm).toFixed(1)} km × ₱15 + ${quantityKg} kg × ₱2, rounded. Tolls included.`;
+}
+
+/** True when a delivery is still waiting but its pickup date is before today. */
+export function pickupPassed(d, today = new Date()) {
+  if (!d || d.status !== "pending" || !d.scheduled_pickup_at) return false;
+  const pickup = new Date(d.scheduled_pickup_at);
+  const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  return day(pickup) < day(today);
+}
+
+/**
+ * Plain words for anything that can go wrong while getting a fare or
+ * booking. `field` says which input to put it on ("pickup" / "dropoff"),
+ * or null for the message above the button. Never shows error.message.
+ */
+export function bookingErrorCopy(error) {
+  const message = String(error?.message || "");
+  if (error?.name === "AuthRetryableFetchError" || /failed to fetch|networkerror|load failed|reach the map/i.test(message)) {
+    return { kind: "offline", field: null, message: "No connection. Check your signal and try again. Your details are still here." };
+  }
+  const notFound = message.match(/Couldn't find "(.*)"/);
+  if (notFound) {
+    return { kind: "not-found", field: error?.which || "pickup", message: "We couldn't find this address. Add the town and province." };
+  }
+  if (/no driving route|calculate a route/i.test(message)) {
+    return { kind: "no-route", field: "dropoff", message: "No road route from your pickup. Check both addresses." };
+  }
+  if (/too many requests/i.test(message) || error?.status === 429) {
+    return { kind: "rate", field: null, message: "Too many bookings in a minute. Wait a minute, then confirm again. Your details are still here." };
+  }
+  if (/route distance does not match/i.test(message)) {
+    return { kind: "mismatch", field: null, message: "We couldn't confirm the route. Get the fare again, then confirm." };
+  }
+  return { kind: "unknown", field: null, message: "We couldn't book this. Your details are still here. Try again." };
+}
+
+/** Link to the contact form with the booking code filled in. */
+export function contactUrl(base, code) {
+  return code ? `${base}?code=${encodeURIComponent(code)}` : base;
+}

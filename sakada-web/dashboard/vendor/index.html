@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Vendor Dashboard — Sakada Logistics</title>
     <meta name="robots" content="noindex" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https://api.mapbox.com data:; connect-src 'self' https://*.supabase.co https://api.mapbox.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com wss://*.supabase.co; frame-src 'none';" />
@@ -11,142 +11,200 @@
     <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.15/purify.min.js" integrity="sha384-uUMu9JDY09vBzRf9SPcK2VgUj+W/70J6Soc+Dded5P474ElQ63iv9j5N3DE7Kp3N" crossorigin="anonymous"></script>
   </head>
-  <body data-role="vendor">
+  <body class="rq" data-role="vendor" data-view="home">
     <a class="skip-link" href="#main">Skip to content</a>
     <div class="offline-banner" id="offlineBanner">
       <span class="offline-banner__icon">⚠</span>
-      You're offline — changes won't be saved until you reconnect
+      You're offline. You can look around, but booking and cancelling wait until you're back online.
     </div>
     <div class="page-loader" id="pageLoader">
       <div class="page-loader__spinner"></div>
     </div>
-    <header class="dash-topbar">
-      <a class="logo" href="../../index.html"
-        >SAKA<span class="mark">DA</span></a
-      >
-      <div class="dash-user">
-        <span class="role-badge">Vendor</span>
-        <span id="userName">Loading…</span>
-        <div class="notif-wrap">
-          <button
-            class="notif-bell"
-            id="notifBell"
-            type="button"
-            aria-label="Notifications"
-            aria-expanded="false"
-            aria-controls="notifPanel"
-          >
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2.5a5 5 0 0 0-5 5v3.2l-1.5 2.8h13L15 10.7V7.5a5 5 0 0 0-5-5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 16a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="notif-badge" id="notifBadge">0</span>
-          </button>
-          <div class="notif-panel" id="notifPanel">
-            <div class="notif-empty" id="notifEmpty">No notifications yet.</div>
-          </div>
-        </div>
-        <button class="btn-ghost" id="signOutBtn" type="button">Log Out</button>
-      </div>
+
+    <!-- Desktop top bar (hidden on phones; phones use the bottom tabs) -->
+    <header class="rq-topbar">
+      <a class="logo" href="../../index.html">SAKA<span class="mark">DA</span></a>
+      <nav class="rq-topnav" aria-label="Dashboard">
+        <a href="#home" data-tab="home">Home</a>
+        <a href="#history" data-tab="history">History</a>
+        <a href="#profile" data-tab="profile">Profile</a>
+      </nav>
+      <button class="rq-bell" type="button" data-open-notifs aria-label="Notifications">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
+        <span class="rq-badge" data-unread hidden></span>
+      </button>
+      <a class="rq-account" href="#profile">
+        <span class="rq-avatar rq-avatar--sm" data-initials></span>
+        <span data-user-name>Loading…</span>
+      </a>
     </header>
 
-    <main class="dash-body">
-      <h1 id="greeting">Welcome.</h1>
-      <p>
-        Book a delivery, get a real cost estimate, and see it move once a driver
-        accepts.
-      </p>
-
-      <div class="dash-section">
-        <h2>Book a Delivery</h2>
-        <div id="formMessage" class="form-message" role="alert"></div>
-
-        <form id="deliveryForm" class="delivery-form" novalidate>
-          <div class="field">
-            <label for="pickupAddress">Pickup address (supplier/farm)</label>
-            <input
-              id="pickupAddress"
-              type="text"
-              placeholder="e.g. Barangay San Roque, La Trinidad, Benguet"
-              required
-            />
-          </div>
-          <div class="field">
-            <label for="dropoffAddress">Your location</label>
-            <input
-              id="dropoffAddress"
-              type="text"
-              placeholder="e.g. Marikina Public Market, Marikina City"
-              required
-            />
-          </div>
-          <div class="field">
-            <label for="goodsDescription">What are you receiving?</label>
-            <input
-              id="goodsDescription"
-              type="text"
-              placeholder="e.g. Fresh vegetables"
-              required
-            />
-          </div>
-          <div class="two-col">
-            <div class="field">
-              <label for="quantityKg">Quantity (kg)</label>
-              <input id="quantityKg" type="number" min="1" step="1" required />
+    <div class="rq-layout">
+      <main class="rq-main" id="main" tabindex="-1">
+        <!-- HOME -->
+        <section class="rq-view" id="view-home" aria-labelledby="homeTitle">
+          <div class="rq-hello">
+            <span class="rq-avatar" data-initials aria-hidden="true"></span>
+            <div class="rq-hello-text">
+              <h1 id="homeTitle" class="rq-display">Hello</h1>
+              <p class="rq-summary" id="homeSummary"></p>
             </div>
+            <button class="rq-bell rq-bell--phone" type="button" data-open-notifs aria-label="Notifications">
+              <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
+              <span class="rq-badge" data-unread hidden></span>
+            </button>
+          </div>
+
+          <div class="rq-banner rq-banner--ok" id="bookedBanner" role="status" hidden>
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            <p><strong>Booked.</strong> You'll see it here and under the bell when a driver accepts.</p>
+          </div>
+
+          <div id="homeLists" aria-live="polite">
+            <div class="rq-skeletons"></div>
+          </div>
+
+          <a class="rq-help" href="../../pages/contact.html">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            <span><span class="rq-muted">Something wrong with a delivery?</span> <strong>Send Sakada a message</strong></span>
+          </a>
+        </section>
+
+        <!-- HISTORY -->
+        <section class="rq-view" id="view-history" aria-labelledby="historyTitle">
+          <h1 id="historyTitle" class="rq-display">History</h1>
+          <div class="rq-filters" role="group" aria-label="Show">
+            <button type="button" class="rq-filter" data-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="rq-filter" data-filter="delivered" aria-pressed="false">Delivered</button>
+            <button type="button" class="rq-filter" data-filter="cancelled" aria-pressed="false">Cancelled</button>
+          </div>
+          <div id="historyList" aria-live="polite"></div>
+        </section>
+
+        <!-- PROFILE -->
+        <section class="rq-view" id="view-profile" aria-labelledby="profileTitle">
+          <div class="rq-profile-head">
+            <span class="rq-avatar rq-avatar--lg" data-initials aria-hidden="true"></span>
+            <div>
+              <h1 id="profileTitle" class="rq-display" data-user-name>Profile</h1>
+              <p class="rq-muted"><span>Vendor</span><span id="profileEmail"></span></p>
+            </div>
+          </div>
+          <div class="rq-list">
+            <button type="button" class="rq-row" data-open-notifs>
+              <span>Notifications</span><span class="rq-row-meta" data-unread-text></span>
+            </button>
+            <a class="rq-row" href="../../pages/contact.html"><span>Send Sakada a message</span></a>
+            <a class="rq-row" href="../../pages/how-it-works.html"><span>How it works</span></a>
+          </div>
+          <div class="rq-note">
+            <p><strong>Your role: Vendor</strong></p>
+            <p class="rq-muted">Roles can't be changed. Farmers and vendors get the same booking tools.</p>
+          </div>
+          <button class="rq-btn rq-btn--ghost" id="signOutBtn" type="button">Log out</button>
+        </section>
+      </main>
+
+      <!-- BOOK (its own tab on phones, a side panel on desktop) -->
+      <aside class="rq-book rq-view" id="view-book" aria-labelledby="bookTitle">
+        <h1 id="bookTitle" class="rq-display">Book a truck</h1>
+        <p class="rq-muted">Get the fare first. Nothing is booked until you confirm.</p>
+
+        <button type="button" class="rq-row rq-recent" id="recentRoute" hidden>
+          <span><strong>Use a recent route</strong><br /><span class="rq-muted" id="recentRouteText"></span></span>
+        </button>
+
+        <form id="deliveryForm" class="rq-form" novalidate>
+          <fieldset>
+            <legend>Route</legend>
+            <div class="field">
+              <label for="pickupAddress">Pickup address</label>
+              <input id="pickupAddress" type="text" placeholder="Barangay, town, province" autocomplete="off" required />
+            </div>
+            <div class="field">
+              <label for="dropoffAddress">Drop-off address</label>
+              <input id="dropoffAddress" type="text" placeholder="Market or warehouse, city" autocomplete="off" required />
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Load</legend>
+            <div class="field">
+              <label for="goodsDescription">What are you shipping?</label>
+              <input id="goodsDescription" type="text" placeholder="e.g. Tomatoes, 40 crates" required />
+            </div>
+            <div class="field">
+              <label for="quantityKg">Total weight (kg)</label>
+              <input id="quantityKg" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 800" aria-describedby="kgHint" required />
+              <p class="rq-hint" id="kgHint">A rough total is fine. Drivers see it before they accept.</p>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>When</legend>
             <div class="field">
               <label for="scheduledPickup">Pickup date</label>
               <input id="scheduledPickup" type="date" required />
             </div>
+            <div class="field">
+              <label for="notes">Notes for the driver <span class="rq-muted">(optional)</span></label>
+              <textarea id="notes" rows="3" maxlength="500" placeholder="Who receives and pays at drop-off, gate code, where to load"></textarea>
+            </div>
+          </fieldset>
+
+          <div id="formMessage" class="rq-banner rq-banner--bad" role="alert" hidden></div>
+
+          <div class="rq-quote" id="quote" hidden>
+            <p class="rq-quote-label">Your fare</p>
+            <p class="rq-quote-amount" id="quoteAmount"></p>
+            <p id="quoteBreakdown"></p>
+            <p class="rq-muted">Whoever receives the goods pays the driver this in cash at drop-off.</p>
+            <div class="rq-matched">
+              <p class="rq-muted"><strong>We matched</strong></p>
+              <p id="matchedPickup"></p>
+              <p id="matchedDropoff"></p>
+              <button type="button" class="rq-link" id="notRight">Not right? Add the barangay and town</button>
+            </div>
           </div>
-          <div class="field">
-            <label for="notes">Notes (optional)</label>
-            <textarea
-              id="notes"
-              rows="3"
-              placeholder="Anything the driver should know"
-            ></textarea>
+          <div class="rq-quote rq-quote--stale" id="quoteStale" hidden>
+            <p class="rq-quote-label">Your fare</p>
+            <p>Details changed. Get the fare again before you book.</p>
           </div>
 
-          <button class="btn-primary" type="submit" id="estimateBtn">
-            Get Estimated Cost
-          </button>
+          <div class="rq-book-actions">
+            <button class="rq-btn" type="submit" id="estimateBtn">Get the fare</button>
+            <button class="rq-btn" type="button" id="confirmBtn" hidden>Confirm booking</button>
+          </div>
+          <p class="rq-hint rq-formula">₱150 base + ₱15 per km + ₱2 per kg. Tolls included.</p>
         </form>
+      </aside>
+    </div>
 
-        <div id="costPreview" class="cost-preview">
-          <span class="cost-detail" id="costDistance"></span>
-          <span class="amount" id="costAmount"></span>
-          <span class="cost-detail"
-            >Estimated cost — confirm below to book this delivery.</span
-          >
-          <br /><br />
-          <button class="btn-primary" type="button" id="confirmBtn">
-            Confirm Delivery
-          </button>
-        </div>
+    <!-- Phone tab bar -->
+    <nav class="rq-tabs" aria-label="Dashboard">
+      <a href="#home" data-tab="home"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+      <a href="#book" data-tab="book"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg>Book</a>
+      <a href="#history" data-tab="history"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>History</a>
+      <a href="#profile" data-tab="profile"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</a>
+    </nav>
+
+    <!-- Notifications sheet -->
+    <dialog class="rq-sheet" id="notifSheet" aria-labelledby="notifTitle">
+      <div class="rq-sheet-grab" aria-hidden="true"></div>
+      <div class="rq-sheet-head">
+        <h2 id="notifTitle" class="rq-display">Notifications</h2>
+        <span class="rq-row-meta" data-unread-text></span>
       </div>
+      <ul class="rq-notifs" id="notifList"></ul>
+      <button class="rq-btn rq-btn--ghost" type="button" data-close-sheet>Close</button>
+    </dialog>
 
-      <div class="dash-section">
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-          "
-        >
-          <h2 style="margin: 0">Incoming Deliveries</h2>
-          <button class="btn-ghost" id="refreshBtn" type="button">
-            Refresh
-          </button>
-        </div>
-        <p class="section-subheading">Active</p>
-        <div id="activeDeliveryList" class="delivery-list">
-          <p class="delivery-empty">Loading…</p>
-        </div>
-        <p class="section-subheading">Delivery History</p>
-        <div id="historyDeliveryList" class="delivery-list">
-          <p class="delivery-empty">Loading…</p>
-        </div>
-      </div>
-
-    </main>
+    <!-- Cancel confirm -->
+    <dialog class="rq-sheet" id="cancelSheet" aria-labelledby="cancelTitle">
+      <div class="rq-sheet-grab" aria-hidden="true"></div>
+      <h2 id="cancelTitle" class="rq-display">Cancel this request?</h2>
+      <p class="rq-muted" id="cancelWhat"></p>
+      <button class="rq-btn rq-btn--ghost" type="button" data-close-sheet autofocus>Keep request</button>
+      <button class="rq-btn rq-btn--danger" type="button" id="cancelConfirm">Cancel request</button>
+    </dialog>
 
     <script type="module" src="../../js/requester-dashboard.js"></script>
   </body>

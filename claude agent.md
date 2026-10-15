@@ -26,21 +26,52 @@
 - Figma MCP is on the **Starter plan with a tool-call limit**. Batch the work into a few big `use_figma` calls.
 - Capturing the local or live site into Figma (`generate_figma_design`) gets blocked by the permission classifier. Rebuild from code instead.
 
-## ▶ Resume here (status as of 2026-10-14, end of session)
+## ▶ Resume here (status as of 2026-10-15, end of session; the user exited and will restart)
 
 - **Workflow** (confirmed again 2026-10-14):
-  - Claude designs (load **impeccable** at the start of EVERY design task, even tiny ones; Figma file `8q1102hOL3ZvFsiePuJrQv`), critiques, and writes `opencode prompt - *.md` files.
+  - Claude designs (load **impeccable** at the start of EVERY design task, even tiny ones; Figma file `8q1102hOL3ZvFsiePuJrQv`), critiques (dual-agent), and writes `opencode prompt - *.md` files.
+  - Before writing a prompt, Claude writes and tests the code on a scratch copy; the prompt carries full file contents to copy exactly.
   - **OpenCode (MiMo v2.6 flash free)** builds.
-  - Claude code-reviews and approves: diff vs prompt, real-browser 1440/390, `npm run lint`, `npx vitest run`, `npm run test:e2e`.
-  - Prefer OpenCode over Sonnet agents (token cost). Lean prompts; pre-test tricky CSS by injecting it into the live pages before writing the prompt.
-  - The user pushes manually and runs SQL in Supabase. CI (GitHub Actions `test` + `e2e`) gates Vercel deploys.
-- **⚠ Uncommitted, waiting for the user's push:** `css/pages.css` nav fix (the solid nav on the themed pages). The landing theme itself was pushed as `5054974`. Earlier uncommitted list (now pushed):
-  - `pages/{how-it-works,for-farmers,for-vendors,for-drivers,contact}.html` (body class `theme-dusk page-…`)
-  - `css/pages.css` (theme block at the end)
-  - `e2e/smoke.spec.mjs`
-  - `opencode prompt - landing theme pages.md`
-  - `.impeccable/critique/…how-it-works…` snapshot
+  - Claude verifies: byte-diff vs the tested copy, real browser at 1440/390, `npm run lint`, `npx vitest run`, `npm run test:e2e`.
+  - The user pushes manually and runs SQL in Supabase. CI gates Vercel.
+  - Figma rounds are named "v2-", "v3-" (new frames below the old ones; old ones kept).
+- **▶ IN PROGRESS: dashboard redesign** (plan: `~/.claude/plans/here-s-the-plan-i-jiggly-feigenbaum.md`; phases shipped one at a time "like CI/CD"):
+  - **Phase 0 (e2e mocks):** `e2e/support/mock-supabase.mjs` + `e2e/dashboards.spec.mjs`. Built by OpenCode, verified (e2e 53/53). **Still uncommitted, waiting for the user's push.**
+  - **Phase 1 farmer/vendor: design done.** Figma page "dashboards" `149:294`; **current = v4- frames (y=9200)** (v3 at y=5200 kept):
+    - Home `188:294`, Notifications `189:482`
+    - Book before fare `189:294`, Book with fare `189:378`
+    - History `189:642`, Profile `189:515`, First visit `189:581`
+    - States `189:1050`, Desktop `189:1277`
+    - Critique trend 21 (old code) → 24 → 27 → 28 (v3); v4 not scored.
+  - **Driver dashboard: design done.** Figma page "driver dashboard" `164:294`; **current = v4- frames (y=10800)** (v3 at y=6900 kept):
+    - Home, picked up `203:294`; 2 jobs · Rice `203:418`; 2 jobs · Corn `203:539`
+    - New jobs `203:903`, History `203:660`, Profile `203:745`, First visit `203:829`
+    - States `203:1322`, Desktop `203:1589`
+    - Critique trend 27 → 28 → 29 (v3); v4 not scored.
+  - **✅ v4 designs APPROVED by the user (2026-10-15).**
+  - **Farmer/vendor Phase 1: BUILT + TESTED on the scratch copy (`scratchpad/web5`). Prompt written: `opencode prompt - farmer dashboard.md`** (11 steps). **OpenCode ran; VERIFIED 2026-10-15** (identical to web5, lint clean, 133/133, 57/57, browser 1440/390 0 errors). **Waiting for the user to push** (Phase 0 + produce-only + farmer dashboard). **Next after that: driver Phase 1.**
+  - **Build notes (farmer):**
+    - tabs = hash sections `#home/#book/#history/#profile` in one page
+    - `renderStageStepper` + `initialsFor` in `dashboard-shared.js`
+    - history dates from `updated_at`; email from `getUser`; notifications open their delivery
+    - error copy mapped (no raw `error.message`)
+    - pre-test with the Phase 0 mocks
+  - **Build notes (driver):**
+    - sticky action bar with job name + 5 s undo (delay the write)
+    - accept and delivered confirm sheets
+    - 4-stage stepper; pickup date / notes / distance_km / Maps links (prefer coordinates)
+    - last-sent time + paused/no-signal states
+    - "No longer available" copy
+    - detect Sakada-cancelled jobs on reload; support 2 active jobs
+    - vehicle-required check before accept (new client check)
+  - **Decisions:** goods = fresh produce only (vegetables/fruits, no rice/grains); Delivered has a cash confirm; no in-app contact; farmer + vendor share one dashboard; drivers may hold 2 jobs; the delivered card stays on farmer Home until rated; notes don't ask for the receiver's phone.
+  - **❓ Owner question OPEN (2):** cap drivers at 2 active jobs? and: 0007 only allows in_transit → delivered, so **an unpaid delivery can never be closed**, even by admin. How should it be resolved?
+  - **Later:** Phase 2 (2a driver stats, 2b online toggle via `is_available`, 2c search by code, 2d rating average, 2e avatar), Phase 3 admin dashboard, Phase 4 PWA.
+- **🔔 Low-priority reminder (user asked to be reminded):** restyle **admin login** (`auth/admin-login.html`) to match the new signup/login pages. It still uses the old card: 39px inputs, "Log In" in Title Case, buttons in the browser's default font. Admin-only, so low priority. Bring it up when the bigger work is done.
 - **Pushed today:**
+  - `6510f5a` login page redesign
+  - `e283ca1` signup page redesign
+  - `19c7065` solid nav on the themed pages
   - `ccbfc2c` contact page redesign
   - `5620e0c` validators on every form (js/validators.js + field-errors.js, gmail.co typo check)
   - `123a8a6` ₱ glyph + In Transit violet #b09bee
@@ -1476,5 +1507,231 @@
 - OpenCode's 6 login files are byte-identical to Claude's tested copy; nothing else changed (admin login untouched).
 - Results: lint clean, unit 118/118, e2e 47/47; the real page at 1440/390 has no page errors and no overflow.
 - **Uncommitted, waiting for the user's push.**
+
+- User: remind them about admin login later (low priority). Added a 🔔 reminder to **▶ Resume here**.
+
+- User pushed the login page as `6510f5a` (signup was `e283ca1`). Working tree clean apart from this log.
+
+### 2026-10-14: Dashboard redesign plan + Phase 0
+- User's plan: the Figma "mobile" page (`147:294`) has two reference images, driver `147:296` (ride-app home) and farmer/vendor `147:299` (parcel-app home). Use them for the **dashboards only**, for mobile web + desktop now and a mobile app later.
+- Decisions:
+  - take the **layout**, keep the Sakada look (dark ink + amber)
+  - ship in phases "like CI/CD": first the existing features in the new layout, then new features one by one
+- Plan saved at `~/.claude/plans/here-s-the-plan-i-jiggly-feigenbaum.md`:
+  - **Phase 0:** e2e mocks + baseline critique
+  - **Phase 1:** new layout using existing features (stepper, tab bar, quick actions, header)
+  - **Phase 2:** 2a driver stats, 2b online toggle (`is_available`), 2c search by code, 2d rating average, 2e avatar
+  - **Phase 3:** admin dashboard + admin login
+  - **Phase 4:** PWA
+- **Phase 0 built and tested** (scratch `web3`):
+  - `e2e/support/mock-supabase.mjs` gives a fake signed-in user per role, in-memory tables, PATCH/POST writes, and silences realtime and Mapbox
+  - `e2e/dashboards.spec.mjs` has 6 tests
+  - results: e2e 53/53, stable over 3 runs, lint clean
+  - wrote **`opencode prompt - dashboard e2e mocks.md`**
+- Baseline dual-agent critique of the farmer and driver dashboards is running (static server :4440 on the scratch copy).
+
+### 2026-10-14: Dashboard baseline critique 21/40
+- Dual-agent critique of the farmer and driver dashboards (fake sign-in). **21/40.** Snapshot `.impeccable/critique/2026-10-14T14-30-08Z__sakada-web-dashboard-farmer-index-html.md`.
+- P0: the main task is buried (first card at y≈1162) and the stage is only a pill.
+- P1: driver buttons 33px and "Delivered" has no undo; the "Sharing your location…" badge shows before permission (verified).
+- P2: the header wraps at 390 and overflows at 320; no nav; skip link → no `#main` (verified); cards hide date, notes and who pays.
+- Also: inputs 39px, borders 1.31:1, placeholders 3.1:1, stars unlabelled.
+- Next: ask the user 2 owner questions, then Phase 1 Figma.
+
+### 2026-10-14: Phase 1 farmer/vendor dashboard designed in Figma
+- User answers: driver "Delivered" gets a **confirm step**; **no in-app contact** between requester and driver; design farmer/vendor first.
+- New Figma page **"dashboards"** (`149:294`):
+  - **Home mobile `149:295`:**
+    - header: initials avatar, "Hello, Ana", Farmer chip, bell
+    - quick actions: Book a truck / My deliveries / Book again
+    - "On the way" in-transit hero card: route dots, **5-stage stepper** ("Step 4 of 5 · In transit · Next: Delivered"), driver line, map with "last updated", ₱ fare + receiver-pays-cash line
+    - Pending card with "Looking for a driver…" + Cancel request (48px)
+    - help line → contact
+    - bottom tab bar: Home / Book / Deliveries / Profile
+  - **Book `150:294`:** 48px fields, ghost "Get the fare", then a quote card (₱3,550, formula, receiver pays) + Confirm booking.
+  - **Deliveries `150:375`:** Active/History toggle; delivered card with 44px stars ("How was Carlo?") + Send rating + Book again; rated card; cancelled card.
+  - **Profile `151:294`:** notifications / send us a message / how it works rows, a role note, Log out.
+  - **Home first visit (empty) `151:359`:** 3 steps + Book a truck.
+  - **Desktop `150:503` (1440, y=1400):** top bar with Home/Book/Deliveries + bell + account menu; the main column has the hero card (map on the right, labelled stepper), the pending row and the recent row; a sticky "Book a truck" panel on the right.
+- Next: user reviews; then critique the Figma or build (pre-test on scratch `web3`, which already has the e2e mocks).
+
+### 2026-10-14: Dashboard Figma critique 24/40 → v2 fixes applied
+- Dual-agent critique of the Figma farmer frames: **24/40** (trend 21 → 24). Snapshot `.impeccable/critique/2026-10-14T14-46-30Z__sakada-web-dashboard-farmer-index-html.md`.
+- Found:
+  - no error states
+  - the Pending card sat under "On the way"
+  - tiles duplicated the tabs; the Book again tile had no target
+  - status said 3×; "1 delivered this week" isn't backed by data
+  - tab marker invisible (clipped); stepper inactive segments 1.45:1; 13px tab labels and chips; help link 18px
+  - "receiver" ambiguous
+- **v2 frames (y=2600; v1 kept above):**
+  - Home `154:294`: bell with a count; "1 on the way · 1 waiting for a driver"; a named Book again row; **On the way** and **Waiting for a driver** as separate sections; one-line stepper ("In transit · Next: Delivered" / "Waiting for a driver · Requested 9:12 AM"); "Driver assigned" vocabulary; inactive segments cream .38; From/To; map 160 + "updated"; "Whoever receives the goods pays…"; help row 56px; tab marker visible; 14px tab labels
+  - Notifications sheet `154:426`
+  - Book `155:294`: sticky "Fare ₱3,550 · Confirm booking" bar; notes placeholder "Who receives and pays…"
+  - Past deliveries `155:375`: All/Delivered/Cancelled filters; rating radiogroup + comment; "You rated Carlo 5 of 5"
+  - Profile `155:519`; First visit `155:586`
+  - **States `155:648`:** stale fare, address not found, cancel sheet, cancel race, booked, skeleton, offline, load error, no location, no vehicle
+  - **Desktop `155:756`:** Profile nav, bell count, labelled stepper, 3 recent rows, help row, placeholders
+- Build notes for later: hash sections #home/#book/#deliveries/#profile; history dates from `updated_at`; email from `getUser`; notifications open the delivery.
+- Next: user reviews v2, then build (pre-test on scratch `web3`).
+
+- User: "pause for now, lets resume later bro". Rewrote **▶ Resume here** (dashboard redesign in progress). Stopped the scratch server on :4440.
+
+### 2026-10-14: Phase 0 verified
+- OpenCode's `e2e/support/mock-supabase.mjs` + `e2e/dashboards.spec.mjs` are byte-identical to the tested copy. Results: lint clean, unit 118/118, e2e 53/53, dashboard spec green 2 more times. Uncommitted, waiting for the push.
+
+### 2026-10-14: v2 critique 27/40 → v3 frames built
+- Dual-agent critique of v2: **27/40** (trend 21 → 24 → 27). Snapshot `.impeccable/critique/2026-10-14T15-10-57Z__sakada-web-dashboard-farmer-index-html.md`.
+- **v3 frames (y=5200; "v3-" names):**
+  - Home `161:294`, Notifications sheet `161:503`
+  - Book before fare `162:294`, Book with fare `162:375`
+  - History `162:467`, Profile `162:589`, First visit `162:655`
+  - States `162:716` (18 states, y=7600)
+  - Desktop `162:910` (x=3200)
+- Fixes: driver-assigned card, Just delivered + rate on Home, Book grouped Route/Load/When with weight hint, sticky "Get the fare" then Confirm bar, History tab, bottom-sheet notifications with the exact database strings, neutral Cancelled, stepper shape + "Step N of 5", stronger chip and banner borders, badge unclipped, desktop booking panel sticky with Book removed from the nav.
+- My calls on the owner questions: the delivered card stays on Home until rated; notes don't ask for the receiver's phone; the desktop booking panel stays.
+- Usage limit reached here. **Next:** user reviews v3, optionally re-critique, then build Phase 1.
+
+- 2026-10-15: User said OpenCode was done. No new changes found: the only pending prompt is Phase 0, still identical and passing (6/6). Phase 1 prompt not written yet. Asked the user which task they ran.
+
+### 2026-10-15: Driver dashboard designed (Figma page "driver dashboard" `164:294`)
+- Same system as the farmer v3 frames; only shipped driver features (vehicle form, accept job, next-step status, location sharing, rate the sender) plus display work: pickup date, notes, distance_km, Open in Maps links.
+- **Frames:**
+  - **Home `164:295`:** header with vehicle line + bell 3. "Current job" card (amber border): stepper Picked up 3/5, Pick up from / Drop off at with **Maps** buttons, sender notes, location state, "Collect ₱3,550 in cash at drop-off", 56px **Start the trip**. New jobs preview + See all. Help row.
+  - **Jobs `164:449`:** "first to accept gets it", Refresh, job cards with fare, route, date/km/kg facts, notes, Accept job 52px.
+  - History `166:294` (Rate the sender, neutral Cancelled); Profile `166:371` (vehicle form + rows + log out); First visit `166:449` (Add your vehicle, then how jobs work).
+  - **States `167:294` (18):** next-step labels per stage ("I've picked up the load" / "Start the trip" / "Mark delivered"); **Delivered confirm sheet** ("Did you collect ₱3,550 in cash?", Not yet / Yes, delivered and paid); delivered; saving; save failed; accepting; someone accepted first; accepted; location ask / blocked; no vehicle; no jobs; no current job; offline; load error; rating.
+  - **Desktop `167:536`:** current job left (labelled stepper, stops with Open in Maps), New jobs column right.
+- Fixed: Onions fare ₱4,320 → ₱5,595 (243 km × 15 + 900 × 2 + 150); Home help row under the tab bar; removed the STEP 1/2 eyebrows; "Pull down" → "Tap Refresh".
+- Tab bar: Home · Jobs (count) · History · Profile.
+- Next: user reviews; then critique or build (driver Phase 1 after farmer).
+
+### 2026-10-15: Driver dashboard critique 27/40 → v2 frames
+- Dual-agent critique of the driver Figma v1: **27/40**. Snapshot `.impeccable/critique/2026-10-14T16-27-17Z__sakada-web-dashboard-driver-index-html.md`.
+- Verified in code: location is a 20s `setInterval` (only while the page is open, so Maps or a locked screen pauses it); multiple active jobs are allowed.
+- **v2 frames (page "driver dashboard", y=3200; states y=4700):**
+  - **Home `173:294`:**
+    - **sticky 56px action bar** above the tabs ("Start the trip" + hint)
+    - stage-ordered card: done line "Picked up at…" + "Next stop: drop off at" + Open in Maps (48px) + "come back to Sakada…" note
+    - 4-stage driver stepper (Accepted / Picked up / In transit / Delivered), "Next: Start the trip"
+    - "Sharing while Sakada is open · last sent…"; one-line cash
+  - **New jobs `173:430`:** compact cards (~270px), route line, "Pickup · km" line, 1-line note + More, "only Sakada can cancel" in the intro, an undated job; tab renamed "New jobs".
+  - History `174:580` (whole-row Rate the sender), Profile `174:659`, First visit `174:737` (keep Sakada open step).
+  - **States `174:294` (20):**
+    - accept: Take this job? (accept confirm), Accepted → Allow location, someone took it first
+    - location: ask, paused, blocked ("I've allowed it, check again")
+    - delivery: next steps, Delivered confirm titled "Rice, 16 sacks delivered?" + "Receiver didn't pay? Don't mark it delivered.", delivered
+    - saving / didn't save, **Sakada cancelled the job**, **2 jobs in progress**, no vehicle at accept
+    - notifications using the exact 0009/0011 string "New delivery available: A → B (SK-…)."
+    - no jobs, offline (actions off), loading, rating sent/failed
+  - **Desktop `174:1119`.**
+- My call: support 2 active jobs (the code already does).
+- Next: user reviews; optionally re-critique; then build (farmer Phase 1 first).
+
+### 2026-10-15: Driver v2 critique 28/40 → v3 frames
+- Dual-agent critique of driver v2: **28/40** (trend 27 → 28). Snapshot `.impeccable/critique/2026-10-14T16-44-16Z__sakada-web-dashboard-driver-index-html.md`.
+- Verified:
+  - 0007 only allows in_transit → delivered, so **an unpaid job is stuck (OWNER QUESTION: how should admin resolve unpaid deliveries?)**
+  - "taken by another driver" can't be known; use "No longer available"
+- **v3 frames (page "driver dashboard", y=6900; states y=8500):**
+  - Home, picked up `178:294`: sticky bar with job identity "Rice · SK-00003" + one-voice button "I'm driving to drop-off"; labelled 4-stage stepper with solid segments; cash block; single Maps note; one-line location
+  - Home, 2 jobs `178:437`: job switcher chips (in-transit first), "location shared on both jobs", "I've delivered it" sticky
+  - Job opened (Accepted) `178:552`: back "2 jobs", pickup first, "Location starts when you pick up", "I've picked up the load"
+  - New jobs `179:294` (More 56×48); History `179:399` (Mangoes now San Fernando, Pampanga → Divisoria, ₱2,670, "delivered and paid in cash"); Profile `179:484`; First visit `179:568` (5 steps incl. button names + Maps pauses sharing)
+  - **States `179:960` (20):**
+    - Undo 5 s snackbar
+    - accept: accept confirm, accepting, no longer available
+    - location: no signal, sharing again, blocked with Android steps, browser can't share location
+    - delivered: cash check (amber primary; "Receiver won't pay? Keep the job as it is and send Sakada a message with SK-00003"), delivered → Home with no job
+    - errors: didn't save, Sakada cancelled (found on reload), jobs didn't load, vehicle form errors, no vehicle at accept
+    - other: rating sheet, long goods description, offline (actions off), loading, rating sent/failed
+  - Desktop, 2 jobs `179:1259`
+- Only one new-job counter now (the tab); the bell is a dot for other notifications.
+- Fixed: corn fare ₱2,850 → ₱4,050 (Gapan → Balintawak ~100 km × 15 + 1,200 kg × 2 + 150) in the driver v3 and farmer v3 frames.
+
+- 2026-10-15: User: "resume here, we will continue later" (exiting, will restart). Rewrote **▶ Resume here** with the current frame IDs for farmer v3 and driver v3, the build notes and the open owner question.
+
+### 2026-10-15: Farmer v3 critique 28/40 → v4 frames
+- Dual-agent critique of farmer v3: **28/40** (trend 21 → 24 → 27 → 28). Snapshot `.impeccable/critique/2026-10-14T23-59-34Z__sakada-web-dashboard-farmer-index-html.md`.
+- Verified:
+  - geocode `limit=1`, and `placeName` is returned but never shown
+  - 0018 errors "Too many requests…" / "route distance does not match…" exist
+  - farmer History still had the impossible Guimaras ₱3,000 route
+- **v4 frames (page "dashboards", y=9200; states y=11900):**
+  - **Home `188:294`:**
+    - sections "On the road" / "Driver assigned (goods not picked up yet)" / "Waiting for a driver" / "Rate your driver"
+    - stepper: done amber 50%, current solid 12px, future outline; "Waiting" label; "Step N" moved to the sr label
+    - driver line puts the plate on its own line; map art with an amber pin
+    - fare + "Tolls included" on every card; Waiting card fare ₱5,700 (250 km)
+    - rating card has "Not now"; header "· 1 to rate"; the extra Book again row removed
+  - **Book before fare `189:294` / Book with fare `189:378`:**
+    - legends Route / Load / When at 18px (the ROUTE/LOAD/WHEN eyebrows are gone)
+    - fare card: "118.4 km … rounded", **"We matched" pickup/drop-off place names + "Not right? Add the barangay and town"**
+    - sticky "Confirm booking · ₱3,550"
+  - History `189:642` (Mangoes = Lipa City → Divisoria, 90 km, ₱3,000)
+  - Notifications `189:482`, Profile `189:515`, First visit `189:581` (cloned from v3, tab edge #6b6a62)
+  - **States `189:1050` (20):**
+    - fare: fare out of date, wrong place matched, address not found, no road route (Puerto Princesa)
+    - server errors: too many bookings (0018), route didn't match (0018)
+    - booking: getting the fare / booking, booking failed, booked ("You'll see it here and under the bell…"), **pickup date passed**
+    - cancel: cancel sheet, cancel too late (Message Sakada about SK-00001), **help opens with the code** (contact.html?code=)
+    - other: rating saved/failed, no notifications, empty filter, loading, offline, load error, no location
+  - **Desktop `189:1277`:** same sections, labelled stepper, map note row, rating row with Not now, legends, multi-line notes, sticky booking panel.
+- Tappable rows + bar edges now #6b6a62 (≥3:1).
+
+### 2026-10-15: Driver v3 critique 29/40 → v4 frames
+- Dual-agent critique of driver v3: **29/40** (trend 27 → 28 → 29). Snapshot `.impeccable/critique/2026-10-15T00-21-36Z__sakada-web-dashboard-driver-index-html.md`.
+- Verified:
+  - validators allow an empty vehicle type and accept "NB 12" (v3's form-error copy was unbacked)
+  - 0018 limits accepts and status changes
+- Found: the 5 s delayed write can be lost when the driver opens Maps (Chrome pauses background pages).
+- **v4 frames (page "driver dashboard", y=10800; states y=12700):**
+  - **Home, picked up `203:294`:** no bell (alerts = New jobs tab); labels only, no "Next" line; one-time Maps caveat (i); new jobs collapsed to a "3 new jobs waiting" row; **sticky meta "Sharing · sent 9:41"**
+  - **2 jobs · Rice `203:418` / · Corn `203:539`:** chips only, with sharing dot + next action ("Rice · Drive", "Corn · Pick up"); "Sharing your location on Rice. Corn starts when you pick up."; in transit = "Drive to" + "Collect at drop-off"
+  - New jobs `203:903` ("distance not saved" fallback); History `203:660`, Profile `203:745`, First visit `203:829` (390 wide, 15px+, edges #6b6a62)
+  - **States `203:1322` (20):**
+    - undo: Undo (8 s / 10 s for SR, 48px bordered, pauses on touch; **commits on leave / lock / Maps; pending step kept and resent**), Saving, Saved, Maps tapped during undo, next-step hint
+    - accept: confirm (Yes in the same thumb spot), too many tries, **third job (if owner caps at 2)**
+    - location: **phone Location off**, blocked for site (+ grey switch tip), no signal, browser can't share
+    - delivery: cash check, delivered → rate now / Later
+    - errors: didn't save, Sakada cancelled, **vehicle errors with real messages**, no longer available, offline with a visibly-off button, loading
+  - **Desktop `203:1589`:** chips with dots, honest sharing line, Accept outlined (one filled primary).
+- Future segments #76746b (≥3:1).
+- **Owner questions open:** (1) unpaid delivery stuck in transit (0007); (2) cap drivers at 2 active jobs?
+
+### 2026-10-15: Goods scope = fresh produce only (no rice)
+- **Owner fact (user):** Sakada only moves fresh produce (vegetables and fruits). **No rice or other grains.** Added to `PRODUCT.md` (Operating Context, "Goods scope").
+- Code (done directly; uncommitted):
+  - `js/validators.js` goods hint "like onions or rice" → "like tomatoes or mangoes"
+  - `tests/dashboard-shared.test.js` sample Rice → Eggplant
+  - `e2e/support/mock-supabase.mjs` "Rice, 16 sacks" → "Eggplant, 32 crates"
+  - `docs/DESIGN-SYSTEM.md` "rice paddies" → "vegetable farms and orchards"
+  - results: lint clean, unit 118/118, e2e 53/53
+- Figma:
+  - dashboards (83 texts) — Rice 800 kg → Eggplant, 32 crates; Rice 1,000 kg → Squash, 40 sacks; Corn 1,200 kg → Bananas, 60 crates (same weights, so fares still match)
+  - landing-page Option B mockups — palay → tomatoes, "1,200 kg of rice" → bananas
+  - other pages had none
+- Rule going forward: every example uses vegetables or fruit.
+
+- 2026-10-15: **User approved the v4 designs** for both the farmer/vendor dashboard (page "dashboards", v4 y=9200) and the driver dashboard (page "driver dashboard", v4 y=10800). Next: build Phase 1, farmer first, then driver.
+
+- 2026-10-15: User: "build the farmer/vendor". Built Phase 1 on the scratch copy:
+  - new: `css/requester.css`; rewritten: `dashboard/{farmer,vendor}/index.html`, `js/requester-dashboard.js`
+  - added helpers + 14 unit tests in `dashboard-shared.js`; `contact.js` fills in `?code=`; Mapbox mock answers geocoding/directions
+  - fixes found in the browser:
+    - the fare was hidden behind the phone Confirm bar (now scrolls into view)
+    - the formula line repeated the fare
+    - the landing link `#deliveryForm` now opens Book
+    - the heading stole focus from the delivery a notification opens (`goTo()` uses pushState)
+  - e2e rewritten: grouped sections, cancel sheet, vendor scope, booking flow, address not found, phone tabs, notification opens its delivery
+  - lint clean, unit 133/133, e2e 57/57
+  - impeccable detect: the "flat type" flag is a false positive (real sizes 32/26/17/15); the grid background was kept on purpose
+  - wrote `opencode prompt - farmer dashboard.md`
+
+- 2026-10-15: User: "opencode is done, check it". Verified the farmer dashboard build:
+  - every file identical to the tested copy (no diff)
+  - lint clean, unit 133/133, e2e 57/57
+  - browser at 1440/390 (farmer and vendor, Home/Book/History): 0 console errors, no sideways scroll
+  - next: the user pushes, then the driver build
 
 <!-- Add the next session's entry above this line -->
