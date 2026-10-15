@@ -1,6 +1,6 @@
 /* ================================================
    Inner page components (how it works, for-farmers,
-   for-vendors, for-drivers, contact)
+   for-vendors, for-drivers, contact, features, about)
    ================================================ */
 
 .nav--static {
@@ -762,11 +762,11 @@
   background-position: var(--grid-x) 0;
 }
 
-.theme-dusk :is(.hiw-hero, .rp-hero, .ct-hero) {
+.theme-dusk :is(.page-hero, .hiw-hero, .rp-hero, .ct-hero) {
   position: relative;
   isolation: isolate;
 }
-.theme-dusk :is(.hiw-hero, .rp-hero, .ct-hero)::before {
+.theme-dusk :is(.page-hero, .hiw-hero, .rp-hero, .ct-hero)::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -813,5 +813,5 @@
 
 @media (forced-colors: active), (prefers-contrast: more) {
   .theme-dusk { background-image: none; }
-  .theme-dusk :is(.hiw-hero, .rp-hero, .ct-hero)::before { display: none; }
+  .theme-dusk :is(.page-hero, .hiw-hero, .rp-hero, .ct-hero)::before { display: none; }
 }

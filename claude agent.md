@@ -26,7 +26,7 @@
 - Figma MCP is on the **Starter plan with a tool-call limit**. Batch the work into a few big `use_figma` calls.
 - Capturing the local or live site into Figma (`generate_figma_design`) gets blocked by the permission classifier. Rebuild from code instead.
 
-## ▶ Resume here (status as of 2026-10-15, end of session; the user exited and will restart)
+## ▶ Resume here (status as of 2026-10-15, end of session; the user will resume later)
 
 - **Workflow** (confirmed again 2026-10-14):
   - Claude designs (load **impeccable** at the start of EVERY design task, even tiny ones; Figma file `8q1102hOL3ZvFsiePuJrQv`), critiques (dual-agent), and writes `opencode prompt - *.md` files.
@@ -34,61 +34,38 @@
   - **OpenCode (MiMo v2.6 flash free)** builds.
   - Claude verifies: byte-diff vs the tested copy, real browser at 1440/390, `npm run lint`, `npx vitest run`, `npm run test:e2e`.
   - The user pushes manually and runs SQL in Supabase. CI gates Vercel.
+  - New SQL goes straight into `sakada-backend/supabase/migrations/` (the user asked; they copy it into the Supabase SQL editor). Test SQL in PGlite first (memory `test-sql-in-pglite`).
   - Figma rounds are named "v2-", "v3-" (new frames below the old ones; old ones kept).
-- **▶ IN PROGRESS: dashboard redesign** (plan: `~/.claude/plans/here-s-the-plan-i-jiggly-feigenbaum.md`; phases shipped one at a time "like CI/CD"):
-  - **Phase 0 (e2e mocks):** `e2e/support/mock-supabase.mjs` + `e2e/dashboards.spec.mjs`. Built by OpenCode, verified (e2e 53/53). **Still uncommitted, waiting for the user's push.**
-  - **Phase 1 farmer/vendor: design done.** Figma page "dashboards" `149:294`; **current = v4- frames (y=9200)** (v3 at y=5200 kept):
-    - Home `188:294`, Notifications `189:482`
-    - Book before fare `189:294`, Book with fare `189:378`
-    - History `189:642`, Profile `189:515`, First visit `189:581`
-    - States `189:1050`, Desktop `189:1277`
-    - Critique trend 21 (old code) → 24 → 27 → 28 (v3); v4 not scored.
-  - **Driver dashboard: design done.** Figma page "driver dashboard" `164:294`; **current = v4- frames (y=10800)** (v3 at y=6900 kept):
-    - Home, picked up `203:294`; 2 jobs · Rice `203:418`; 2 jobs · Corn `203:539`
-    - New jobs `203:903`, History `203:660`, Profile `203:745`, First visit `203:829`
-    - States `203:1322`, Desktop `203:1589`
-    - Critique trend 27 → 28 → 29 (v3); v4 not scored.
-  - **✅ v4 designs APPROVED by the user (2026-10-15).**
-  - **Farmer/vendor Phase 1: PUSHED `fe40ac0`, CI green.**
-  - **Driver Phase 1: OpenCode ran; VERIFIED 2026-10-15** (identical to web6 after removing 1 extra blank line in dashboard.css; lint clean, 143/143, 65/65, browser 390/1440 0 errors). **Waiting for: the user to run 0020 in Supabase (if not done), then push.** Earlier notes: BUILT + TESTED on `scratchpad/web6` (2026-10-15). Prompt: `opencode prompt - driver dashboard.md` (14 steps, incl. migration 0020).**
-    - **Order:** the user runs 0020 in the Supabase SQL editor FIRST (the new page sends `payment_status`), then OpenCode, then Claude verifies, then push.
-    - Verify: byte-diff vs web6 (11 web files + the migration vs `scratchpad/pg/0020_driver_jobs_and_payment.sql`), lint, vitest **143**, e2e **65**, browser 1440/390.
-    - 0020 adds:
-      - `payment_status` (paid/unpaid; set only with in_transit → delivered, once)
-      - `status_changed_at` (trigger-stamped)
-      - a 2-active-job cap trigger with an advisory lock
-      - the guard functions from 0016, now with `payment_status`
-      - tested in PGlite (`scratchpad/pg/t20.mjs`)
-  - **Driver v4 updated for the owner rules (2026-10-15), APPROVED by the user:**
-    - States `203:1322` tile 12: the Delivered sheet is now "Yes, delivered and paid" / "Delivered, not paid" (`211:294`) / "Not yet"
-    - tile 8 is now "owner rule: max 2"
-    - new tile 21 `211:296`: "Delivered. Marked Unpaid." + rate
-    - the States frame is now 2074 tall
-  - (old) Farmer/vendor Phase 1: BUILT + TESTED on the scratch copy (`scratchpad/web5`). Prompt written: `opencode prompt - farmer dashboard.md`** (11 steps). **OpenCode ran; VERIFIED 2026-10-15** (identical to web5, lint clean, 133/133, 57/57, browser 1440/390 0 errors). **Waiting for the user to push** (Phase 0 + produce-only + farmer dashboard). **Next after that: driver Phase 1.**
-  - **Build notes (farmer):**
-    - tabs = hash sections `#home/#book/#history/#profile` in one page
-    - `renderStageStepper` + `initialsFor` in `dashboard-shared.js`
-    - history dates from `updated_at`; email from `getUser`; notifications open their delivery
-    - error copy mapped (no raw `error.message`)
-    - pre-test with the Phase 0 mocks
-  - **Build notes (driver):**
-    - sticky action bar with job name + 5 s undo (delay the write)
-    - accept and delivered confirm sheets
-    - 4-stage stepper; pickup date / notes / distance_km / Maps links (prefer coordinates)
-    - last-sent time + paused/no-signal states
-    - "No longer available" copy
-    - detect Sakada-cancelled jobs on reload; support 2 active jobs
-    - vehicle-required check before accept (new client check)
-  - **Decisions:** goods = fresh produce only (vegetables/fruits, no rice/grains); Delivered has a cash confirm; no in-app contact; farmer + vendor share one dashboard; drivers may hold 2 jobs; the delivered card stays on farmer Home until rated; notes don't ask for the receiver's phone.
-  - **✅ Owner answers (2026-10-15, in PRODUCT.md):**
-    - max **2 active jobs** per driver
-    - Delivered is allowed even if unpaid (the job closes on delivery, not payment)
-    - unpaid stays **Unpaid** and is flagged for follow-up
-    - for the driver build this needs:
-      - migration: `payment_status` (paid/unpaid) on deliveries + a 2-active-job check on accept
-      - the driver's Delivered sheet: "Paid in cash" / "Not paid"
-      - admin sees an Unpaid flag
-  - **Later:** Phase 2 (2a driver stats, 2b online toggle via `is_available`, 2c search by code, 2d rating average, 2e avatar), Phase 3 admin dashboard, Phase 4 PWA.
+- **✅ Nothing pending. Everything is pushed; main = origin/main (`cf12498`).**
+- **Dashboard redesign** (plan: `~/.claude/plans/here-s-the-plan-i-jiggly-feigenbaum.md`, shipped in phases):
+  - **Phase 0** (e2e mocks: `e2e/support/mock-supabase.mjs` + `e2e/dashboards.spec.mjs`): shipped.
+  - **Phase 1: DONE for all three roles.**
+    - farmer/vendor: `fe40ac0`
+    - driver + migration 0020: `cf12498` (0020 run in Supabase)
+    - tests now: unit 143, e2e 65
+  - Figma (approved v4):
+    - farmer/vendor: page "dashboards" `149:294`, v4 frames at y=9200 (Home `188:294`, Desktop `189:1277`, States `189:1050`)
+    - driver: page "driver dashboard" `164:294`, v4 frames at y=10800 (Home `203:294`, Desktop `203:1589`, States `203:1322`, incl. tile 12 not-paid and tile 21 Unpaid)
+  - What shipped:
+    - **Farmer/vendor:** Home / Book / History / Profile with grouped stages, fare-first booking, cancel sheet, notifications sheet.
+    - **Driver:** Home / New jobs / History / Profile with Undo on steps, a cash check (paid / not paid), an accept sheet, location states, max 2 jobs.
+    - **Admin:** an Unpaid flag.
+  - **Owner rules (in PRODUCT.md):**
+    - max 2 active jobs per driver
+    - Delivered is allowed even if unpaid; the job closes on delivery
+    - unpaid is flagged for follow-up
+    - goods are fresh produce only (no rice/grains)
+  - **✅ Real-phone test done (2026-10-15):** the user turned on location on an iPhone 13 (Chrome) and said "its working".
+  - **Dropped by the user (2026-10-15):** iPhone steps in the blocked-location banner. Don't bring it up again.
+  - **Next (user to pick):**
+    - **Phase 2**, one feature per cycle:
+      - 2a: driver stats (jobs and fares today)
+      - 2b: online/offline switch via `driver_profiles.is_available` + a migration so offline drivers skip new-job notifications
+      - 2c: search by booking code
+      - 2d: average rating RPC
+      - 2e: photo avatar
+    - **Phase 3:** admin dashboard on mobile + the admin login restyle.
+    - **Phase 4:** PWA.
 - **🔔 Low-priority reminder (user asked to be reminded):** restyle **admin login** (`auth/admin-login.html`) to match the new signup/login pages. It still uses the old card: 39px inputs, "Log In" in Title Case, buttons in the browser's default font. Admin-only, so low priority. Bring it up when the bigger work is done.
 - **Pushed today:**
   - `6510f5a` login page redesign
@@ -1791,5 +1768,31 @@
   - lint clean, unit 143/143, e2e 65/65
   - browser at 390/1440: 0 errors, no sideways scroll
   - next: run 0020 in Supabase, then push
+
+- 2026-10-15: User pushed the driver dashboard (`cf12498`), CI green, 0020 run. Phase 1 is done for farmer, vendor and driver.
+  - next options: a real-phone test of the driver page, then Phase 2 (2a driver stats, 2b online toggle, 2c search by code, 2d rating average, 2e avatar), Phase 3 admin + admin login restyle, Phase 4 PWA
+
+- 2026-10-15: User: "save that to our convo, we will resume later". Rewrote **▶ Resume here**: Phase 1 is done and pushed, nothing pending; next is the user's pick of Phase 2/3/4, after the real-phone driver test.
+
+- 2026-10-15: User asked how to turn on location in Chrome on an iPhone 13. Gave the steps: iOS Settings → Privacy & Security → Location Services → Chrome → While Using the App + Precise, then Allow on the site prompt. Noted that the blocked-location banner needs iPhone steps; asked whether to add it next round.
+
+- 2026-10-15: User: "done bro, its working". Location works on their iPhone 13 in Chrome. The iPhone-steps banner fix is still waiting on the user's yes/no.
+
+- 2026-10-15: User: "just disregard the iphone setup". Dropped the iPhone-steps banner fix; recorded under Resume here.
+
+- 2026-10-15: User: "bro". Asked what's next; nothing changed.
+
+- 2026-10-15: User: "bro" again. Asked what they want next (real-phone test, Phase 2/3/4); nothing changed.
+
+- 2026-10-15: User: "features and about don't have a background; the navbar should hide while scrolling and show when scrolling stops, with a simple animation". Built on the scratch copy `web7`:
+  - cause: features/about `<body>` had no `theme-dusk` class, and `.page-hero` wasn't in the dusk-photo selector. Fixed: added `theme-dusk page-features` / `page-about`, and added `.page-hero` to the 3 `:is(...)` lists in pages.css
+  - nav: `header:has(> .nav)` is sticky; `.nav.is-hidden` slides up 100% and fades out (320 ms ease-out); main.js hides it on scroll and shows it 250 ms after scrolling stops. It doesn't hide near the top, while the mobile menu is open, or while a nav item has keyboard focus. Added `scroll-padding-top: var(--nav-h)`
+  - verified at 1440/390 on features, about, index and how-it-works: hides while scrolling, back at top 0 after the stop, no errors, no sideways scroll
+  - lint clean, unit 143/143, e2e 65/65
+  - wrote `opencode prompt - nav autohide and page backgrounds.md`
+
+- 2026-10-15: User: "opencode is done, check it" (nav auto-hide + backgrounds). All 5 files are identical to web7. Lint clean, unit 143/143, e2e 65/65. Next: user pushes.
+
+- 2026-10-15: User: "i will push myself". They are pushing the nav auto-hide + backgrounds change themselves.
 
 <!-- Add the next session's entry above this line -->

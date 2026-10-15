@@ -1,4 +1,14 @@
 /* ---------- Nav ---------- */
+/* The top nav stays pinned. js/main.js hides it while the page
+   scrolls and slides it back once scrolling stops. */
+header:has(> .nav) {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+html {
+  scroll-padding-top: var(--nav-h); /* anchor jumps land below the nav */
+}
 .nav {
   position: absolute;
   top: 0;
@@ -13,6 +23,13 @@
   padding: 16px clamp(20px, 5vw, 64px);
   background: var(--bg-black);
   border-bottom: 1px solid var(--line);
+  transition:
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease-out;
+}
+.nav.is-hidden {
+  transform: translateY(-100%);
+  opacity: 0;
 }
 
 .logo {

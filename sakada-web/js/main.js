@@ -1,4 +1,22 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // Top nav: slides away while the page scrolls, comes back once scrolling stops
+  const nav = document.querySelector("header > .nav");
+  if (nav) {
+    let stopTimer;
+    const show = () => nav.classList.remove("is-hidden");
+    window.addEventListener(
+      "scroll",
+      () => {
+        clearTimeout(stopTimer);
+        const busy = nav.querySelector(".nav-links.open, :focus-visible");
+        if (window.scrollY > nav.offsetHeight && !busy) nav.classList.add("is-hidden");
+        stopTimer = setTimeout(show, 250);
+      },
+      { passive: true },
+    );
+    nav.addEventListener("focusin", show);
+  }
+
   const toggle = document.querySelector(".nav-toggle");
   const menu = document.querySelector(".nav-links");
   if (!toggle || !menu) return;
