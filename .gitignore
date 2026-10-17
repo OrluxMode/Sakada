@@ -14,6 +14,9 @@ Thumbs.db
 # Live Server / local tooling
 .history/
 
+# Local OpenCode build prompts
+opencode prompt*.md
+
 # Playwright output
 sakada-web/playwright-report/
 sakada-web/test-results/

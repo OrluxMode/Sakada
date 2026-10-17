@@ -36,7 +36,9 @@
   - The user pushes manually and runs SQL in Supabase. CI gates Vercel.
   - New SQL goes straight into `sakada-backend/supabase/migrations/` (the user asked; they copy it into the Supabase SQL editor). Test SQL in PGlite first (memory `test-sql-in-pglite`).
   - Figma rounds are named "v2-", "v3-" (new frames below the old ones; old ones kept).
-- **✅ Nothing pending. Everything is pushed; main = origin/main (`cf12498`).**
+- **Last change (2026-10-15): nav auto-hide + Features/About background.** OpenCode built it from `opencode prompt - nav autohide and page backgrounds.md`. Claude verified it: identical to the scratch copy `web7`, lint clean, unit 143/143, e2e 65/65. **The user said they'd push it themselves.** Next session: confirm it's pushed (main was `cf12498` before it) and that it works on the live site/iPhone.
+  - Behaviour: `header:has(> .nav)` is sticky. While scrolling, the nav slides up and fades out (320 ms); it comes back 250 ms after scrolling stops. It doesn't hide near the top, while the mobile menu is open, or while a nav item has keyboard focus. Features/About now have `theme-dusk`, and `.page-hero` uses the dusk photo.
+- Before this change, main = origin/main (`cf12498`).
 - **Dashboard redesign** (plan: `~/.claude/plans/here-s-the-plan-i-jiggly-feigenbaum.md`, shipped in phases):
   - **Phase 0** (e2e mocks: `e2e/support/mock-supabase.mjs` + `e2e/dashboards.spec.mjs`): shipped.
   - **Phase 1: DONE for all three roles.**
@@ -1794,5 +1796,18 @@
 - 2026-10-15: User: "opencode is done, check it" (nav auto-hide + backgrounds). All 5 files are identical to web7. Lint clean, unit 143/143, e2e 65/65. Next: user pushes.
 
 - 2026-10-15: User: "i will push myself". They are pushing the nav auto-hide + backgrounds change themselves.
+
+- 2026-10-15: User: "save our convo, we will resume later". Updated **▶ Resume here**: the nav/background change is verified and waiting on the user's push.
+
+- 2026-10-16: User: "broo". New session. Asked what's next; nothing changed.
+
+### 2026-10-17: Codex context review, then conversation saved
+- User asked Codex to read and analyze the project, starting with this file, without modifying any files. Reviewed the project instructions, application source, migrations, tests, configuration, historical notes, OpenCode build prompts and design references. No files were changed during that review; no tests or live-service checks were run.
+- Local Git history confirms the nav auto-hide + Features/About background change is committed as **`109f333`** (`features, about, and auto hide navbars`). Local `main` matches the locally recorded `origin/main`. This supersedes the older "waiting for the user's push" note above; the remote and live deployment were not checked this session.
+- Context understood: vanilla HTML/CSS/ES modules + Supabase + Mapbox; fresh produce only; at most 2 active jobs per driver; receiver pays cash at drop-off; Delivered closes the job even if Unpaid. The landing page stays the visual reference, and UI work requires Impeccable. Respect the established design/spec → OpenCode build → review → owner push workflow and the owner's dropped items.
+- Older audits and roadmaps include resolved or superseded findings; compare them against current source and later owner decisions before treating them as open work.
+- User then explicitly asked **"save our convo bro"**, authorizing this conversation-log update. No application changes requested or made. Next session: read this entry and the Resume here section, then await the user's next task. Phase 2 driver features, Phase 3 admin/mobile + admin login, and Phase 4 PWA remain options, not selected work.
+
+- 2026-10-17: User wants OpenCode prompt Markdown files kept out of GitHub. Added `opencode prompt*.md` to `.gitignore`; remove existing prompt files from Git tracking while preserving every local copy. Future OpenCode prompts stay local. The owner still commits and pushes manually; existing Git history is not rewritten.
 
 <!-- Add the next session's entry above this line -->
