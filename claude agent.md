@@ -1985,4 +1985,10 @@ Owner's exact task-to-skill assignments:
 
 - 2026-10-21: Owner said deploy the new Home (Figma 256:2 build + real route maps + swipe cards + notif Needs you + rating in History). Lint clean, unit 166, e2e 76. Committed and pushed to main by Claude at owner's request.
 
+- 2026-10-21: Owner: 'Booked.' banner after booking never went away. Added showBooked/hideBooked in requester-dashboard.js: visible 2s, then fades up 200ms (strong ease-out) and folds its height/margin 220ms (drawer curve) so Home slides up; reduced motion = 150ms fade; a new booking mid-fade restarts it. .rq-banner--ok overflow hidden. Sampled: 1.9s op 1, 2.1s fading, 2.5s hidden. e2e asserts it hides within 4s. Unit 166, e2e 76. Not pushed.
+
+- 2026-10-21: Owner asked for a minimal transition between dashboard tabs (Home/Book/History/Profile). Added enterView in requester-dashboard.js: on a real view change (not first load) the new view fades in + rises 6px, 180ms strong ease-out; reduced motion = 120ms fade; no exit, never delays; desktop Book panel (always visible) doesn't animate. Verified: none on load, mid-fade at 90ms, settled by 290ms, no errors; e2e 76. Not pushed (with the Booked banner fade).
+
+- 2026-10-21: Owner said deploy: Booked banner fade + minimal tab transition. Committed and pushed to main by Claude at owner's request.
+
 <!-- Add the next session's entry above this line -->

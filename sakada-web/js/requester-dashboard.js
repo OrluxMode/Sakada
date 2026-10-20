@@ -84,10 +84,13 @@ $("signOutBtn").addEventListener("click", () => signOut("../../index.html"));
 
 // ---------- Tabs (hash sections in one page, so realtime stays connected) ----------
 const VIEWS = ["home", "book", "history", "profile"];
+let viewsReady = false;
 function showView(view, { focus = false } = {}) {
   if (view === "deliveryForm") view = "book"; // the landing page's "Book a Delivery" link
   if (!VIEWS.includes(view)) view = "home";
+  const changed = document.body.dataset.view !== view;
   document.body.dataset.view = view;
+  if (changed && viewsReady) enterView(view);
   document.querySelectorAll("[data-tab]").forEach((a) => {
     if (a.dataset.tab === view) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
@@ -107,6 +110,22 @@ function goTo(view) {
   window.scrollTo({ top: 0 });
 }
 showView(location.hash.slice(1));
+viewsReady = true; // first load shows the page as is; only switches move
+
+/**
+ * Switching tabs: the new page fades in while rising 6px, 180ms. Tabs are
+ * used many times a day, so it stays this small, has no exit, and never
+ * delays the switch. Desktop's Book panel is always on screen, so it stays put.
+ */
+function enterView(view) {
+  const el = $(`view-${view}`);
+  if (!el || (view === "book" && matchMedia("(min-width: 1024px)").matches)) return;
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  el.animate(
+    still ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }],
+    { duration: still ? 120 : 180, easing: "cubic-bezier(0.23, 1, 0.32, 1)" },
+  );
+}
 
 // ---------- Sheets ----------
 // Sheets slide up from the bottom (phones) or fade in centred (desktop) and
@@ -234,6 +253,43 @@ function arrive(el) {
   void el.offsetWidth;
   el.classList.add("rq-arrive");
 }
+// "Booked." stays for 2 seconds, then fades and folds away so Home slides up instead of jumping.
+let bookedTimer = 0;
+function showBooked() {
+  const el = $("bookedBanner");
+  clearTimeout(bookedTimer);
+  el.getAnimations().forEach((a) => a.cancel()); // a second booking mid-fade starts fresh
+  el.hidden = false;
+  arrive(el);
+  bookedTimer = setTimeout(hideBooked, 2000);
+}
+async function hideBooked() {
+  const el = $("bookedBanner");
+  if (el.hidden) return;
+  try {
+    if (reduceMotion()) {
+      await el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, fill: "forwards" }).finished;
+    } else {
+      await el.animate(
+        [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(-6px)" }],
+        { duration: 200, easing: "cubic-bezier(0.23, 1, 0.32, 1)", fill: "forwards" },
+      ).finished;
+      const { marginBottom, paddingTop, paddingBottom } = getComputedStyle(el);
+      await el.animate(
+        [
+          { height: `${el.offsetHeight}px`, marginBottom, paddingTop, paddingBottom, opacity: 0 },
+          { height: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px", borderWidth: "0px", opacity: 0 },
+        ],
+        { duration: 220, easing: "cubic-bezier(0.32, 0.72, 0, 1)" },
+      ).finished;
+    }
+  } catch {
+    return; // cancelled by a new booking, which shows the banner again
+  }
+  el.hidden = true;
+  el.getAnimations().forEach((a) => a.cancel());
+}
+
 function resetQuote({ stale = false } = {}) {
   pendingQuote = null;
   quoteEl.hidden = true;
@@ -371,8 +427,7 @@ confirmBtn.addEventListener("click", async () => {
   form.reset();
   resetQuote();
   highlightId = result.data?.id || null;
-  $("bookedBanner").hidden = false;
-  arrive($("bookedBanner"));
+  showBooked();
   goTo("home");
   await loadDeliveries();
 });

@@ -126,6 +126,7 @@ test.describe("dashboards (fake sign-in)", () => {
     expect(db.deliveries).toHaveLength(6); // nothing booked until confirm
     await page.locator("#confirmBtn").click();
     await expect(page.locator("#bookedBanner")).toBeVisible();
+    await expect(page.locator("#bookedBanner")).toBeHidden({ timeout: 4000 }); // fades after 2 seconds
     expect(db.deliveries).toHaveLength(7);
     expect(db.deliveries[6]).toMatchObject({ goods_description: "Eggplant, 32 crates", quantity_kg: 800 });
     await expect(page.locator("#homeLists [data-delivery-id]", { hasText: "SK-00007" })).toContainText("Waiting for a driver");

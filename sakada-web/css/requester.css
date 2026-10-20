@@ -128,7 +128,7 @@
   padding: 12px 14px; border-radius: 10px; border: 1px solid; font-size: 15px; line-height: 1.45;
 }
 .rq-banner[hidden] { display: none; }
-.rq-banner--ok { border-color: var(--status-delivered); background: rgb(122 176 92 / 0.1); color: var(--text-cream); margin-bottom: 20px; }
+.rq-banner--ok { overflow: hidden; border-color: var(--status-delivered); background: rgb(122 176 92 / 0.1); color: var(--text-cream); margin-bottom: 20px; }
 .rq-banner--ok svg { color: var(--status-delivered); flex: none; }
 .rq-banner--bad { border-color: var(--status-cancelled); background: rgb(224 84 47 / 0.1); color: #f2a98a; }
 .rq-banner--warn { border-color: var(--accent-amber); background: rgb(224 151 47 / 0.1); color: var(--text-cream); }
