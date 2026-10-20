@@ -296,7 +296,7 @@ describe("groupActive and homeSummary", () => {
     expect(g.waiting).toHaveLength(1);
   });
   it("leaves zeros out of the summary", () => {
-    expect(homeSummary({ onRoad: 1, waiting: 2 })).toBe("1 on the road · 2 waiting");
+    expect(homeSummary({ onRoad: 1, waiting: 2 })).toBe("1\u00a0on\u00a0the\u00a0road\u00a0· 2\u00a0waiting");
     expect(homeSummary({})).toBe("");
   });
 });

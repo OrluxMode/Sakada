@@ -71,7 +71,8 @@ const firstName = profile.full_name.split(" ")[0];
 document.querySelectorAll("[data-user-name]").forEach((el) => (el.textContent = profile.full_name));
 document.querySelector(".rq-account")?.setAttribute("title", profile.full_name); // long names are cut off there
 document.querySelectorAll("[data-initials]").forEach((el) => (el.textContent = initialsFor(profile.full_name)));
-$("homeTitle").textContent = `Hello, ${firstName}`;
+// Greeting only: "yayan" reads as "Hello, Yayan". The saved name is left as typed.
+$("homeTitle").textContent = `Hello, ${firstName.charAt(0).toLocaleUpperCase("en-PH")}${firstName.slice(1)}`;
 supabase.auth.getUser().then(({ data }) => {
   if (data?.user?.email) $("profileEmail").textContent = ` · ${data.user.email}`;
 });
@@ -418,12 +419,9 @@ function metaLine(d) {
 }
 function routeBlock(d) {
   return `
-    <div class="rq-route">
-      <span class="rq-route-dots" aria-hidden="true"></span>
-      <div>
-        <p><span class="rq-muted">From</span><br />${esc(d.pickup_address)}</p>
-        <p><span class="rq-muted">To</span><br />${esc(d.dropoff_address)}</p>
-      </div>
+    <div class="rq-route rq-route--stops">
+      <p class="rq-stop rq-stop--from"><span class="rq-muted">From</span><br />${esc(d.pickup_address)}</p>
+      <p class="rq-stop rq-stop--to"><span class="rq-muted">To</span><br />${esc(d.dropoff_address)}</p>
     </div>`;
 }
 function driverBlock(d) {
@@ -656,6 +654,7 @@ function skeletons() {
     </div>`).join("");
 }
 
+let homeLoaded = false;
 async function loadDeliveries() {
   if (!deliveries.length) $("homeLists").innerHTML = skeletons();
   const { data, error } = await getMyDeliveries(profile.id);
@@ -679,6 +678,9 @@ async function loadDeliveries() {
   driversById = new Map((drivers || []).map((r) => [r.delivery_id, r]));
   ratingsMap = ratings;
   renderAll();
+  // The first real content fades in over the placeholders; later refreshes don't.
+  if (!homeLoaded) $("homeLists").classList.add("rq-fade");
+  homeLoaded = true;
   subscribeTracking();
   if (highlightId) {
     document.querySelector(`[data-delivery-id="${CSS.escape(highlightId)}"]`)?.focus();
@@ -695,7 +697,10 @@ function subscribeTracking() {
       const channel = subscribeToDeliveryUpdates(d.id, (updated) => {
         const img = document.getElementById(`map-${d.id}`);
         if (img && updated.current_lat && updated.current_lng) {
-          img.src = staticMapUrl(updated.current_lat, updated.current_lng);
+          // Load the new map off-screen first, so a slow connection never shows a blank box.
+          const next = new Image();
+          next.src = staticMapUrl(updated.current_lat, updated.current_lng);
+          next.decode().then(() => (img.src = next.src), () => {});
         }
         const caption = document.getElementById(`map-caption-${d.id}`);
         if (caption) caption.textContent = `Truck location · updated ${time(updated.updated_at || new Date())}`;

@@ -11,6 +11,8 @@
   --rq-field-line: rgb(var(--cream-rgb) / 0.45);
   --rq-meta: #c9c5b7;
   --rq-tab-h: 84px;
+  --rq-ease-out: cubic-bezier(0.23, 1, 0.32, 1);  /* press, enter, leave */
+  --rq-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* sheets */
   background-color: var(--bg-black);
   background-image:
     linear-gradient(rgb(var(--cream-rgb) / 0.05) 1px, transparent 1px),
@@ -85,7 +87,7 @@
   content: ""; position: absolute; top: 0; width: 32px; height: 3px; border-radius: 2px; background: var(--accent-amber);
 }
 .rq-tabs a[aria-current="page"] svg { color: var(--accent-amber); }
-.rq-tabs svg { transition: transform 100ms ease-out; }
+.rq-tabs svg { transition: transform 100ms var(--rq-ease-out); }
 .rq-tabs a:active svg { transform: scale(0.92); }
 
 /* ---------- Buttons, links, banners ---------- */
@@ -94,7 +96,7 @@
   width: 100%; min-height: 48px; padding: 0 16px; border-radius: 8px;
   background: var(--accent-amber); border: 0; color: var(--text-on-amber);
   font-size: 16px; font-weight: 700; text-decoration: none; cursor: pointer;
-  transition: transform 100ms ease-out, background-color 150ms ease-out, color 150ms ease-out;
+  transition: transform 100ms var(--rq-ease-out), background-color 150ms var(--rq-ease-out), color 150ms var(--rq-ease-out);
 }
 .rq .rq-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .rq .rq-btn--ghost { background: none; border: 1px solid var(--rq-field-line); color: var(--text-cream); }
@@ -110,12 +112,12 @@
 }
 /* Press feedback lands with the finger, not on release */
 .rq .rq-btn:active:not(:disabled) { transform: scale(0.97); }
-.rq-help, .rq .rq-row, .rq-notif, .rq-filter, .rq-topnav a { transition: background-color 100ms ease-out; }
+.rq-help, .rq .rq-row, .rq-notif, .rq-filter, .rq-topnav a { transition: background-color 100ms var(--rq-ease-out); }
 .rq-help:active, .rq .rq-row:active, .rq-notif:active, .rq-filter[aria-pressed="false"]:active {
   background-color: color-mix(in srgb, var(--panel-dark), var(--text-cream) 8%);
 }
 .rq-topnav a:active { background: rgb(var(--cream-rgb) / 0.1); }
-.rq-bell, .rq-stars svg { transition: transform 100ms ease-out; }
+.rq-bell, .rq-stars svg { transition: transform 100ms var(--rq-ease-out); }
 .rq-bell:active { transform: scale(0.94); }
 .rq-stars button:active svg { transform: scale(0.88); }
 .rq .rq-link {
@@ -157,6 +159,19 @@
 .rq-route p { font-size: 16px; line-height: 1.4; }
 .rq-route p + p { margin-top: 12px; }
 .rq-route .rq-muted { font-size: 14px; display: inline; }
+/* One dot per stop, lined up with its label, joined by a dashed line */
+.rq-route--stops { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.rq-stop { position: relative; padding-left: 26px; }
+.rq-route .rq-stop + .rq-stop { margin-top: 0; }
+.rq-stop::before {
+  content: ""; position: absolute; left: 0; top: 4px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--panel-dark); border: 2.5px solid var(--status-delivered);
+}
+.rq-stop--to::before { border-color: var(--accent-amber); }
+.rq-stop--from::after {
+  content: ""; position: absolute; left: 5.5px; top: 18px; bottom: -16px;
+  border-left: 2px dashed rgb(184 180 166 / 0.6);
+}
 .rq-route-dots {
   position: relative; margin: 8px 0 26px;
   border-left: 2px dashed rgb(184 180 166 / 0.6); left: 6px; width: 0;
@@ -174,11 +189,13 @@
 .rq-step--done { background: rgb(224 151 47 / 0.5); }
 .rq-step--current { height: 12px; border-radius: 4px; background: var(--accent-amber); }
 /* A status moved forward while you watched: the new step fills in, the card glows once */
-.rq-step--current.is-advanced { transform-origin: left; animation: rq-fill 400ms cubic-bezier(0.22, 1, 0.36, 1); }
+.rq-step--current.is-advanced { transform-origin: left; animation: rq-fill 400ms var(--rq-ease-out); }
 @keyframes rq-fill { from { transform: scaleX(0); } }
-.rq-card.is-advanced { outline: 2px solid var(--accent-amber); outline-offset: 3px; animation: rq-outline 1200ms ease-out forwards; }
+.rq-card.is-advanced { outline: 2px solid var(--accent-amber); outline-offset: 3px; animation: rq-outline 1200ms var(--rq-ease-out) forwards; }
 @keyframes rq-outline { to { outline-color: transparent; } }
-.rq-leave { animation: rq-leave 180ms ease-in forwards; }
+.rq-leave { animation: rq-leave 180ms var(--rq-ease-out) forwards; }
+.rq-fade { animation: rq-fade 150ms var(--rq-ease-out); }
+@keyframes rq-fade { from { opacity: 0; } }
 @keyframes rq-leave { to { opacity: 0; transform: translateY(8px); } }
 .rq-step--next { border: 1px solid rgb(var(--cream-rgb) / 0.5); }
 .rq-step--waiting { background: rgb(224 151 47 / 0.18); border: 1.5px solid var(--accent-amber); }
@@ -274,7 +291,7 @@
 .rq-quote-label { color: #f0b25a; font-weight: 600; }
 .rq-quote-amount { font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 40px; line-height: 1; }
 /* "Your fare" and "Booked" ease in; the stale-fare card swaps in instantly on purpose */
-.rq-arrive { animation: rq-arrive 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+.rq-arrive { animation: rq-arrive 220ms var(--rq-ease-out); }
 @keyframes rq-arrive { from { opacity: 0; transform: translateY(8px); } }
 .rq-quote--stale { background: none; border: 1px dashed var(--rq-field-line); }
 .rq-quote--stale .rq-quote-label { color: var(--rq-meta); }
@@ -305,9 +322,9 @@
 .rq-sheet::backdrop { background: rgb(0 0 0 / 0.6); }
 .rq-sheet-grab { width: 40px; height: 4px; border-radius: 2px; background: rgb(var(--cream-rgb) / 0.4); margin: 0 auto 6px; }
 /* Sheets rise from the bottom edge and go back down the same way */
-.rq:not(.dv) .rq-sheet { transform: translateY(100%); transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1); }
-.rq:not(.dv) .rq-sheet.is-shown { transform: translateY(0); }
-.rq:not(.dv) .rq-sheet::backdrop { opacity: 0; transition: opacity 240ms ease-out; }
+.rq:not(.dv) .rq-sheet { transform: translateY(100%); transition: transform 240ms var(--rq-ease-drawer); }
+.rq:not(.dv) .rq-sheet.is-shown { transform: translateY(0); transition-duration: 320ms; } /* opens at 320ms, closes faster */
+.rq:not(.dv) .rq-sheet::backdrop { opacity: 0; transition: opacity 240ms var(--rq-ease-out); }
 .rq:not(.dv) .rq-sheet.is-shown::backdrop { opacity: 1; }
 @media (max-width: 1023px) {
   /* The grab bar and heading drag the sheet (js/sheet-drag.js) */
@@ -367,8 +384,8 @@
   .rq-sheet {
     margin: auto; border-radius: 20px; border-bottom: 1px solid var(--rq-edge);
   }
-  .rq:not(.dv) .rq-sheet { transform: scale(0.96); opacity: 0; transition: transform 200ms ease-out, opacity 200ms ease-out; }
-  .rq:not(.dv) .rq-sheet.is-shown { transform: none; opacity: 1; }
+  .rq:not(.dv) .rq-sheet { transform: scale(0.96); opacity: 0; transition: transform 150ms var(--rq-ease-out), opacity 150ms var(--rq-ease-out); }
+  .rq:not(.dv) .rq-sheet.is-shown { transform: none; opacity: 1; transition-duration: 200ms; }
   .rq:not(.dv) .rq-sheet-grab { display: none; }
   .rq .rq-display { letter-spacing: -0.01em; }
 }

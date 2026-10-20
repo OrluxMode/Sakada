@@ -286,7 +286,10 @@ export function homeSummary({ onRoad = 0, assigned = 0, waiting = 0, toRate = 0 
     toRate && `${toRate} to rate`,
   ]
     .filter(Boolean)
-    .join(" · ");
+    // Keep "1 waiting" together, and the "·" on the line before, so a count
+    // never ends a line and no line starts with a dot.
+    .map((part) => part.replace(/ /g, "\u00a0"))
+    .join("\u00a0· ");
 }
 
 /** 3550 -> "₱3,550". */

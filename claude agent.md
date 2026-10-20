@@ -1905,4 +1905,14 @@ Owner's exact task-to-skill assignments:
 
 - 2026-10-20: Owner confirmed in Supabase: all 6 checks from 0021 exist and convalidated = true (no old rows violate). Migration 0021 is live. Remaining: owner commits/pushes today's frontend + backend files; then review Figma codex v2.
 
+- 2026-10-20: Owner asked about red CI on a0fde5c ('testing ignore op.md', Oct 17). Checked GitHub API: e2e job failed (unit/lint passed) — the stale pickup date 2026-10-16 in dashboards.spec, fixed today. Latest push 67e36b5 'farmer / vendor dashboard' is green. Old red run is history; nothing to do.
+
+- 2026-10-20: Owner acknowledged. Next up: real-phone check on Vercel, then Figma codex v2 review. No changes.
+
+- 2026-10-20: Owner's plan: test the website locally, deploy (push) only when all good. Saved as memory. Ran lint, unit 153/153, e2e 65/65; local server on 4400 up. Gave a per-role manual checklist (computer + phone over Wi-Fi). No code changes.
+
+- 2026-10-20: Owner ran /emil-design-eng on the phone Home (screenshot, real account 'yayan'). Reviewed: summary line orphans numbers ('· 1 / waiting'); route dots misaligned (top dot on 'From' label, bottom on last address line); map swaps src on each location update (possible blank flash); custom easing tokens instead of keyword ease-out; exits faster than enters; rq-leave uses ease-in; first-load content pops from skeleton. Decision: capitalise greeting name? Reported, awaiting fix approval.
+
+- 2026-10-20: Owner said yes (capitalise greeting) → applied all emil-design-eng Home fixes: greeting capitalises first letter only; homeSummary keeps each part together with NBSP and attaches '·' to the previous part; route uses per-stop dots (`.rq-route--stops`, driver offers keep old markup); live map preloads via Image.decode before swapping; `--rq-ease-out`/`--rq-ease-drawer` tokens replace keyword easings; sheets close faster (phone 240ms vs 320 open, desktop 150 vs 200); rq-leave ease-out; first-load 150ms fade on Home lists. Lint clean, unit 153/153, e2e 65/65, phone screenshots checked. Owner to check on localhost:4400 before pushing.
+
 <!-- Add the next session's entry above this line -->
