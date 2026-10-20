@@ -737,11 +737,11 @@ $("acceptConfirm").addEventListener("click", async () => {
   btn.textContent = "Yes, take it";
   if (error) {
     const copy = jobErrorCopy(error);
-    if (copy.kind === "gone" || copy.kind === "cap") {
+    if (copy.kind === "gone" || copy.kind === "cap" || copy.kind === "expired") {
       $("acceptSheet").close();
       jobsNotice =
-        copy.kind === "gone"
-          ? `<div class="rq-banner rq-banner--warn" role="alert">${icon("alert")}<p><strong>This job is no longer available</strong><br />Someone else got it first, or it was cancelled.</p></div>
+        copy.kind === "gone" || copy.kind === "expired"
+          ? `<div class="rq-banner rq-banner--warn" role="alert">${icon("alert")}<p><strong>This job is no longer available</strong><br />${copy.kind === "expired" ? "Its pickup date has passed." : "Someone else got it first, or it was cancelled."}</p></div>
              <button type="button" class="rq-btn rq-btn--ghost dv-gap" data-refresh>${icon("refresh")}See other jobs</button>`
           : "";
       await loadAll();

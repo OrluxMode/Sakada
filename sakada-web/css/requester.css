@@ -50,7 +50,7 @@
 .rq-topbar { display: none; }
 .rq-hello { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
 .rq-hello-text { flex: 1; min-width: 0; }
-.rq-summary { color: var(--rq-meta); font-size: 15px; line-height: 1.4; }
+.rq-summary { color: var(--rq-meta); font-size: 16px; line-height: 1.4; }
 .rq-avatar {
   display: inline-grid; place-items: center; flex: none;
   width: 48px; height: 48px; border-radius: 50%;
@@ -222,6 +222,64 @@
 .rq-fare-amount--none { font-family: inherit; font-weight: 600; font-size: 16px; line-height: 1.4; color: var(--rq-meta); }
 .rq-fare .rq-muted { font-size: 15px; line-height: 1.45; display: block; }
 
+/* ---------- Home: "Needs you" ---------- */
+.rq-needs { display: grid; gap: 10px; }
+.rq-needs .rq-section-title { margin-bottom: 0; }
+.rq-need {
+  display: grid; gap: 12px; padding: 16px; border-radius: 14px;
+  background: rgb(224 151 47 / 0.08); border: 1px solid var(--accent-amber);
+  font-size: 16px; line-height: 1.45; overflow-wrap: anywhere;
+}
+.rq-need .rq-muted { font-size: 16px; }
+.rq-need-actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 520px) { .rq-need-actions { grid-template-columns: 1fr 1fr; } }
+.rq .rq-rate-row { min-height: 64px; padding: 12px 16px; }
+.rq-rate-row > svg:first-child { flex: none; fill: var(--accent-amber); }
+.rq-rate-text { flex: 1; min-width: 0; line-height: 1.4; }
+.rq-rate-text .rq-muted { font-size: 16px; }
+.rq-rate-row .rq-chevron { transform: rotate(-90deg); }
+
+/* ---------- Home: rows that open in place ---------- */
+.rq .rq-item { gap: 12px; cursor: pointer; }
+.rq .rq-item.is-open { cursor: default; }
+.rq .rq-item:not(.is-open):active { background-color: color-mix(in srgb, var(--panel-dark), var(--text-cream) 5%); }
+.rq-item-head {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; min-height: 44px; padding: 0; margin: 0;
+  background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.rq-item-head:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 4px; border-radius: 6px; }
+.rq-item-main { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.rq-item-route { font-size: 16px; color: var(--rq-meta); }
+.rq-item.is-open .rq-item-route { display: none; } /* the full From/To shows below */
+.rq-item .rq-stepper-line { display: none; }        /* the status line below says it, with a time */
+.rq-chevron { flex: none; margin-top: 2px; color: var(--rq-meta); transition: transform 300ms var(--rq-ease-drawer); }
+.rq-item-head[aria-expanded="true"] .rq-chevron { transform: rotate(180deg); }
+.rq-status-line { font-size: 16px; color: var(--rq-meta); }
+.rq-status-word { color: #f0b25a; font-weight: 600; }
+.rq-chip {
+  display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 15px; font-weight: 600;
+  color: var(--text-cream); background: rgb(224 151 47 / 0.14); border: 1px solid var(--accent-amber);
+}
+.rq-item-details { display: grid; gap: 16px; padding-top: 12px; border-top: 1px solid rgb(var(--cream-rgb) / 0.12); }
+.rq-item-details[hidden] { display: none; }
+figure.rq-map { position: relative; margin: 0; }
+.rq-map figcaption {
+  position: absolute; left: 8px; bottom: 8px; padding: 4px 10px; border-radius: 999px;
+  background: rgb(21 22 15 / 0.85); color: var(--text-cream); font-size: 15px; font-weight: 600;
+}
+
+/* ---------- Rate sheet (one driver at a time; swipe left to skip) ---------- */
+.rq-rate-stage { position: relative; overflow: hidden; }
+.rq-rate-card { display: grid; gap: 12px; touch-action: pan-y; }
+.rq-rate-q { font-size: 18px; }
+.rq-rate-foot { font-size: 16px; }
+.rq-rate-card .rq-card-actions .rq-btn:first-child { flex: 1; }
+
+/* ---------- Book a new date sheet ---------- */
+.rq-new-date .field { display: grid; gap: 6px; }
+.rq-new-date-fare { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 16px; }
+.rq-new-date-fare strong { font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 30px; line-height: 1; }
+
 /* Rating */
 .rq-rate { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 10px; background: var(--bg-black); }
 .rq-stars { display: flex; gap: 2px; }
@@ -246,7 +304,7 @@
   color: var(--text-cream); text-decoration: none; text-align: left; font-size: 16px; cursor: pointer;
 }
 .rq-help svg { color: #f0b25a; flex: none; }
-.rq-help .rq-muted { font-size: 15px; }
+.rq-help .rq-muted { font-size: 16px; }
 .rq-row-meta { margin-left: auto; color: #f0b25a; font-size: 14px; font-weight: 600; }
 .rq-list { display: grid; gap: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--rq-card-line); margin: 24px 0 16px; }
 .rq-list .rq-row { border: 0; border-radius: 0; border-top: 1px solid rgb(var(--cream-rgb) / 0.12); }

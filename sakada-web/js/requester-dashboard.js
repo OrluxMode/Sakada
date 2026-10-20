@@ -34,11 +34,12 @@ import {
   formatPeso,
   fareBreakdown,
   pickupPassed,
+  shortPlace,
   bookingErrorCopy,
   contactUrl,
 } from "./dashboard-shared.js";
 import { toastSuccess, toastError } from "./toast.js";
-import { enableSheetDrag } from "./sheet-drag.js";
+import { enableSheetDrag, rubberband, project, releaseVelocity, animateSpring } from "./sheet-drag.js";
 import { paginate } from "./pagination.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
 import {
@@ -57,7 +58,6 @@ if (ROLE !== "farmer" && ROLE !== "vendor") {
   throw new Error(`requester-dashboard.js: unexpected data-role "${ROLE}"`);
 }
 const CONTACT = "../../pages/contact.html";
-const DISMISSED_KEY = "sakada.ratingDismissed";
 
 const profile = await requireRole(ROLE, "../../auth/login.html", "../../index.html");
 if (!profile) throw new Error("redirecting");
@@ -382,11 +382,6 @@ let historyFilter = "all";
 let historyPage = 1;
 const activeSubscriptions = new Map();
 
-const dismissed = new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || "[]"));
-const dismiss = (id) => {
-  dismissed.add(id);
-  localStorage.setItem(DISMISSED_KEY, JSON.stringify([...dismissed]));
-};
 
 const esc = (v) => sanitizeText(v == null ? "" : String(v));
 const day = (iso) =>
@@ -443,9 +438,10 @@ function mapBlock(d) {
   if (!d.current_lat || !d.current_lng) {
     return `<p class="rq-note-row">Location not shared yet. You'll see the truck once the driver starts sharing.</p>`;
   }
+  // The map says how old the truck position is, on the map itself.
   return `
-    <div class="rq-map"><img id="map-${esc(d.id)}" src="${staticMapUrl(d.current_lat, d.current_lng)}" alt="Map showing where the truck is now" width="600" height="320" loading="lazy" /></div>
-    <p class="rq-muted" id="map-caption-${esc(d.id)}">Truck location · updated ${time(d.updated_at)}</p>`;
+    <figure class="rq-map"><img id="map-${esc(d.id)}" src="${staticMapUrl(d.current_lat, d.current_lng)}" alt="Map showing where the truck is now" width="600" height="320" loading="lazy" />
+      <figcaption id="map-caption-${esc(d.id)}">Truck here ${timeAgo(d.updated_at)}</figcaption></figure>`;
 }
 function fareBlock(d) {
   return `
@@ -467,43 +463,58 @@ function starPicker(d) {
     </div>`;
 }
 
-function activeCard(d) {
-  const cancel = d.status === "pending"
-    ? `<button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">Cancel request</button>`
-    : "";
-  const late = pickupPassed(d)
-    ? `<div class="rq-banner rq-banner--warn" role="status"><p><strong>Pickup date has passed.</strong> No driver has accepted yet. Cancel and book a new date, or keep waiting.</p></div>`
-    : "";
-  const waitingLine = d.status === "pending"
-    ? `<p>Drivers can see your request now. You can cancel until one accepts.</p>`
-    : "";
-  return `
-    <article class="rq-card${d.id === highlightId ? " rq-card--new" : ""}" data-delivery-id="${esc(d.id)}" tabindex="-1">
-      <h3 class="rq-card-title">${titleLine(d)}</h3>
-      <p class="rq-muted">${metaLine(d)}</p>
-      ${routeBlock(d)}
-      ${renderStageStepper(d.status)}
-      ${driverBlock(d)}
-      ${mapBlock(d)}
-      ${waitingLine}
-      ${late}
-      ${fareBlock(d)}
-      ${cancel}
-    </article>`;
-}
 
-function rateCard(d) {
+// ---------- Home: "Needs you", then short rows that open in place ----------
+const STATUS_WORD = { pending: "Waiting for a driver", driver_assigned: "Driver assigned", picked_up: "Picked up", in_transit: "In transit" };
+const isToday = (iso) => new Date(iso).toDateString() === new Date().toDateString();
+/** The one line under the bars: what's happening and since when. */
+function statusLine(d) {
+  const word = `<strong class="rq-status-word">${STATUS_WORD[d.status]}</strong>`;
+  const at = d.status_changed_at || d.updated_at;
+  const when = isToday(at) ? time(at) : day(at);
+  if (d.status === "picked_up") return `${word} ${isToday(at) ? "at" : "on"} ${when}`;
+  if (d.status === "in_transit") return `${word} since ${when}`;
+  if (pickupPassed(d)) return `<span class="rq-chip">Pickup date passed · drivers can't see it</span>`;
+  return d.scheduled_pickup_at ? `${word} · pickup ${day(d.scheduled_pickup_at)}` : word;
+}
+const shortRoute = (d) => `${esc(shortPlace(d.pickup_address))} → ${esc(shortPlace(d.dropoff_address))}`;
+let openId = null;
+
+function activeCard(d) {
+  const open = d.id === openId;
+  const late = pickupPassed(d);
+  const waitingLine = d.status === "pending"
+    ? `<p>${late
+      ? "The pickup date has passed, so drivers can't see this request anymore. Book it again with a new date."
+      : "Drivers can see your request now. You can cancel until one accepts."}</p>`
+    : "";
+  const actions = d.status === "pending"
+    ? `${late ? `<button type="button" class="rq-btn" data-new-date="${esc(d.id)}">Book a new date</button>` : ""}
+       <button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">Cancel request</button>`
+    : "";
   return `
-    <article class="rq-card rq-card--rate" data-delivery-id="${esc(d.id)}" tabindex="-1">
-      <h3 class="rq-card-title">${titleLine(d)}</h3>
-      <p class="rq-muted"><span class="status-pill" data-status="delivered">Delivered</span> ${esc(d.delivery_code)} · ${day(d.updated_at)}</p>
-      ${starPicker(d)}
-      <div class="rq-card-actions">
-        <button type="button" class="rq-btn rq-btn--ghost" data-rebook-id="${esc(d.id)}">Book again</button>
-        <button type="button" class="rq-btn rq-btn--text" data-dismiss-id="${esc(d.id)}">Not now</button>
+    <article class="rq-card rq-item${open ? " is-open" : ""}${d.id === highlightId ? " rq-card--new" : ""}" data-delivery-id="${esc(d.id)}" tabindex="-1">
+      <button type="button" class="rq-item-head" aria-expanded="${open}" aria-controls="details-${esc(d.id)}">
+        <span class="rq-item-main">
+          <span class="rq-card-title">${titleLine(d)}</span>
+          <span class="rq-item-route">${shortRoute(d)}</span>
+        </span>
+        ${CHEVRON}
+      </button>
+      ${renderStageStepper(d.status)}
+      <p class="rq-status-line">${statusLine(d)}</p>
+      <div class="rq-item-details" id="details-${esc(d.id)}"${open ? "" : " hidden"}>
+        <p class="rq-muted">${metaLine(d)}</p>
+        ${routeBlock(d)}
+        ${driverBlock(d)}
+        ${mapBlock(d)}
+        ${waitingLine}
+        ${fareBlock(d)}
+        ${actions}
       </div>
     </article>`;
 }
+const CHEVRON = `<svg class="rq-chevron" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`;
 
 function section(title, sub, cards) {
   if (!cards.length) return "";
@@ -512,6 +523,35 @@ function section(title, sub, cards) {
       <h2 class="rq-section-title">${title}</h2>
       ${sub ? `<p class="rq-muted">${sub}</p>` : ""}
       ${cards.join("")}
+    </section>`;
+}
+
+function toRateList() {
+  return deliveries.filter((d) => d.status === "delivered" && d.driver_id && !ratingsMap.get(d.id));
+}
+function needsYou(active) {
+  const late = active.filter((d) => pickupPassed(d)).map((d) => `
+    <div class="rq-need" data-need="${esc(d.id)}">
+      <p><strong>${titleLine(d)}</strong><br /><span class="rq-muted">${shortRoute(d)}</span></p>
+      <p>The pickup date (${day(d.scheduled_pickup_at)}) passed before a driver accepted, so drivers can't see it anymore.</p>
+      <div class="rq-need-actions">
+        <button type="button" class="rq-btn" data-new-date="${esc(d.id)}">Book a new date</button>
+        <button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">Cancel request</button>
+      </div>
+    </div>`);
+  const rate = toRateList();
+  const names = [...new Set(rate.map((d) => driversById.get(d.id)?.driver_name?.split(" ")[0]).filter(Boolean))];
+  const rateRow = rate.length ? `
+    <button type="button" class="rq-row rq-rate-row" data-open-rating>
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>
+      <span class="rq-rate-text"><strong>Rate ${rate.length} driver${rate.length > 1 ? "s" : ""}</strong>${names.length ? `<br /><span class="rq-muted">${esc(names.join(", "))}</span>` : ""}</span>
+      ${CHEVRON}
+    </button>` : "";
+  if (!late.length && !rate.length) return "";
+  return `
+    <section class="rq-section rq-needs" aria-labelledby="needsTitle">
+      <h2 class="rq-section-title" id="needsTitle">Needs you</h2>
+      ${late.join("")}${rateRow}
     </section>`;
 }
 
@@ -532,9 +572,11 @@ function firstVisit() {
 function renderHome() {
   const active = deliveries.filter((d) => !HISTORY_STATUSES.includes(d.status));
   const { onRoad, assigned, waiting } = groupActive(active);
-  const toRate = deliveries.filter(
-    (d) => d.status === "delivered" && d.driver_id && !ratingsMap.get(d.id) && !dismissed.has(d.id),
-  );
+  const toRate = toRateList();
+  // With exactly one truck on the road, that's the one being watched: open it.
+  if (openId === null && !homeOpenedOnce && onRoad.length === 1) openId = onRoad[0].id;
+  homeOpenedOnce = true;
+  if (openId && !active.some((d) => d.id === openId)) openId = null;
   $("homeSummary").textContent = homeSummary({
     onRoad: onRoad.length,
     assigned: assigned.length,
@@ -542,13 +584,50 @@ function renderHome() {
     toRate: toRate.length,
   });
   $("homeLists").innerHTML = deliveries.length
-    ? section("On the road", "", onRoad.map(activeCard)) +
+    ? needsYou(active) +
+      section("On the road", "", onRoad.map(activeCard)) +
       section("Driver assigned", "Goods not picked up yet", assigned.map(activeCard)) +
-      section("Waiting for a driver", "", waiting.map(activeCard)) +
-      section("Rate your driver", "", toRate.map(rateCard)) ||
+      section("Waiting for a driver", "", waiting.map(activeCard)) ||
       `<div class="rq-card rq-empty"><p><strong>Nothing in progress.</strong></p><p class="rq-muted">Your past deliveries are in History.</p><a class="rq-btn" href="#book">Book a truck</a></div>`
     : firstVisit();
   markAdvanced(active);
+}
+let homeOpenedOnce = false;
+
+/** Re-render Home while sliding whatever moved from where it was (FLIP). */
+function withFlip(change) {
+  const key = (el) => el.dataset.deliveryId || el.dataset.need || el.id || el.textContent.trim().slice(0, 40);
+  const els = () => [...$("homeLists").querySelectorAll(".rq-section-title, .rq-section > .rq-muted, .rq-card, .rq-need, .rq-rate-row")];
+  const before = new Map(els().map((el) => [key(el), el.getBoundingClientRect().top]));
+  change();
+  if (reduceMotion()) return;
+  els().forEach((el) => {
+    const was = before.get(key(el));
+    if (was === undefined) return;
+    const dy = was - el.getBoundingClientRect().top;
+    if (Math.abs(dy) >= 1) el.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 300, easing: "cubic-bezier(0.32, 0.72, 0, 1)" });
+  });
+}
+
+/** Open one row (closing any other), or close it. */
+function toggleRow(id) {
+  const opening = openId !== id;
+  withFlip(() => {
+    openId = opening ? id : null;
+    $("homeLists").querySelectorAll(".rq-item").forEach((card) => {
+      const isOpen = card.dataset.deliveryId === openId;
+      card.classList.toggle("is-open", isOpen);
+      card.querySelector(".rq-item-head").setAttribute("aria-expanded", String(isOpen));
+      card.querySelector(".rq-item-details").hidden = !isOpen;
+    });
+  });
+  if (!opening) return;
+  const card = $("homeLists").querySelector(`.rq-item[data-delivery-id="${CSS.escape(id)}"]`);
+  const details = card?.querySelector(".rq-item-details");
+  if (details && !reduceMotion()) {
+    details.animate([{ opacity: 0, transform: "translateY(-6px)" }, { opacity: 1, transform: "none" }], { duration: 220, delay: 60, easing: "cubic-bezier(0.23, 1, 0.32, 1)", fill: "backwards" });
+  }
+  requestAnimationFrame(() => card?.scrollIntoView({ block: "nearest", behavior: reduceMotion() ? "auto" : "smooth" }));
 }
 
 // Statuses as of the last Home render, so a driver accepting (or picking up)
@@ -703,20 +782,266 @@ function subscribeTracking() {
           next.decode().then(() => (img.src = next.src), () => {});
         }
         const caption = document.getElementById(`map-caption-${d.id}`);
-        if (caption) caption.textContent = `Truck location · updated ${time(updated.updated_at || new Date())}`;
+        if (caption) caption.textContent = `Truck here ${timeAgo(updated.updated_at || new Date())}`;
         if (updated.status && updated.status !== d.status) loadDeliveries();
       });
       activeSubscriptions.set(d.id, channel);
     });
 }
 
+/** Fill the Book form with an old booking (date left empty) and go there. */
+function rebookIntoForm(d) {
+  for (const [id, value] of Object.entries(rebookValues(d))) {
+    inputs[id].value = value;
+    inputs[id].dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  inputs.scheduledPickup.value = "";
+  resetQuote();
+  goTo("book");
+  inputs.scheduledPickup.focus({ preventScroll: true });
+}
+
+// ---------- Rate drivers, one after another ----------
+// Each rating is saved the moment Send is tapped; skipped drivers stay on Home.
+let rateQueue = [];
+let rateIndex = 0;
+let ratedCount = 0;
+const STAR = `<svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>`;
+function rateSheetCard(d) {
+  const name = driversById.get(d.id)?.driver_name?.split(" ")[0] || "your driver";
+  return `
+    <div class="rq-rate-card" data-rate-id="${esc(d.id)}">
+      <p class="rq-muted">${titleLine(d)} · Delivered ${day(d.updated_at)}</p>
+      <p class="rq-rate-q"><strong>How was ${esc(name)}?</strong></p>
+      <div class="rq-rate">
+        <div class="rq-stars" role="radiogroup" aria-label="Rating">
+          ${[1, 2, 3, 4, 5].map((n) => `<button type="button" role="radio" aria-checked="false" aria-label="${n} star${n > 1 ? "s" : ""}" data-sheet-star="${n}">${STAR}</button>`).join("")}
+        </div>
+        <label class="rq-sr" for="sheet-comment-${esc(d.id)}">Comment (optional)</label>
+        <textarea id="sheet-comment-${esc(d.id)}" rows="2" maxlength="500" placeholder="Add a comment (optional)"></textarea>
+      </div>
+      <div class="rq-card-actions">
+        <button type="button" class="rq-btn" data-sheet-send disabled>Send rating</button>
+        <button type="button" class="rq-btn rq-btn--text" data-sheet-skip>Skip for now</button>
+      </div>
+      <p class="rq-muted rq-rate-foot">Skipped drivers stay on Home until you rate them. You can also swipe left to skip.</p>
+    </div>`;
+}
+function showRateCard({ direction = 0, swiped = false } = {}) {
+  const stage = $("rateStage");
+  $("rateStep").textContent = `${rateIndex + 1} of ${rateQueue.length}`;
+  const old = stage.firstElementChild;
+  stage.insertAdjacentHTML("beforeend", rateSheetCard(rateQueue[rateIndex]));
+  const next = stage.lastElementChild;
+  if (!old) return;
+  if (!direction || reduceMotion()) return old.remove();
+  // Forward: the finished driver leaves to the left, the next comes in from the right.
+  if (swiped) old.remove();
+  else {
+    old.inert = true; // the leaving card can't be tapped or read out
+    old.setAttribute("aria-hidden", "true");
+    old.style.position = "absolute";
+    old.style.inset = "0 0 auto 0";
+    old.animate([{ transform: "none", opacity: 1 }, { transform: "translateX(-24%)", opacity: 0 }], { duration: 220, easing: "cubic-bezier(0.23, 1, 0.32, 1)" }).finished.then(() => old.remove());
+  }
+  next.animate([{ transform: "translateX(24%)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 260, easing: "cubic-bezier(0.23, 1, 0.32, 1)" });
+}
+function nextRateCard(opts = {}) {
+  rateIndex += 1;
+  if (rateIndex >= rateQueue.length) closeSheet($("rateSheet"));
+  else showRateCard({ direction: 1, ...opts });
+}
+function openRating() {
+  rateQueue = toRateList();
+  if (!rateQueue.length) return;
+  rateIndex = 0;
+  ratedCount = 0;
+  $("rateStage").replaceChildren();
+  showRateCard();
+  openSheet($("rateSheet"));
+}
+// However the sheet closes (done, Close, drag, Esc), Home shows what's left to rate.
+$("rateSheet").addEventListener("close", () => {
+  withFlip(() => renderHome());
+  if (ratedCount) toastSuccess(ratedCount === 1 ? "Thanks. Your rating was saved." : `Thanks. ${ratedCount} ratings saved.`);
+  ratedCount = 0;
+});
+$("rateStage").addEventListener("click", async (e) => {
+  const card = e.target.closest(".rq-rate-card");
+  if (!card) return;
+  const star = e.target.closest("[data-sheet-star]");
+  if (star) {
+    const value = Number(star.dataset.sheetStar);
+    card.dataset.value = value;
+    card.querySelectorAll("[data-sheet-star]").forEach((s) => {
+      const n = Number(s.dataset.sheetStar);
+      s.classList.toggle("is-on", n <= value);
+      s.setAttribute("aria-checked", String(n === value));
+    });
+    card.querySelector("[data-sheet-send]").disabled = false;
+    return;
+  }
+  if (e.target.closest("[data-sheet-skip]")) return nextRateCard();
+  const send = e.target.closest("[data-sheet-send]");
+  if (!send) return;
+  const d = deliveries.find((x) => x.id === card.dataset.rateId);
+  send.disabled = true;
+  send.textContent = "Sending…";
+  const value = Number(card.dataset.value);
+  const { error } = await submitRating(d.id, profile.id, d.driver_id, value, card.querySelector("textarea").value.trim());
+  if (error) {
+    send.disabled = false;
+    send.textContent = "Send rating";
+    toastError("Your rating didn't save. Check your signal and send it again.");
+    return;
+  }
+  ratingsMap.set(d.id, { delivery_id: d.id, rating: value });
+  ratedCount += 1;
+  renderHistory();
+  nextRateCard();
+});
+
+// Swipe a rating card left to skip it. Vertical moves stay page scrolls.
+let swipe = null;
+$("rateStage").addEventListener("pointerdown", (e) => {
+  const card = e.target.closest(".rq-rate-card");
+  if (!card || e.target.closest("button, textarea")) return;
+  swipe = { card, id: e.pointerId, x0: e.clientX, y0: e.clientY, x: 0, active: false, samples: [{ y: 0, t: e.timeStamp }] };
+});
+$("rateStage").addEventListener("pointermove", (e) => {
+  if (!swipe || e.pointerId !== swipe.id) return;
+  const dx = e.clientX - swipe.x0;
+  if (!swipe.active) {
+    if (Math.abs(dx) < 10) return;
+    if (Math.abs(e.clientY - swipe.y0) > Math.abs(dx)) return (swipe = null);
+    swipe.active = true;
+    swipe.card.setPointerCapture(e.pointerId);
+  }
+  const width = swipe.card.offsetWidth;
+  // Nothing to go back to: dragging right only resists.
+  swipe.x = dx > 0 ? rubberband(dx, width) : dx;
+  swipe.samples.push({ y: swipe.x, t: e.timeStamp });
+  if (swipe.samples.length > 6) swipe.samples.shift();
+  swipe.card.style.transform = `translateX(${swipe.x}px)`;
+  swipe.card.style.opacity = String(1 - Math.min(Math.abs(swipe.x) / width, 1) * 0.6);
+});
+function endSwipe(e) {
+  if (!swipe || e.pointerId !== swipe.id) return;
+  const { card, x, active, samples } = swipe;
+  swipe = null;
+  if (!active) return;
+  const width = card.offsetWidth;
+  const v = e.type === "pointercancel" ? 0 : releaseVelocity(samples);
+  if (x + project(v) < -width * 0.35 || v < -600) {
+    if (reduceMotion()) return nextRateCard({ swiped: true });
+    card.animate([{ transform: `translateX(${x}px)`, opacity: card.style.opacity }, { transform: `translateX(${-width}px)`, opacity: 0 }], { duration: 160, easing: "cubic-bezier(0.23, 1, 0.32, 1)", fill: "forwards" })
+      .finished.then(() => nextRateCard({ swiped: true }));
+    return;
+  }
+  const settle = () => {
+    card.style.transform = "";
+    card.style.opacity = "";
+  };
+  if (reduceMotion()) return settle();
+  animateSpring(x, 0, v, (val) => {
+    card.style.transform = `translateX(${val}px)`;
+    card.style.opacity = String(1 - Math.min(Math.abs(val) / width, 1) * 0.6);
+  }, settle);
+}
+$("rateStage").addEventListener("pointerup", endSwipe);
+$("rateStage").addEventListener("pointercancel", endSwipe);
+
+// ---------- Book a late request again with a new date ----------
+let newDateFor = null;
+function openNewDate(id) {
+  const d = deliveries.find((x) => x.id === id);
+  if (!d) return;
+  // Old bookings without saved coordinates go through the normal Book form.
+  if (d.pickup_lat == null || d.dropoff_lat == null || d.distance_km == null) return rebookIntoForm(d);
+  newDateFor = d;
+  const price = formatPeso(estimateCost(Number(d.distance_km), Number(d.quantity_kg)));
+  $("newDateWhat").innerHTML = `<strong>${titleLine(d)}</strong><br />${esc(d.pickup_address)} → ${esc(d.dropoff_address)}`;
+  $("newDateFare").textContent = price;
+  $("newDateOld").textContent = `Your old request ${d.delivery_code} will be cancelled.`;
+  $("newDateConfirm").textContent = `Confirm booking · ${price}`;
+  $("newDateConfirm").disabled = false;
+  const input = $("newDateInput");
+  input.value = "";
+  input.min = localDateString();
+  input.removeAttribute("aria-invalid");
+  $("newDateError").hidden = true;
+  openSheet($("newDateSheet"));
+}
+function newDateProblem(text) {
+  $("newDateError").textContent = text;
+  $("newDateError").hidden = false;
+}
+$("newDateInput").addEventListener("input", () => {
+  $("newDateError").hidden = true;
+  $("newDateInput").removeAttribute("aria-invalid");
+});
+$("newDateConfirm").addEventListener("click", async () => {
+  const d = newDateFor;
+  const input = $("newDateInput");
+  const problem = checkPickupDate(input.value);
+  if (problem) {
+    newDateProblem(problem);
+    input.setAttribute("aria-invalid", "true");
+    input.focus();
+    return;
+  }
+  if (getIsOffline()) return newDateProblem("No connection. Check your signal and try again.");
+  const btn = $("newDateConfirm");
+  const label = btn.textContent;
+  setBusy(btn, true, "Booking…");
+  let result;
+  try {
+    result = await createDelivery({
+      requester_id: profile.id,
+      pickup_address: d.pickup_address,
+      pickup_lat: d.pickup_lat,
+      pickup_lng: d.pickup_lng,
+      dropoff_address: d.dropoff_address,
+      dropoff_lat: d.dropoff_lat,
+      dropoff_lng: d.dropoff_lng,
+      goods_description: d.goods_description,
+      quantity_kg: d.quantity_kg,
+      scheduled_pickup_at: new Date(input.value).toISOString(),
+      notes: d.notes,
+      estimated_cost: estimateCost(Number(d.distance_km), Number(d.quantity_kg)),
+      distance_km: d.distance_km,
+    });
+  } catch (err) {
+    result = { error: err };
+  }
+  btn.disabled = false;
+  btn.removeAttribute("aria-busy");
+  btn.textContent = label;
+  if (result.error) return newDateProblem(bookingErrorCopy(result.error).message);
+  // The new booking is in; now retire the old one.
+  const { error: cancelError } = await cancelMyDelivery(d.id, profile.id);
+  await closeSheet($("newDateSheet"));
+  highlightId = result.data?.id || null;
+  await loadDeliveries();
+  if (cancelError) toastError(`Your new booking is in, but ${d.delivery_code} couldn't be cancelled. Cancel it from Home.`);
+  else toastSuccess(`Booked for ${day(new Date(input.value).toISOString())}. Drivers can see it now.`);
+});
+
 // ---------- Card actions (one listener for every list) ----------
 let cancelTarget = null;
 document.addEventListener("click", async (e) => {
   const t = e.target.closest("button, a");
-  if (!t) return;
+  if (!t) {
+    // Tapping a closed row's summary (bars, status line) opens it too.
+    const card = e.target.closest("#homeLists .rq-item");
+    if (card && !e.target.closest(".rq-item-details")) toggleRow(card.dataset.deliveryId);
+    return;
+  }
 
   if (t.matches("[data-reload]")) return loadDeliveries();
+  if (t.matches(".rq-item-head")) return toggleRow(t.closest(".rq-item").dataset.deliveryId);
+  if (t.matches("[data-open-rating]")) return openRating();
+  if (t.dataset.newDate) return openNewDate(t.dataset.newDate);
 
   if (t.dataset.cancelId) {
     cancelTarget = deliveries.find((d) => d.id === t.dataset.cancelId);
@@ -728,23 +1053,10 @@ document.addEventListener("click", async (e) => {
 
   if (t.dataset.rebookId) {
     const d = deliveries.find((x) => x.id === t.dataset.rebookId);
-    if (!d) return;
-    for (const [id, value] of Object.entries(rebookValues(d))) {
-      inputs[id].value = value;
-      inputs[id].dispatchEvent(new Event("input", { bubbles: true }));
-    }
-    inputs.scheduledPickup.value = "";
-    resetQuote();
-    goTo("book");
-    inputs.scheduledPickup.focus({ preventScroll: true });
+    if (d) rebookIntoForm(d);
     return;
   }
 
-  if (t.dataset.dismissId) {
-    dismiss(t.dataset.dismissId);
-    renderHome();
-    return;
-  }
 
   if (t.dataset.openRate) {
     const card = t.closest("[data-delivery-id]");

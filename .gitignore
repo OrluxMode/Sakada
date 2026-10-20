@@ -21,3 +21,6 @@ codex prompt*.md
 # Playwright output
 sakada-web/playwright-report/
 sakada-web/test-results/
+
+# Local clickable prototypes (never deployed)
+sakada-web/prototypes/

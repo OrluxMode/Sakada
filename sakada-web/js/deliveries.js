@@ -3,6 +3,7 @@
 // farmer, vendor, and driver dashboards.
 
 import { supabase } from "./supabase-client.js";
+import { localDateString } from "./validators.js";
 
 export async function createDelivery(payload) {
   return await supabase.from("deliveries").insert(payload).select().single();
@@ -34,13 +35,18 @@ export async function getMyDeliveries(userId) {
     .order("created_at", { ascending: false });
 }
 
-/** Pending deliveries with no driver yet — what a driver sees to accept. */
-export async function getAvailableDeliveries() {
+/**
+ * Pending deliveries with no driver yet — what a driver sees to accept.
+ * Requests whose pickup date has passed are left out (owner rule 2026-10-20;
+ * the database enforces it too). Dates are saved as UTC midnight of the day.
+ */
+export async function getAvailableDeliveries(today = localDateString()) {
   return await supabase
     .from("deliveries")
     .select("*")
     .eq("status", "pending")
     .is("driver_id", null)
+    .or(`scheduled_pickup_at.is.null,scheduled_pickup_at.gte.${today}T00:00:00.000Z`)
     .order("created_at", { ascending: false });
 }
 

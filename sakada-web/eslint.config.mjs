@@ -9,7 +9,7 @@ export default [
   js.configs.recommended,
   {
     // Browser code. All of it is ES modules except js/main.js.
-    files: ["js/**/*.js"],
+    files: ["js/**/*.js", "prototypes/**/*.js"],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: "module",

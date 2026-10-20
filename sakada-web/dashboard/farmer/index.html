@@ -197,6 +197,32 @@
       <button class="rq-btn rq-btn--ghost" type="button" data-close-sheet>Close</button>
     </dialog>
 
+    <!-- Rate drivers, one after another -->
+    <dialog class="rq-sheet" id="rateSheet" aria-labelledby="rateTitle">
+      <div class="rq-sheet-grab" aria-hidden="true"></div>
+      <div class="rq-sheet-head">
+        <h2 id="rateTitle" class="rq-display">Rate your drivers</h2>
+        <span class="rq-row-meta" id="rateStep"></span>
+      </div>
+      <div class="rq-rate-stage" id="rateStage"></div>
+    </dialog>
+
+    <!-- Book a late request again with a new date -->
+    <dialog class="rq-sheet rq-new-date" id="newDateSheet" aria-labelledby="newDateTitle">
+      <div class="rq-sheet-grab" aria-hidden="true"></div>
+      <h2 id="newDateTitle" class="rq-display">Book a new date</h2>
+      <p id="newDateWhat"></p>
+      <div class="field">
+        <label for="newDateInput">New pickup date</label>
+        <input id="newDateInput" type="date" required aria-describedby="newDateError" />
+        <p class="field-error" id="newDateError" role="alert" hidden></p>
+      </div>
+      <p class="rq-new-date-fare"><span class="rq-muted">Same route and weight, same fare</span> <strong id="newDateFare"></strong></p>
+      <p class="rq-muted" id="newDateOld"></p>
+      <button class="rq-btn" type="button" id="newDateConfirm">Confirm booking</button>
+      <button class="rq-btn rq-btn--ghost" type="button" data-close-sheet>Not now</button>
+    </dialog>
+
     <!-- Cancel confirm -->
     <dialog class="rq-sheet" id="cancelSheet" aria-labelledby="cancelTitle">
       <div class="rq-sheet-grab" aria-hidden="true"></div>

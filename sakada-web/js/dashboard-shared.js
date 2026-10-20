@@ -456,6 +456,9 @@ export function jobErrorCopy(error) {
   if (/too many requests/i.test(message) || error?.status === 429) {
     return { kind: "rate", message: "Too many tries in a minute. Wait a minute, then try again." };
   }
+  if (/pickup date has passed/i.test(message)) {
+    return { kind: "expired", message: "This job's pickup date has passed, so it can't be taken anymore." };
+  }
   if (/2 active jobs/i.test(message)) {
     return { kind: "cap", message: "You have 2 jobs. Finish one to accept more." };
   }

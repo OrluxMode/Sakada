@@ -96,6 +96,10 @@
 
 .toast__close {
   flex-shrink: 0;
+  min-width: 44px; /* a full-size tap target; the × itself stays small */
+  min-height: 44px;
+  display: grid;
+  place-items: center;
   background: none;
   border: none;
   color: var(--text-muted);
@@ -103,7 +107,7 @@
   line-height: 1;
   padding: 0;
   cursor: pointer;
-  margin-top: -1px;
+  margin: -12px -12px -12px 0;
 }
 .toast__close:hover {
   color: var(--text-cream);

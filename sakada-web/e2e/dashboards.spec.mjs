@@ -35,7 +35,9 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(section("On the road")).toContainText("SK-00003");
     await expect(section("Driver assigned")).toContainText("SK-00002");
     await expect(section("Waiting for a driver")).toContainText("SK-00001");
-    await expect(section("Rate your driver")).toContainText("SK-00004");
+    // Things that need the farmer sit on top: the late request and the rating.
+    await expect(section("Needs you")).toContainText("drivers can't see it anymore");
+    await expect(section("Needs you").getByRole("button", { name: /Rate 1 driver/ })).toBeVisible();
     await expect(home).not.toContainText("SK-00006"); // the vendor's
     await expect(page.getByRole("img", { name: /Step 4 of 5/ })).toBeVisible();
     await page.goto("/dashboard/farmer/index.html#history");
@@ -48,11 +50,47 @@ test.describe("dashboards (fake sign-in)", () => {
     const db = await mockSupabase(page, "farmer");
     await page.goto("/dashboard/farmer/index.html");
     const card = page.locator("#homeLists [data-delivery-id]", { hasText: "SK-00001" });
+    await expect(card.getByRole("button", { name: "Cancel request" })).toBeHidden(); // rows start closed
+    await card.locator(".rq-item-head").click();
     await card.getByRole("button", { name: "Cancel request" }).click();
     await expect(page.locator("#cancelSheet")).toBeVisible();
     await page.locator("#cancelConfirm").click();
     await expect.poll(() => db.deliveries.find((d) => d.delivery_code === "SK-00001").status).toBe("cancelled");
     await expect(page.locator("#homeLists")).not.toContainText("SK-00001");
+  });
+
+  test("rating drivers one by one keeps the skipped ones on Home", async ({ page }) => {
+    const base = fixtures().deliveries;
+    const second = { ...base[3], id: "00000000-0000-4000-8000-0000000de009", delivery_code: "SK-00009" };
+    const db = await mockSupabase(page, "farmer", { deliveries: [...base, second] });
+    await page.goto("/dashboard/farmer/index.html");
+    await page.getByRole("button", { name: /Rate 2 drivers/ }).click();
+    const sheet = page.locator("#rateSheet");
+    await expect(sheet).toContainText("1 of 2");
+    await sheet.getByRole("radio", { name: "5 stars" }).click();
+    await sheet.getByRole("button", { name: "Send rating" }).click();
+    await expect(sheet).toContainText("2 of 2");
+    await sheet.getByRole("button", { name: "Skip for now" }).click();
+    await expect(sheet).toBeHidden();
+    expect(db.ratings).toHaveLength(1);
+    await expect(page.getByRole("button", { name: /Rate 1 driver/ })).toBeVisible(); // the skipped one stays
+  });
+
+  test("a late request is booked again with a new date", async ({ page }) => {
+    const db = await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html");
+    const needs = page.locator(".rq-needs");
+    await needs.getByRole("button", { name: "Book a new date" }).click();
+    const sheet = page.locator("#newDateSheet");
+    await expect(sheet).toContainText("Eggplant, 32 crates");
+    await expect(sheet).toContainText("₱3,550"); // 150 + 120 km × 15 + 800 kg × 2, the same fare
+    await sheet.getByRole("button", { name: /Confirm booking/ }).click();
+    await expect(page.locator("#newDateError")).toHaveText("Pick a pickup date.");
+    await page.fill("#newDateInput", futureDate());
+    await sheet.getByRole("button", { name: /Confirm booking/ }).click();
+    await expect(sheet).toBeHidden();
+    await expect.poll(() => code(db, "SK-00001").status).toBe("cancelled");
+    expect(db.deliveries.filter((d) => d.status === "pending" && d.goods_description === "Eggplant, 32 crates")).toHaveLength(1);
   });
 
   test("vendor sees only their own deliveries", async ({ page }) => {

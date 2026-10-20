@@ -92,6 +92,28 @@ creating a profile. Names shorter than two characters fall back to the trimmed,
 capped email local part, then to `User` if needed. Google signups still start
 as unconfirmed farmers; explicit valid signup roles remain confirmed (0018).
 
+## Past pickup dates (0022)
+
+`pickup_date_passed(scheduled_pickup_at)` compares the pickup timestamp's UTC
+calendar date (the website's date encoding) with today's date in Asia/Manila.
+Today, future dates and NULL dates remain eligible. An optional `today` date
+argument supports deterministic testing; policies and triggers use the default.
+
+Drivers cannot select expired pending, unassigned requests through RLS, and
+the new `trg_check_pickup_date` trigger rejects pending → driver_assigned with
+`This pickup date has passed. The farmer or vendor needs to book a new date.`
+RLS may hide a row before an UPDATE reaches the trigger; clients must also
+handle an acceptance that affects zero rows.
+
+Ordinary farmer/vendor inserts with past pickup dates fail with
+`Pick today or a later date.` Trusted SQL/service-role and admin inserts keep
+their existing exemption. Requesters can still see and cancel their expired
+pending requests. Assigned drivers retain access to their own jobs/history;
+admin visibility is unchanged. No old rows are modified or cancelled.
+All 0020 functions remain unchanged, including the two-active-job cap and its
+message. The migration header provides a read-only count of requests that
+will disappear from drivers' open lists.
+
 ## Security note
 
 Since the front end (and later, the mobile app) talks to Supabase directly
