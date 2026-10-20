@@ -439,6 +439,29 @@ export function pickupDayLabel(iso, today = new Date()) {
   return d.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
 }
 
+/**
+ * The booking a "Track your shipment" search means, or null. Codes match
+ * however they're typed ("SK-00012", "sk12", "12"); otherwise the goods
+ * ("tomatoes"). Active bookings win over past ones with the same goods.
+ */
+export function findDelivery(deliveries, query, historyStatuses = HISTORY_STATUSES) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return null;
+  const digits = q.replace(/^sk-?/, "");
+  if (/^\d+$/.test(digits)) {
+    const n = Number(digits);
+    return deliveries.find((d) => Number(String(d.delivery_code).replace(/\D/g, "")) === n) || null;
+  }
+  const hits = deliveries.filter((d) => String(d.goods_description || "").toLowerCase().includes(q));
+  return hits.find((d) => !historyStatuses.includes(d.status)) || hits[0] || null;
+}
+
+/** How far along the route line the truck sits: 0 waiting … 1 delivered. */
+export function shipmentProgress(status) {
+  const i = STAGES.indexOf(status);
+  return i < 0 ? 0 : i / (STAGES.length - 1);
+}
+
 /** First part of an address: "Marikina Public Market, Marikina" -> "Marikina Public Market". */
 export function shortPlace(address) {
   return String(address || "").split(",")[0].trim();

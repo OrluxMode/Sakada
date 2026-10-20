@@ -6,6 +6,8 @@ import {
   getDrivingDistanceKm,
   estimateCost,
   staticMapUrl,
+  getRouteLine,
+  routeMapUrl,
 } from "./mapbox-client.js";
 import {
   cancelMyDelivery,
@@ -30,7 +32,8 @@ import {
   STAGES,
   initialsFor,
   groupActive,
-  homeSummary,
+  findDelivery,
+  shipmentProgress,
   formatPeso,
   fareBreakdown,
   pickupPassed,
@@ -39,7 +42,7 @@ import {
   contactUrl,
 } from "./dashboard-shared.js";
 import { toastSuccess, toastError } from "./toast.js";
-import { enableSheetDrag, rubberband, project, releaseVelocity, animateSpring } from "./sheet-drag.js";
+import { enableSheetDrag } from "./sheet-drag.js";
 import { paginate } from "./pagination.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
 import {
@@ -48,6 +51,7 @@ import {
   checkKg,
   checkPickupDate,
   checkNotes,
+  checkTrackQuery,
   localDateString,
 } from "./validators.js";
 import { validateFields, clearWhenFixed, showFieldError } from "./field-errors.js";
@@ -71,8 +75,8 @@ const firstName = profile.full_name.split(" ")[0];
 document.querySelectorAll("[data-user-name]").forEach((el) => (el.textContent = profile.full_name));
 document.querySelector(".rq-account")?.setAttribute("title", profile.full_name); // long names are cut off there
 document.querySelectorAll("[data-initials]").forEach((el) => (el.textContent = initialsFor(profile.full_name)));
-// Greeting only: "yayan" reads as "Hello, Yayan". The saved name is left as typed.
-$("homeTitle").textContent = `Hello, ${firstName.charAt(0).toLocaleUpperCase("en-PH")}${firstName.slice(1)}`;
+// Greeting only: "yayan" reads as "Yayan". The saved name is left as typed.
+$("homeTitle").textContent = `${firstName.charAt(0).toLocaleUpperCase("en-PH")}${firstName.slice(1)}`;
 supabase.auth.getUser().then(({ data }) => {
   if (data?.user?.email) $("profileEmail").textContent = ` · ${data.user.email}`;
 });
@@ -464,10 +468,13 @@ function starPicker(d) {
 }
 
 
-// ---------- Home: "Needs you", then short rows that open in place ----------
+// ---------- Home: status tiles, then one card per active shipment ----------
 const STATUS_WORD = { pending: "Waiting for a driver", driver_assigned: "Driver assigned", picked_up: "Picked up", in_transit: "In transit" };
 const isToday = (iso) => new Date(iso).toDateString() === new Date().toDateString();
-/** The one line under the bars: what's happening and since when. */
+const shortRoute = (d) => `${esc(shortPlace(d.pickup_address))} → ${esc(shortPlace(d.dropoff_address))}`;
+const lateList = () => deliveries.filter((d) => pickupPassed(d));
+
+/** The one line under the bars in the details sheet: what's happening and since when. */
 function statusLine(d) {
   const word = `<strong class="rq-status-word">${STATUS_WORD[d.status]}</strong>`;
   const at = d.status_changed_at || d.updated_at;
@@ -478,82 +485,131 @@ function statusLine(d) {
   // "pickup Oct 22" stays on one line.
   return d.scheduled_pickup_at ? `${word} · pickup&nbsp;${day(d.scheduled_pickup_at).replace(" ", "&nbsp;")}` : word;
 }
-const shortRoute = (d) => `${esc(shortPlace(d.pickup_address))} → ${esc(shortPlace(d.dropoff_address))}`;
-let openId = null;
 
-function activeCard(d) {
-  const open = d.id === openId;
+/** Bottom-left of a shipment card: a small label and the one fact that matters now. */
+function shipmentFact(d) {
+  const at = d.status_changed_at || d.updated_at;
+  const when = isToday(at) ? time(at) : day(at);
+  if (pickupPassed(d)) return ["Pickup date passed", "Book a new date"];
+  if (d.status === "in_transit") return ["In transit", `Since ${when}`];
+  if (d.status === "picked_up") return ["Picked up", isToday(at) ? `At ${when}` : `On ${when}`];
+  const label = d.status === "pending" ? "Waiting for a driver" : `${driversById.get(d.id)?.driver_name?.split(" ")[0] || "Driver"} picks up`;
+  return [label, d.scheduled_pickup_at ? `Pickup ${day(d.scheduled_pickup_at)}` : "Pickup date not set"];
+}
+
+const TRUCK = `<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h11v8H2z"/><path d="M13 10h4l3 3v2h-7"/><circle cx="6" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>`;
+const TILE_ICON = {
+  waiting: `<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11.5a7 7 0 0 1 14 0C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>`,
+  road: TRUCK,
+  delivered: `<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 10"/></svg>`,
+};
+
+function renderTiles(active) {
+  const counts = {
+    waiting: active.filter((d) => d.status === "pending").length,
+    road: active.filter((d) => d.status !== "pending").length,
+    delivered: deliveries.filter((d) => d.status === "delivered").length,
+  };
+  const tile = (key, label) => `
+    <button type="button" class="rq-tile" data-tile="${key}" aria-label="${counts[key]} ${label}">
+      ${TILE_ICON[key]}
+      <span class="rq-tile-count" aria-hidden="true">${counts[key].toLocaleString("en-PH")}</span>
+      <span class="rq-tile-label" aria-hidden="true">${label}</span>
+    </button>`;
+  $("statusTiles").innerHTML = tile("waiting", "Waiting") + tile("road", "On the road") + tile("delivered", "Delivered");
+}
+
+// ---------- Real maps on the shipment cards ----------
+// The road between pickup and drop-off never changes, so each booking's
+// route is fetched once and kept for the session.
+const routeLines = new Map();
+const routeLoading = new Set();
+const ROUTE_KEY = (id) => `sakada.route.${id}`;
+const hasCoords = (d) => d.pickup_lat != null && d.pickup_lng != null && d.dropoff_lat != null && d.dropoff_lng != null;
+const truckAt = (d) => (d.status === "picked_up" || d.status === "in_transit") && d.current_lat && d.current_lng
+  ? { lat: d.current_lat, lng: d.current_lng }
+  : null;
+function cachedLine(id) {
+  if (routeLines.has(id)) return routeLines.get(id);
+  try {
+    const saved = sessionStorage.getItem(ROUTE_KEY(id));
+    if (saved !== null) routeLines.set(id, saved || null);
+  } catch { /* private mode: fetch again next time */ }
+  return routeLines.get(id) ?? null;
+}
+function shipMapUrl(d) {
+  return routeMapUrl({
+    pickup: { lat: d.pickup_lat, lng: d.pickup_lng },
+    dropoff: { lat: d.dropoff_lat, lng: d.dropoff_lng },
+    truck: truckAt(d),
+    line: cachedLine(d.id),
+  });
+}
+/** Fetch the road for cards that don't have it yet, then redraw just their maps. */
+function loadRouteLines(list) {
+  list.filter((d) => hasCoords(d) && !routeLines.has(d.id) && cachedLine(d.id) === null && !routeLoading.has(d.id)).forEach((d) => {
+    routeLoading.add(d.id);
+    getRouteLine({ lat: d.pickup_lat, lng: d.pickup_lng }, { lat: d.dropoff_lat, lng: d.dropoff_lng })
+      .then((line) => {
+        routeLines.set(d.id, line);
+        try { sessionStorage.setItem(ROUTE_KEY(d.id), line || ""); } catch { /* fine */ }
+        const img = document.getElementById(`shipmap-${d.id}`);
+        if (img && line) swapMap(img, shipMapUrl(d));
+      }, () => {}) // no road: the pins alone still show where it goes
+      .finally(() => routeLoading.delete(d.id));
+  });
+}
+/** Load a new map image off-screen, then fade it in over the old one. */
+function swapMap(img, url) {
+  const next = new Image();
+  next.src = url;
+  next.decode().then(() => {
+    if (reduceMotion() || !img.isConnected) return (img.src = url);
+    // No slide or zoom: it's a map you read.
+    const layer = img.cloneNode();
+    layer.removeAttribute("id");
+    layer.className = "rq-map-next";
+    layer.src = url;
+    img.after(layer);
+    layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "cubic-bezier(0.23, 1, 0.32, 1)" })
+      .finished.then(() => {
+        img.src = url;
+        layer.remove();
+      });
+  }, () => {});
+}
+// Card maps fade in once they've loaded; one that fails falls back to the route line.
+document.addEventListener("load", (e) => {
+  if (e.target.classList?.contains("rq-ship-map-img")) e.target.classList.remove("is-loading");
+}, true);
+document.addEventListener("error", (e) => {
+  if (e.target.classList?.contains("rq-ship-map-img")) e.target.closest(".rq-ship")?.classList.remove("has-map");
+}, true);
+
+function shipmentCard(d, i, all) {
+  const p = shipmentProgress(d.status);
+  const [label, value] = shipmentFact(d);
   const late = pickupPassed(d);
-  const waitingLine = d.status === "pending"
-    ? `<p>${late
-      ? "The pickup date has passed, so drivers can't see this request anymore. Book it again with a new date."
-      : "Drivers can see your request now. You can cancel until one accepts."}</p>`
-    : "";
-  const actions = d.status === "pending"
-    ? `${late ? `<button type="button" class="rq-btn" data-new-date="${esc(d.id)}">Book a new date</button>` : ""}
-       <button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">Cancel request</button>`
-    : "";
+  const step = STAGES.indexOf(d.status);
+  const map = hasCoords(d);
+  const where = `${esc(shortPlace(d.pickup_address))} to ${esc(shortPlace(d.dropoff_address))}`;
   return `
-    <article class="rq-card rq-item${open ? " is-open" : ""}${d.id === highlightId ? " rq-card--new" : ""}" data-delivery-id="${esc(d.id)}" tabindex="-1">
-      <button type="button" class="rq-item-head" aria-expanded="${open}" aria-controls="details-${esc(d.id)}">
-        <span class="rq-item-main">
-          <span class="rq-card-title">${titleLine(d)}</span>
-          <span class="rq-item-route">${shortRoute(d)}</span>
-        </span>
-        ${CHEVRON}
-      </button>
-      ${renderStageStepper(d.status)}
-      <p class="rq-status-line">${statusLine(d)}</p>
-      <div class="rq-item-details" id="details-${esc(d.id)}"${open ? "" : " hidden"}>
-        <p class="rq-muted">${metaLine(d)}</p>
-        ${routeBlock(d)}
-        ${driverBlock(d)}
-        ${mapBlock(d)}
-        ${waitingLine}
-        ${fareBlock(d)}
-        ${actions}
+    <article class="rq-card rq-ship${map ? " has-map" : ""}${late ? " is-late" : ""}${d.id === highlightId ? " rq-card--new" : ""}" data-delivery-id="${esc(d.id)}" tabindex="-1"${all.length > 1 ? ` aria-roledescription="slide" aria-label="${i + 1} of ${all.length}"` : ""}>
+      <p class="rq-ship-what">${esc(d.delivery_code)} · ${titleLine(d)}</p>
+      <div class="rq-ship-ends">
+        <p><span class="rq-ship-label">From</span>${esc(shortPlace(d.pickup_address))}</p>
+        <p><span class="rq-ship-label">To</span>${esc(shortPlace(d.dropoff_address))}</p>
+      </div>
+      ${map ? `<figure class="rq-ship-map"><img id="shipmap-${esc(d.id)}" class="rq-ship-map-img is-loading" src="${shipMapUrl(d)}" alt="Map of the road from ${where}${truckAt(d) ? ", with the truck where it is now" : ""}. ${esc(STATUS_WORD[d.status])}." width="600" height="300" loading="lazy" decoding="async" /></figure>` : ""}
+      <div class="rq-ship-route" style="--p: ${p}" role="img" aria-label="Step ${step + 1} of 5, ${esc(STATUS_WORD[d.status])}">
+        <span class="rq-ship-fill"></span>
+        <span class="rq-ship-truck">${TRUCK}</span>
+      </div>
+      <div class="rq-ship-foot">
+        <p><span class="rq-ship-label">${esc(label)}</span><strong class="rq-ship-value">${esc(value)}</strong></p>
+        <button type="button" class="rq-pill" data-details="${esc(d.id)}">View details</button>
       </div>
     </article>`;
-}
-const CHEVRON = `<svg class="rq-chevron" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`;
-
-function section(title, sub, cards) {
-  if (!cards.length) return "";
-  return `
-    <section class="rq-section">
-      <h2 class="rq-section-title">${title}</h2>
-      ${sub ? `<p class="rq-muted">${sub}</p>` : ""}
-      ${cards.join("")}
-    </section>`;
-}
-
-function toRateList() {
-  return deliveries.filter((d) => d.status === "delivered" && d.driver_id && !ratingsMap.get(d.id));
-}
-function needsYou(active) {
-  const late = active.filter((d) => pickupPassed(d)).map((d) => `
-    <div class="rq-need" data-need="${esc(d.id)}">
-      <p><strong>${titleLine(d)}</strong><br /><span class="rq-muted">${shortRoute(d)}</span></p>
-      <p>The pickup date (${day(d.scheduled_pickup_at)}) passed before a driver accepted, so drivers can't see it anymore.</p>
-      <div class="rq-need-actions">
-        <button type="button" class="rq-btn" data-new-date="${esc(d.id)}">Book a new date</button>
-        <button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">Cancel request</button>
-      </div>
-    </div>`);
-  const rate = toRateList();
-  const names = [...new Set(rate.map((d) => driversById.get(d.id)?.driver_name?.split(" ")[0]).filter(Boolean))];
-  const rateRow = rate.length ? `
-    <button type="button" class="rq-row rq-rate-row" data-open-rating>
-      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>
-      <span class="rq-rate-text"><strong>Rate ${rate.length} driver${rate.length > 1 ? "s" : ""}</strong>${names.length ? `<br /><span class="rq-muted">${esc(names.join(", "))}</span>` : ""}</span>
-      ${CHEVRON}
-    </button>` : "";
-  if (!late.length && !rate.length) return "";
-  return `
-    <section class="rq-section rq-needs" aria-labelledby="needsTitle">
-      <h2 class="rq-section-title" id="needsTitle">Needs you</h2>
-      ${late.join("")}${rateRow}
-    </section>`;
 }
 
 function firstVisit() {
@@ -573,48 +629,83 @@ function firstVisit() {
 function renderHome() {
   const active = deliveries.filter((d) => !HISTORY_STATUSES.includes(d.status));
   const { onRoad, assigned, waiting } = groupActive(active);
-  const toRate = toRateList();
-  // Open the one being watched: a lone truck on the road, or the only booking there is.
-  if (openId === null && !homeOpenedOnce) {
-    if (onRoad.length === 1) openId = onRoad[0].id;
-    else if (active.length === 1) openId = active[0].id;
-  }
-  homeOpenedOnce = true;
-  if (openId && !active.some((d) => d.id === openId)) openId = null;
-  $("homeSummary").textContent = homeSummary({
-    onRoad: onRoad.length,
-    assigned: assigned.length,
-    waiting: waiting.length,
-    toRate: toRate.length,
-  });
-  $("homeLists").innerHTML = deliveries.length
-    ? needsYou(active) +
-      section("On the road", "", onRoad.map(activeCard)) +
-      section("Driver assigned", "Goods not picked up yet", assigned.map(activeCard)) +
-      section("Waiting for a driver", "", waiting.map(activeCard)) +
-      bookAgain(active) ||
-      `<div class="rq-card rq-empty"><p><strong>Nothing in progress.</strong></p><p class="rq-muted">Your past deliveries are in History.</p><a class="rq-btn" href="#book">Book a truck</a></div>`
-    : firstVisit();
+  const any = deliveries.length > 0;
+  $("trackForm").hidden = !any;
+  $("statusSection").hidden = !any;
+  if (any) renderTiles(active);
+  const ordered = [...onRoad, ...assigned, ...waiting];
+  const keep = currentShipId(); // stay on the card you swiped to when live data re-renders
+  const many = ordered.length > 1;
+  $("homeLists").innerHTML = !any
+    ? firstVisit()
+    : ordered.length
+      ? `<section class="rq-section" aria-labelledby="shipTitle">
+          <div class="rq-section-head">
+            <h2 class="rq-section-title" id="shipTitle">${many ? "Active shipments" : "Active shipment"}</h2>
+            ${many ? `<p class="rq-ship-pos" id="shipPos" aria-hidden="true">1 of ${ordered.length}</p>` : ""}
+          </div>
+          <div class="rq-ships${many ? " is-many" : ""}" id="shipList"${many ? ` role="region" aria-roledescription="carousel" aria-label="Active shipments, swipe for more" tabindex="0"` : ""}>
+            ${ordered.map(shipmentCard).join("")}
+          </div>
+          ${many ? `<div class="rq-dots" id="shipDots">${ordered.map((d, i) => `<button type="button" class="rq-dot" data-ship-dot="${i}" aria-label="Show ${esc(d.delivery_code)}"${i === 0 ? ` aria-current="true"` : ""}></button>`).join("")}</div>` : ""}
+        </section>`
+      : `<section class="rq-section" aria-labelledby="shipTitle">
+          <h2 class="rq-section-title" id="shipTitle">Active shipment</h2>
+          <div class="rq-card rq-empty"><p><strong>Nothing on the road right now.</strong></p><p class="rq-muted">Your past deliveries are in History.</p><a class="rq-btn" href="#book">Book a truck</a></div>
+        </section>`;
   markAdvanced(active);
+  if (keep) goToShip(keep, { instant: true });
+  loadRouteLines(ordered);
+  renderDetails();
 }
-let homeOpenedOnce = false;
 
-/** Under a short list, the next likely step: book the latest route again. */
-function bookAgain(active) {
-  const last = deliveries[0];
-  if (!last || !active.length || active.length > 2) return "";
-  return `
-    <button type="button" class="rq-row rq-book-again" data-rebook-id="${esc(last.id)}">
-      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>
-      <span class="rq-rate-text"><strong>Book again</strong><br /><span class="rq-muted">${esc(last.goods_description)} · ${shortRoute(last)}</span></span>
-      ${CHEVRON}
-    </button>`;
+// ---------- Swiping between shipment cards (native scroll-snap) ----------
+function shipCards() {
+  return [...($("shipList")?.querySelectorAll(".rq-ship") || [])];
 }
+/** The card the row is resting on: the one whose left edge is nearest the row's. */
+function shipIndex() {
+  const list = $("shipList");
+  const cards = shipCards();
+  if (!list || !cards.length) return 0;
+  const left = list.getBoundingClientRect().left;
+  let best = 0;
+  cards.forEach((c, i) => {
+    if (Math.abs(c.getBoundingClientRect().left - left) < Math.abs(cards[best].getBoundingClientRect().left - left)) best = i;
+  });
+  return best;
+}
+function currentShipId() {
+  return $("shipList")?.classList.contains("is-many") ? shipCards()[shipIndex()]?.dataset.deliveryId : null;
+}
+function goToShip(id, { instant = false } = {}) {
+  const list = $("shipList");
+  const card = shipCards().find((c) => c.dataset.deliveryId === id);
+  if (!list || !card || !list.classList.contains("is-many")) return;
+  const behavior = instant || reduceMotion() ? "auto" : "smooth";
+  list.scrollTo({ left: card.offsetLeft - list.firstElementChild.offsetLeft, behavior });
+  if (instant) markShip();
+}
+function markShip() {
+  const i = shipIndex();
+  const pos = $("shipPos");
+  if (pos) pos.textContent = `${i + 1} of ${shipCards().length}`;
+  $("shipDots")?.querySelectorAll("[data-ship-dot]").forEach((dot) => {
+    if (Number(dot.dataset.shipDot) === i) dot.setAttribute("aria-current", "true");
+    else dot.removeAttribute("aria-current");
+  });
+}
+let shipFrame = 0;
+document.addEventListener("scroll", (e) => {
+  if (e.target.id !== "shipList") return;
+  cancelAnimationFrame(shipFrame);
+  shipFrame = requestAnimationFrame(markShip);
+}, { capture: true, passive: true });
 
 /** Re-render Home while sliding whatever moved from where it was (FLIP). */
 function withFlip(change) {
-  const key = (el) => el.dataset.deliveryId || el.dataset.need || el.id || el.textContent.trim().slice(0, 40);
-  const els = () => [...$("homeLists").querySelectorAll(".rq-section-title, .rq-section > .rq-muted, .rq-card, .rq-need, .rq-rate-row")];
+  const key = (el) => el.dataset.deliveryId || el.id || el.textContent.trim().slice(0, 40);
+  const els = () => [...$("homeLists").querySelectorAll(".rq-section-title, .rq-card")];
   const before = new Map(els().map((el) => [key(el), el.getBoundingClientRect().top]));
   change();
   if (reduceMotion()) return;
@@ -626,27 +717,6 @@ function withFlip(change) {
   });
 }
 
-/** Open one row (closing any other), or close it. */
-function toggleRow(id) {
-  const opening = openId !== id;
-  withFlip(() => {
-    openId = opening ? id : null;
-    $("homeLists").querySelectorAll(".rq-item").forEach((card) => {
-      const isOpen = card.dataset.deliveryId === openId;
-      card.classList.toggle("is-open", isOpen);
-      card.querySelector(".rq-item-head").setAttribute("aria-expanded", String(isOpen));
-      card.querySelector(".rq-item-details").hidden = !isOpen;
-    });
-  });
-  if (!opening) return;
-  const card = $("homeLists").querySelector(`.rq-item[data-delivery-id="${CSS.escape(id)}"]`);
-  const details = card?.querySelector(".rq-item-details");
-  if (details && !reduceMotion()) {
-    details.animate([{ opacity: 0, transform: "translateY(-6px)" }, { opacity: 1, transform: "none" }], { duration: 220, delay: 60, easing: "cubic-bezier(0.23, 1, 0.32, 1)", fill: "backwards" });
-  }
-  requestAnimationFrame(() => card?.scrollIntoView({ block: "nearest", behavior: reduceMotion() ? "auto" : "smooth" }));
-}
-
 // Statuses as of the last Home render, so a driver accepting (or picking up)
 // can be marked once. Null until the first render: page load never animates.
 let lastStatus = null;
@@ -655,12 +725,51 @@ function markAdvanced(active) {
     for (const d of active) {
       const before = lastStatus.get(d.id);
       if (!before || STAGES.indexOf(d.status) <= STAGES.indexOf(before)) continue;
-      const card = $("homeLists").querySelector(`.rq-card[data-delivery-id="${CSS.escape(d.id)}"]`);
-      card?.classList.add("is-advanced");
-      card?.querySelector(".rq-step--current")?.classList.add("is-advanced");
+      $("homeLists").querySelector(`.rq-card[data-delivery-id="${CSS.escape(d.id)}"]`)?.classList.add("is-advanced");
     }
   }
   lastStatus = new Map(deliveries.map((d) => [d.id, d.status]));
+}
+
+// ---------- Details sheet (View details) ----------
+let detailsId = null;
+function detailsBody(d) {
+  const late = pickupPassed(d);
+  const waitingLine = d.status === "pending"
+    ? `<p>${late
+      ? "The pickup date has passed, so drivers can't see this request anymore. Book it again with a new date."
+      : "Drivers can see your request now. You can cancel until one accepts."}</p>`
+    : "";
+  const actions = d.status === "pending"
+    ? `<div class="rq-card-actions">
+        ${late ? `<button type="button" class="rq-btn" data-new-date="${esc(d.id)}">Book a new date</button>` : ""}
+        <button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">Cancel request</button>
+      </div>`
+    : "";
+  return `
+    ${renderStageStepper(d.status)}
+    <p class="rq-status-line">${statusLine(d)}</p>
+    <p class="rq-muted">${metaLine(d)}</p>
+    ${routeBlock(d)}
+    ${driverBlock(d)}
+    ${mapBlock(d)}
+    ${waitingLine}
+    ${fareBlock(d)}
+    ${actions}`;
+}
+/** Keeps an open details sheet in step with the latest data. */
+function renderDetails() {
+  const sheet = $("detailsSheet");
+  if (!sheet.open || !detailsId) return;
+  const d = deliveries.find((x) => x.id === detailsId);
+  if (!d) return;
+  $("detailsTitle").innerHTML = titleLine(d);
+  $("detailsBody").innerHTML = detailsBody(d);
+}
+function openDetails(id) {
+  detailsId = id;
+  openSheet($("detailsSheet"));
+  renderDetails();
 }
 
 function historyCard(d) {
@@ -791,25 +900,13 @@ function subscribeTracking() {
     .filter((d) => d.status === "picked_up" || d.status === "in_transit")
     .forEach((d) => {
       const channel = subscribeToDeliveryUpdates(d.id, (updated) => {
-        const img = document.getElementById(`map-${d.id}`);
-        if (img && updated.current_lat && updated.current_lng) {
-          // Load the new map off-screen first, so a slow connection never shows a blank box.
-          const next = new Image();
-          next.src = staticMapUrl(updated.current_lat, updated.current_lng);
-          next.decode().then(() => {
-            if (reduceMotion() || !img.isConnected) return (img.src = next.src);
-            // Fade the new position in over the old one, then keep it. No slide or zoom: it's a map you read.
-            const layer = img.cloneNode();
-            layer.removeAttribute("id");
-            layer.className = "rq-map-next";
-            layer.src = next.src;
-            img.after(layer);
-            layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "cubic-bezier(0.23, 1, 0.32, 1)" })
-              .finished.then(() => {
-                img.src = next.src;
-                layer.remove();
-              });
-          }, () => {});
+        if (updated.current_lat && updated.current_lng) {
+          // The new truck position fades in over the old one, on the card and in details.
+          Object.assign(d, { current_lat: updated.current_lat, current_lng: updated.current_lng });
+          const img = document.getElementById(`map-${d.id}`);
+          if (img) swapMap(img, staticMapUrl(updated.current_lat, updated.current_lng));
+          const card = document.getElementById(`shipmap-${d.id}`);
+          if (card) swapMap(card, shipMapUrl(d));
         }
         const caption = document.getElementById(`map-caption-${d.id}`);
         if (caption) caption.textContent = `Truck here ${timeAgo(updated.updated_at || new Date())}`;
@@ -820,11 +917,11 @@ function subscribeTracking() {
 }
 
 /**
- * A booking leaves Home: its row and its "Needs you" card fade out together,
- * then everything below slides up into place instead of jumping.
+ * A booking leaves Home: its card fades out, then everything below slides
+ * up into place instead of jumping.
  */
 async function leaveHome(id) {
-  const gone = [...$("homeLists").querySelectorAll(`[data-delivery-id="${CSS.escape(id)}"], [data-need="${CSS.escape(id)}"]`)];
+  const gone = [...$("homeLists").querySelectorAll(`[data-delivery-id="${CSS.escape(id)}"]`)];
   if (gone.length && !reduceMotion()) {
     await Promise.all(gone.map((el) => el.animate(
       [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(8px)" }],
@@ -847,156 +944,6 @@ function rebookIntoForm(d) {
   goTo("book");
   inputs.scheduledPickup.focus({ preventScroll: true });
 }
-
-// ---------- Rate drivers, one after another ----------
-// Each rating is saved the moment Send is tapped; skipped drivers stay on Home.
-let rateQueue = [];
-let rateIndex = 0;
-let ratedCount = 0;
-const STAR = `<svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>`;
-function rateSheetCard(d) {
-  const name = driversById.get(d.id)?.driver_name?.split(" ")[0] || "your driver";
-  return `
-    <div class="rq-rate-card" data-rate-id="${esc(d.id)}">
-      <p class="rq-muted">${titleLine(d)} · Delivered ${day(d.updated_at)}</p>
-      <p class="rq-rate-q"><strong>How was ${esc(name)}?</strong></p>
-      <div class="rq-rate">
-        <div class="rq-stars" role="radiogroup" aria-label="Rating">
-          ${[1, 2, 3, 4, 5].map((n) => `<button type="button" role="radio" aria-checked="false" aria-label="${n} star${n > 1 ? "s" : ""}" data-sheet-star="${n}">${STAR}</button>`).join("")}
-        </div>
-        <label class="rq-sr" for="sheet-comment-${esc(d.id)}">Comment (optional)</label>
-        <textarea id="sheet-comment-${esc(d.id)}" rows="2" maxlength="500" placeholder="Add a comment (optional)"></textarea>
-      </div>
-      <div class="rq-card-actions">
-        <button type="button" class="rq-btn" data-sheet-send disabled>Send rating</button>
-        <button type="button" class="rq-btn rq-btn--text" data-sheet-skip>Skip for now</button>
-      </div>
-      <p class="rq-muted rq-rate-foot">Skipped drivers stay on Home until you rate them. You can also swipe left to skip.</p>
-    </div>`;
-}
-function showRateCard({ direction = 0, swiped = false } = {}) {
-  const stage = $("rateStage");
-  $("rateStep").textContent = `${rateIndex + 1} of ${rateQueue.length}`;
-  const old = stage.firstElementChild;
-  stage.insertAdjacentHTML("beforeend", rateSheetCard(rateQueue[rateIndex]));
-  const next = stage.lastElementChild;
-  if (!old) return;
-  if (!direction || reduceMotion()) return old.remove();
-  // Forward: the finished driver leaves to the left, the next comes in from the right.
-  if (swiped) old.remove();
-  else {
-    old.inert = true; // the leaving card can't be tapped or read out
-    old.setAttribute("aria-hidden", "true");
-    old.style.position = "absolute";
-    old.style.inset = "0 0 auto 0";
-    old.animate([{ transform: "none", opacity: 1 }, { transform: "translateX(-24%)", opacity: 0 }], { duration: 220, easing: "cubic-bezier(0.23, 1, 0.32, 1)" }).finished.then(() => old.remove());
-  }
-  next.animate([{ transform: "translateX(24%)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 260, easing: "cubic-bezier(0.23, 1, 0.32, 1)" });
-}
-function nextRateCard(opts = {}) {
-  rateIndex += 1;
-  if (rateIndex >= rateQueue.length) closeSheet($("rateSheet"));
-  else showRateCard({ direction: 1, ...opts });
-}
-function openRating() {
-  rateQueue = toRateList();
-  if (!rateQueue.length) return;
-  rateIndex = 0;
-  ratedCount = 0;
-  $("rateStage").replaceChildren();
-  showRateCard();
-  openSheet($("rateSheet"));
-}
-// However the sheet closes (done, Close, drag, Esc), Home shows what's left to rate.
-$("rateSheet").addEventListener("close", () => {
-  withFlip(() => renderHome());
-  if (ratedCount) toastSuccess(ratedCount === 1 ? "Thanks. Your rating was saved." : `Thanks. ${ratedCount} ratings saved.`);
-  ratedCount = 0;
-});
-$("rateStage").addEventListener("click", async (e) => {
-  const card = e.target.closest(".rq-rate-card");
-  if (!card) return;
-  const star = e.target.closest("[data-sheet-star]");
-  if (star) {
-    const value = Number(star.dataset.sheetStar);
-    card.dataset.value = value;
-    card.querySelectorAll("[data-sheet-star]").forEach((s) => {
-      const n = Number(s.dataset.sheetStar);
-      s.classList.toggle("is-on", n <= value);
-      s.setAttribute("aria-checked", String(n === value));
-    });
-    card.querySelector("[data-sheet-send]").disabled = false;
-    return;
-  }
-  if (e.target.closest("[data-sheet-skip]")) return nextRateCard();
-  const send = e.target.closest("[data-sheet-send]");
-  if (!send) return;
-  const d = deliveries.find((x) => x.id === card.dataset.rateId);
-  send.disabled = true;
-  send.textContent = "Sending…";
-  const value = Number(card.dataset.value);
-  const { error } = await submitRating(d.id, profile.id, d.driver_id, value, card.querySelector("textarea").value.trim());
-  if (error) {
-    send.disabled = false;
-    send.textContent = "Send rating";
-    toastError("Your rating didn't save. Check your signal and send it again.");
-    return;
-  }
-  ratingsMap.set(d.id, { delivery_id: d.id, rating: value });
-  ratedCount += 1;
-  renderHistory();
-  nextRateCard();
-});
-
-// Swipe a rating card left to skip it. Vertical moves stay page scrolls.
-let swipe = null;
-$("rateStage").addEventListener("pointerdown", (e) => {
-  const card = e.target.closest(".rq-rate-card");
-  if (!card || e.target.closest("button, textarea")) return;
-  swipe = { card, id: e.pointerId, x0: e.clientX, y0: e.clientY, x: 0, active: false, samples: [{ y: 0, t: e.timeStamp }] };
-});
-$("rateStage").addEventListener("pointermove", (e) => {
-  if (!swipe || e.pointerId !== swipe.id) return;
-  const dx = e.clientX - swipe.x0;
-  if (!swipe.active) {
-    if (Math.abs(dx) < 10) return;
-    if (Math.abs(e.clientY - swipe.y0) > Math.abs(dx)) return (swipe = null);
-    swipe.active = true;
-    swipe.card.setPointerCapture(e.pointerId);
-  }
-  const width = swipe.card.offsetWidth;
-  // Nothing to go back to: dragging right only resists.
-  swipe.x = dx > 0 ? rubberband(dx, width) : dx;
-  swipe.samples.push({ y: swipe.x, t: e.timeStamp });
-  if (swipe.samples.length > 6) swipe.samples.shift();
-  swipe.card.style.transform = `translateX(${swipe.x}px)`;
-  swipe.card.style.opacity = String(1 - Math.min(Math.abs(swipe.x) / width, 1) * 0.6);
-});
-function endSwipe(e) {
-  if (!swipe || e.pointerId !== swipe.id) return;
-  const { card, x, active, samples } = swipe;
-  swipe = null;
-  if (!active) return;
-  const width = card.offsetWidth;
-  const v = e.type === "pointercancel" ? 0 : releaseVelocity(samples);
-  if (x + project(v) < -width * 0.35 || v < -600) {
-    if (reduceMotion()) return nextRateCard({ swiped: true });
-    card.animate([{ transform: `translateX(${x}px)`, opacity: card.style.opacity }, { transform: `translateX(${-width}px)`, opacity: 0 }], { duration: 160, easing: "cubic-bezier(0.23, 1, 0.32, 1)", fill: "forwards" })
-      .finished.then(() => nextRateCard({ swiped: true }));
-    return;
-  }
-  const settle = () => {
-    card.style.transform = "";
-    card.style.opacity = "";
-  };
-  if (reduceMotion()) return settle();
-  animateSpring(x, 0, v, (val) => {
-    card.style.transform = `translateX(${val}px)`;
-    card.style.opacity = String(1 - Math.min(Math.abs(val) / width, 1) * 0.6);
-  }, settle);
-}
-$("rateStage").addEventListener("pointerup", endSwipe);
-$("rateStage").addEventListener("pointercancel", endSwipe);
 
 // ---------- Book a late request again with a new date ----------
 let newDateFor = null;
@@ -1080,15 +1027,26 @@ let cancelTarget = null;
 document.addEventListener("click", async (e) => {
   const t = e.target.closest("button, a");
   if (!t) {
-    // Tapping a closed row's summary (bars, status line) opens it too.
-    const card = e.target.closest("#homeLists .rq-item");
-    if (card && !e.target.closest(".rq-item-details")) toggleRow(card.dataset.deliveryId);
+    // The whole shipment card opens its details, not just the pill.
+    const card = e.target.closest("#homeLists .rq-ship");
+    if (card) openDetails(card.dataset.deliveryId);
     return;
   }
+  if (t.dataset.shipDot) return goToShip(shipCards()[Number(t.dataset.shipDot)]?.dataset.deliveryId);
 
   if (t.matches("[data-reload]")) return loadDeliveries();
-  if (t.matches(".rq-item-head")) return toggleRow(t.closest(".rq-item").dataset.deliveryId);
-  if (t.matches("[data-open-rating]")) return openRating();
+  if (t.dataset.details) return openDetails(t.dataset.details);
+  if (t.dataset.tile) return openTile(t.dataset.tile);
+
+  // Book a new date / Cancel can be tapped inside another sheet (details,
+  // notifications); that one steps aside first so only one sheet is up.
+  if (t.dataset.newDate || t.dataset.cancelId) {
+    const host = t.closest("dialog");
+    if (host?.open) {
+      host._returnFocus = null;
+      await closeSheet(host);
+    }
+  }
   if (t.dataset.newDate) return openNewDate(t.dataset.newDate);
 
   if (t.dataset.cancelId) {
@@ -1203,11 +1161,73 @@ $("cancelConfirm").addEventListener("click", async () => {
   loadDeliveries();
 });
 
+/**
+ * Brings a booking's card into view and focuses it: Home for active ones,
+ * History (on the right page, filter cleared) for past ones.
+ */
+function showCard(d) {
+  if (HISTORY_STATUSES.includes(d.status)) {
+    historyFilter = "all";
+    const past = deliveries.filter((x) => HISTORY_STATUSES.includes(x.status));
+    historyPage = paginate(past, 1).totalPages > 1 ? Math.floor(past.indexOf(d) / paginate(past, 1).rows.length) + 1 : 1;
+    renderHistory();
+    goTo("history");
+  } else {
+    goTo("home");
+    goToShip(d.id);
+  }
+  const card = document.querySelector(`#view-${HISTORY_STATUSES.includes(d.status) ? "history" : "home"} [data-delivery-id="${CSS.escape(d.id)}"]`);
+  card?.scrollIntoView({ block: "center", inline: "nearest", behavior: reduceMotion() ? "auto" : "smooth" });
+  card?.focus({ preventScroll: true });
+  return card;
+}
+
+/** Tiles: Waiting / On the road jump to the first such card; Delivered opens History. */
+function openTile(key) {
+  if (key === "delivered") {
+    historyFilter = "delivered";
+    historyPage = 1;
+    renderHistory();
+    goTo("history");
+    $("historyTitle").setAttribute("tabindex", "-1");
+    $("historyTitle").focus({ preventScroll: true });
+    return;
+  }
+  const d = deliveries.find((x) => !HISTORY_STATUSES.includes(x.status) && (key === "waiting") === (x.status === "pending"));
+  if (d) showCard(d);
+  else $("shipTitle")?.scrollIntoView({ block: "start", behavior: reduceMotion() ? "auto" : "smooth" });
+}
+
+// ---------- Track your shipment ----------
+$("trackInput").addEventListener("input", () => showFieldError($("trackInput"), ""));
+$("trackForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const input = $("trackInput");
+  const problem = checkTrackQuery(input.value);
+  if (problem) {
+    showFieldError(input, problem);
+    input.focus();
+    return;
+  }
+  const d = findDelivery(deliveries, input.value);
+  if (!d) {
+    showFieldError(input, `Nothing on your account matches "${input.value.trim()}". Codes look like SK-00142.`);
+    input.focus();
+    return;
+  }
+  showFieldError(input, "");
+  input.blur(); // put the phone keyboard away
+  if (HISTORY_STATUSES.includes(d.status)) showCard(d);
+  else openDetails(d.id);
+});
+
 // ---------- Notifications ----------
 let notifications = [];
 let lastUnread = null; // null until the first count, so page load never pops
 function renderUnread() {
-  const unread = notifications.filter((n) => !n.is_read).length;
+  // Late requests count on the bell too: they wait in the notifications sheet.
+  const late = lateList().length;
+  const unread = notifications.filter((n) => !n.is_read).length + late;
   const grew = lastUnread !== null && unread > lastUnread;
   lastUnread = unread;
   document.querySelectorAll("[data-unread]").forEach((b) => {
@@ -1221,7 +1241,26 @@ function renderUnread() {
   document.querySelectorAll("[data-open-notifs]").forEach((b) =>
     b.setAttribute("aria-label", unread ? `Notifications, ${unread} unread` : "Notifications"),
   );
-  document.querySelectorAll("[data-unread-text]").forEach((el) => (el.textContent = unread ? `${unread} unread` : ""));
+  const words = [unread - late && `${unread - late} unread`, late && `${late} need${late > 1 ? "" : "s"} you`].filter(Boolean);
+  document.querySelectorAll("[data-unread-text]").forEach((el) => (el.textContent = words.join(" · ")));
+  renderNeeds();
+}
+
+/** Late requests sit at the top of the notifications sheet until they're rebooked or cancelled. */
+function renderNeeds() {
+  const late = lateList();
+  $("notifNeeds").hidden = !late.length;
+  $("notifNeeds").innerHTML = late.length ? `
+    <h3 class="rq-needs-title">Needs you</h3>
+    ${late.map((d) => `
+      <div class="rq-need" data-need="${esc(d.id)}">
+        <p><strong>${esc(d.delivery_code)} · ${titleLine(d)}</strong><br /><span class="rq-muted">${shortRoute(d)}</span></p>
+        <p>The pickup date (${day(d.scheduled_pickup_at)}) passed before a driver accepted, so drivers can't see it anymore.</p>
+        <div class="rq-need-actions">
+          <button type="button" class="rq-btn" data-new-date="${esc(d.id)}">Book a new date</button>
+          <button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">Cancel request</button>
+        </div>
+      </div>`).join("")}` : "";
 }
 function renderNotifs() {
   const list = $("notifList");
@@ -1259,12 +1298,11 @@ $("notifList").addEventListener("click", async (e) => {
   if (d) sheet._returnFocus = null; // focus goes to the card instead of the bell
   const closed = closeSheet(sheet);
   if (!d) return;
-  goTo(HISTORY_STATUSES.includes(d.status) ? "history" : "home");
   // The page behind a modal sheet can't take focus, so wait for it to leave.
   await closed;
-  const card = document.querySelector(`[data-delivery-id="${CSS.escape(d.id)}"]`);
-  card?.scrollIntoView({ block: "center" });
-  card?.focus({ preventScroll: true });
+  const card = showCard(d);
+  // A finished delivery that isn't rated yet: open the stars right there.
+  if (card && d.status === "delivered" && d.driver_id && !ratingsMap.get(d.id)) card.querySelector("[data-open-rate]")?.click();
 });
 
 loadDeliveries();

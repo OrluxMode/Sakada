@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { estimateCost, staticMapUrl } from "../js/mapbox-client.js";
+import { estimateCost, staticMapUrl, routeMapUrl } from "../js/mapbox-client.js";
 
 describe("estimateCost", () => {
   it("calculates cost with base fare + distance + weight", () => {
@@ -55,5 +55,31 @@ describe("staticMapUrl", () => {
   it("includes the access token", () => {
     const url = staticMapUrl(14.5995, 120.9842);
     expect(url).toContain("access_token=");
+  });
+});
+
+describe("routeMapUrl", () => {
+  const pickup = { lat: 15.4865, lng: 120.9667 };
+  const dropoff = { lat: 14.6507, lng: 121.1029 };
+
+  it("draws A and B and fits the view to them", () => {
+    const url = routeMapUrl({ pickup, dropoff });
+    expect(url).toContain("pin-s-a+b8b4a6(120.96670,15.48650)");
+    expect(url).toContain("pin-s-b+f3efe4(121.10290,14.65070)");
+    expect(url).toContain("/auto/600x300@2x?padding=36");
+    expect(url).not.toContain("path-");
+    expect(url).not.toContain("pin-l-car");
+  });
+
+  it("adds the road and the truck when known", () => {
+    const url = routeMapUrl({ pickup, dropoff, truck: { lat: 15.1, lng: 121 }, line: "a~l~Fjk~uOwHJy@P" });
+    expect(url).toContain(`path-4+e0972f-0.95(${encodeURIComponent("a~l~Fjk~uOwHJy@P")})`);
+    expect(url).toContain("pin-l-car+e0972f(121.00000,15.10000)");
+  });
+
+  it("leaves out a road too long for a URL", () => {
+    const url = routeMapUrl({ pickup, dropoff, line: "x".repeat(7000) });
+    expect(url).not.toContain("path-");
+    expect(url).toContain("pin-s-a");
   });
 });

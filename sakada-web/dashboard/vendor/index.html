@@ -46,8 +46,8 @@
           <div class="rq-hello">
             <span class="rq-avatar" data-initials aria-hidden="true"></span>
             <div class="rq-hello-text">
-              <h1 id="homeTitle" class="rq-display">Hello</h1>
-              <p class="rq-summary" id="homeSummary"></p>
+              <p class="rq-hello-small">Welcome back,</p>
+              <h1 id="homeTitle" class="rq-hello-name">&nbsp;</h1>
             </div>
             <button class="rq-bell rq-bell--phone" type="button" data-open-notifs aria-label="Notifications">
               <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
@@ -55,19 +55,37 @@
             </button>
           </div>
 
+          <!-- Brand banner: the landing page's tractor photo -->
+          <div class="rq-hero">
+            <p class="rq-hero-mark" aria-hidden="true">SAKA<span>DA</span></p>
+            <p class="rq-hero-line">Your harvest.<br /><span>Their truck.</span></p>
+          </div>
+
           <div class="rq-banner rq-banner--ok" id="bookedBanner" role="status" hidden>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
             <p><strong>Booked.</strong> You'll see it here and under the bell when a driver accepts.</p>
           </div>
 
+          <form class="rq-track" id="trackForm" role="search" novalidate hidden>
+            <label class="rq-sr" for="trackInput">Track your shipment</label>
+            <div class="rq-track-box">
+              <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input id="trackInput" type="search" placeholder="Track your shipment" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" maxlength="60" />
+              <button class="rq-pill" type="submit">Track</button>
+            </div>
+          </form>
+
+          <section class="rq-status" id="statusSection" aria-labelledby="statusTitle" hidden>
+            <div class="rq-section-head">
+              <h2 class="rq-section-title" id="statusTitle">Delivery status</h2>
+              <a class="rq-more" href="#history">View all</a>
+            </div>
+            <div class="rq-tiles" id="statusTiles"></div>
+          </section>
+
           <div id="homeLists" aria-live="polite">
             <div class="rq-skeletons"></div>
           </div>
-
-          <a class="rq-help" href="../../pages/contact.html">
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            <span><span class="rq-muted">Something wrong with a delivery?</span> <strong>Send Sakada a message</strong></span>
-          </a>
         </section>
 
         <!-- HISTORY -->
@@ -193,18 +211,19 @@
         <h2 id="notifTitle" class="rq-display">Notifications</h2>
         <span class="rq-row-meta" data-unread-text></span>
       </div>
+      <div class="rq-needs" id="notifNeeds" hidden></div>
       <ul class="rq-notifs" id="notifList"></ul>
       <button class="rq-btn rq-btn--ghost" type="button" data-close-sheet>Close</button>
     </dialog>
 
-    <!-- Rate drivers, one after another -->
-    <dialog class="rq-sheet" id="rateSheet" aria-labelledby="rateTitle">
+    <!-- One shipment in full (View details / Track) -->
+    <dialog class="rq-sheet" id="detailsSheet" aria-labelledby="detailsTitle">
       <div class="rq-sheet-grab" aria-hidden="true"></div>
       <div class="rq-sheet-head">
-        <h2 id="rateTitle" class="rq-display">Rate your drivers</h2>
-        <span class="rq-row-meta" id="rateStep"></span>
+        <h2 id="detailsTitle" class="rq-display"></h2>
       </div>
-      <div class="rq-rate-stage" id="rateStage"></div>
+      <div class="rq-details" id="detailsBody"></div>
+      <button class="rq-btn rq-btn--ghost" type="button" data-close-sheet>Close</button>
     </dialog>
 
     <!-- Book a late request again with a new date -->

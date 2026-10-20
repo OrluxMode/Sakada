@@ -25,21 +25,24 @@ const futureDate = () => {
 };
 
 test.describe("dashboards (fake sign-in)", () => {
-  test("farmer sees their deliveries grouped by stage", async ({ page }) => {
+  test("farmer sees status counts and one card per active shipment", async ({ page }) => {
     const errors = trackErrors(page);
     await mockSupabase(page, "farmer");
     await page.goto("/dashboard/farmer/index.html");
-    await expect(page.locator("#homeTitle")).toHaveText("Hello, Ana");
+    await expect(page.locator("#homeTitle")).toHaveText("Ana");
+    await expect(page.getByRole("button", { name: "1 Waiting" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "2 On the road" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "1 Delivered" })).toBeVisible();
     const home = page.locator("#homeLists");
-    const section = (name) => home.locator("section").filter({ has: page.getByRole("heading", { name, exact: true }) });
-    await expect(section("On the road")).toContainText("SK-00003");
-    await expect(section("Driver assigned")).toContainText("SK-00002");
-    await expect(section("Waiting for a driver")).toContainText("SK-00001");
-    // Things that need the farmer sit on top: the late request and the rating.
-    await expect(section("Needs you")).toContainText("drivers can't see it anymore");
-    await expect(section("Needs you").getByRole("button", { name: /Rate 1 driver/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Active shipments/ })).toBeVisible();
+    // On the road first, then assigned, then waiting.
+    await expect(home.locator(".rq-ship-what")).toHaveText([/SK-00003/, /SK-00002/, /SK-00001/]);
+    await expect(home.locator("[data-delivery-id]", { hasText: "SK-00001" })).toContainText("Pickup date passed");
     await expect(home).not.toContainText("SK-00006"); // the vendor's
-    await expect(page.getByRole("img", { name: /Step 4 of 5/ })).toBeVisible();
+    await expect(home).not.toContainText("SK-00004"); // delivered: History only
+    // Each card shows the real road on a map, with the truck once it's on the way.
+    await expect(page.getByRole("img", { name: /Map of the road from Cabanatuan City to Marikina Public Market, with the truck/ })).toHaveCount(1);
+    await expect(page.getByRole("img", { name: /Map of the road from Cabanatuan City/ })).toHaveCount(3);
     await page.goto("/dashboard/farmer/index.html#history");
     await expect(page.locator("#historyList")).toContainText("SK-00004");
     await expect(page.locator("#historyList")).toContainText("SK-00005");
@@ -50,37 +53,43 @@ test.describe("dashboards (fake sign-in)", () => {
     const db = await mockSupabase(page, "farmer");
     await page.goto("/dashboard/farmer/index.html");
     const card = page.locator("#homeLists [data-delivery-id]", { hasText: "SK-00001" });
-    await expect(card.getByRole("button", { name: "Cancel request" })).toBeHidden(); // rows start closed
-    await card.locator(".rq-item-head").click();
-    await card.getByRole("button", { name: "Cancel request" }).click();
+    await card.getByRole("button", { name: "View details" }).click();
+    const details = page.locator("#detailsSheet");
+    await expect(details).toContainText("Cabanatuan City, Nueva Ecija");
+    await details.getByRole("button", { name: "Cancel request" }).click();
+    await expect(details).toBeHidden();
     await expect(page.locator("#cancelSheet")).toBeVisible();
     await page.locator("#cancelConfirm").click();
     await expect.poll(() => db.deliveries.find((d) => d.delivery_code === "SK-00001").status).toBe("cancelled");
     await expect(page.locator("#homeLists")).not.toContainText("SK-00001");
   });
 
-  test("rating drivers one by one keeps the skipped ones on Home", async ({ page }) => {
-    const base = fixtures().deliveries;
-    const second = { ...base[3], id: "00000000-0000-4000-8000-0000000de009", delivery_code: "SK-00009" };
-    const db = await mockSupabase(page, "farmer", { deliveries: [...base, second] });
+  test("a delivered notification opens the stars on that delivery", async ({ page }) => {
+    const base = fixtures();
+    const db = await mockSupabase(page, "farmer", {
+      notifications: [{ ...base.notifications[0], delivery_id: base.deliveries[3].id, message: "Your delivery SK-00004 was delivered." }],
+    });
     await page.goto("/dashboard/farmer/index.html");
-    await page.getByRole("button", { name: /Rate 2 drivers/ }).click();
-    const sheet = page.locator("#rateSheet");
-    await expect(sheet).toContainText("1 of 2");
-    await sheet.getByRole("radio", { name: "5 stars" }).click();
-    await sheet.getByRole("button", { name: "Send rating" }).click();
-    await expect(sheet).toContainText("2 of 2");
-    await sheet.getByRole("button", { name: "Skip for now" }).click();
-    await expect(sheet).toBeHidden();
-    expect(db.ratings).toHaveLength(1);
-    await expect(page.getByRole("button", { name: /Rate 1 driver/ })).toBeVisible(); // the skipped one stays
+    await page.locator("[data-open-notifs]").first().click();
+    await page.locator("#notifList").getByText("SK-00004").click();
+    const card = page.locator("#historyList [data-delivery-id]", { hasText: "SK-00004" });
+    await expect(card.getByRole("radio", { name: "1 star" })).toBeFocused(); // the stars open, ready to pick
+    await card.getByRole("radio", { name: "5 stars" }).click();
+    await card.getByRole("button", { name: "Send rating" }).click();
+    await expect.poll(() => db.ratings.length).toBe(1);
+    await expect(page.locator("#historyList [data-delivery-id]", { hasText: "SK-00004" })).toContainText("You rated Carlo 5 of 5");
   });
 
   test("a late request is booked again with a new date", async ({ page }) => {
     const db = await mockSupabase(page, "farmer");
     await page.goto("/dashboard/farmer/index.html");
-    const needs = page.locator(".rq-needs");
+    // Late requests wait in the notifications sheet, and count on the bell.
+    await expect(page.locator("[data-open-notifs]").first()).toHaveAttribute("aria-label", "Notifications, 2 unread");
+    await page.locator("[data-open-notifs]").first().click();
+    const needs = page.locator("#notifNeeds");
+    await expect(needs).toContainText("drivers can't see it anymore");
     await needs.getByRole("button", { name: "Book a new date" }).click();
+    await expect(page.locator("#notifSheet")).toBeHidden();
     const sheet = page.locator("#newDateSheet");
     await expect(sheet).toContainText("Eggplant, 32 crates");
     await expect(sheet).toContainText("₱3,550"); // 150 + 120 km × 15 + 800 kg × 2, the same fare
@@ -97,7 +106,7 @@ test.describe("dashboards (fake sign-in)", () => {
     const errors = trackErrors(page);
     await mockSupabase(page, "vendor");
     await page.goto("/dashboard/vendor/index.html");
-    await expect(page.locator("#homeTitle")).toHaveText("Hello, Ben");
+    await expect(page.locator("#homeTitle")).toHaveText("Ben");
     await expect(page.locator("#homeLists")).toContainText("SK-00006");
     await expect(page.locator("#homeLists")).not.toContainText("SK-00001");
     expect(errors).toEqual([]);
@@ -119,9 +128,7 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.locator("#bookedBanner")).toBeVisible();
     expect(db.deliveries).toHaveLength(7);
     expect(db.deliveries[6]).toMatchObject({ goods_description: "Eggplant, 32 crates", quantity_kg: 800 });
-    await expect(
-      page.locator("#homeLists section").filter({ has: page.getByRole("heading", { name: "Waiting for a driver" }) }),
-    ).toContainText("SK-00007");
+    await expect(page.locator("#homeLists [data-delivery-id]", { hasText: "SK-00007" })).toContainText("Waiting for a driver");
     expect(errors).toEqual([]);
   });
 
@@ -150,6 +157,43 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.locator("#deliveryForm")).toBeHidden();
     await tabs.getByRole("link", { name: "Home" }).click();
     await expect(page.locator("#homeLists")).toBeVisible();
+  });
+
+  test("Track finds a booking by its code", async ({ page }) => {
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html");
+    const track = page.locator("#trackForm");
+    await track.getByRole("button", { name: "Track" }).click();
+    await expect(page.locator("#trackInputError")).toHaveText("Type a booking code, like SK-00142.");
+    await page.fill("#trackInput", "SK-99999");
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#trackInputError")).toContainText("Nothing on your account matches");
+    await page.fill("#trackInput", "sk3");
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#detailsSheet")).toBeVisible();
+    await expect(page.locator("#detailsSheet")).toContainText("SK-00003");
+    await expect(page.locator("#trackInputError")).toBeHidden();
+  });
+
+  test("on a phone the shipments are swiped one card at a time", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html");
+    await expect(page.locator("#shipPos")).toHaveText("1 of 3");
+    await page.getByRole("button", { name: "Show SK-00001" }).click();
+    await expect(page.locator("#shipPos")).toHaveText("3 of 3");
+    await expect(page.getByRole("button", { name: "Show SK-00001" })).toHaveAttribute("aria-current", "true");
+    // Tapping the card itself opens its details.
+    await page.locator("#shipList [data-delivery-id]", { hasText: "SK-00001" }).locator(".rq-ship-ends").click();
+    await expect(page.locator("#detailsSheet")).toContainText("Cabanatuan City, Nueva Ecija");
+  });
+
+  test("the Delivered tile opens History filtered to delivered", async ({ page }) => {
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html");
+    await page.getByRole("button", { name: "1 Delivered" }).click();
+    await expect(page.locator("#historyList")).toContainText("SK-00004");
+    await expect(page.locator("#historyList")).not.toContainText("SK-00005");
   });
 
   test("a notification opens its delivery", async ({ page }) => {

@@ -78,3 +78,33 @@ export function staticMapUrl(
 ) {
   return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/pin-l+e0972f(${lng},${lat})/${lng},${lat},${zoom}/${width}x${height}@2x?access_token=${MAPBOX_TOKEN}`;
 }
+
+/**
+ * The road a booking takes, as Mapbox's encoded polyline (simplified, so
+ * the static map URL stays short). Null if there's no route.
+ */
+export async function getRouteLine(origin, destination) {
+  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?access_token=${MAPBOX_TOKEN}&overview=simplified&geometries=polyline`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Couldn't load the route.");
+  const data = await res.json();
+  return data.routes?.[0]?.geometry || null;
+}
+
+/**
+ * A static map of one booking: the road in amber, A at pickup, B at
+ * drop-off, and the truck when its position is known. The view fits
+ * whatever is drawn. A route too long for a URL is left out (pins only).
+ */
+export function routeMapUrl(
+  { pickup, dropoff, truck = null, line = null },
+  { width = 600, height = 300 } = {},
+) {
+  const at = (p) => `${Number(p.lng).toFixed(5)},${Number(p.lat).toFixed(5)}`;
+  const overlays = [];
+  const path = line ? `path-4+e0972f-0.95(${encodeURIComponent(line)})` : "";
+  if (path && path.length < 6000) overlays.push(path);
+  overlays.push(`pin-s-a+b8b4a6(${at(pickup)})`, `pin-s-b+f3efe4(${at(dropoff)})`);
+  if (truck) overlays.push(`pin-l-car+e0972f(${at(truck)})`);
+  return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${overlays.join(",")}/auto/${width}x${height}@2x?padding=36&access_token=${MAPBOX_TOKEN}`;
+}

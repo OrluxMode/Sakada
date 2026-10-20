@@ -221,3 +221,12 @@ export function checkBookingCode(value) {
   if (!v) return "";
   return /^SK-?\d{3,8}$/i.test(v) ? "" : "Booking codes look like SK-00142.";
 }
+
+// ---------- Dashboard: Track your shipment ----------
+
+export function checkTrackQuery(value) {
+  const v = value.trim();
+  if (!v) return "Type a booking code, like SK-00142.";
+  if (v.length > 60) return "Keep it under 60 characters.";
+  return "";
+}

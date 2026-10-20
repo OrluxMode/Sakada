@@ -50,7 +50,6 @@
 .rq-topbar { display: none; }
 .rq-hello { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
 .rq-hello-text { flex: 1; min-width: 0; }
-.rq-summary { color: var(--rq-meta); font-size: 16px; line-height: 1.4; }
 .rq-avatar {
   display: inline-grid; place-items: center; flex: none;
   width: 48px; height: 48px; border-radius: 50%;
@@ -150,7 +149,7 @@
 .rq-card:focus { outline: 2px solid var(--accent-amber); outline-offset: 3px; }
 .rq-card--new { border-color: var(--accent-amber); box-shadow: inset 0 0 0 0.5px var(--accent-amber); }
 /* The booking you just made eases in, then its amber edge settles to normal */
-.rq-item.rq-card--new { animation: rq-arrive 220ms var(--rq-ease-out), rq-new-settle 1200ms 1000ms var(--rq-ease-out) forwards; }
+.rq-ship.rq-card--new { animation: rq-arrive 220ms var(--rq-ease-out), rq-new-settle 1200ms 1000ms var(--rq-ease-out) forwards; }
 @keyframes rq-new-settle { to { border-color: var(--rq-card-line); box-shadow: none; } }
 /* Live map: the new truck position fades in on top of the old one */
 .rq-map-next { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -225,9 +224,10 @@
 .rq-fare-amount--none { font-family: inherit; font-weight: 600; font-size: 16px; line-height: 1.4; color: var(--rq-meta); }
 .rq-fare .rq-muted { font-size: 15px; line-height: 1.45; display: block; }
 
-/* ---------- Home: "Needs you" ---------- */
+/* ---------- Notifications sheet: "Needs you" (late requests) ---------- */
 .rq-needs { display: grid; gap: 10px; }
-.rq-needs .rq-section-title { margin-bottom: 0; }
+.rq-needs[hidden] { display: none; }
+.rq-needs-title { margin: 0; font-size: 17px; font-weight: 600; color: #f0b25a; }
 .rq-need {
   display: grid; gap: 12px; padding: 16px; border-radius: 14px;
   background: rgb(224 151 47 / 0.08); border: 1px solid var(--accent-amber);
@@ -236,52 +236,19 @@
 .rq-need .rq-muted { font-size: 16px; }
 .rq-need-actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
 @media (min-width: 520px) { .rq-need-actions { grid-template-columns: 1fr 1fr; } }
-.rq .rq-rate-row { min-height: 64px; padding: 12px 16px; }
-.rq-rate-row > svg:first-child { flex: none; fill: var(--accent-amber); }
-.rq-rate-text { flex: 1; min-width: 0; line-height: 1.4; }
-.rq-rate-text .rq-muted { font-size: 16px; }
-.rq-rate-row .rq-chevron { transform: rotate(-90deg); }
-/* "Book again" under a short list: the next likely step */
-.rq .rq-book-again { min-height: 64px; padding: 12px 16px; margin-bottom: 28px; }
-.rq-book-again > svg:first-child { flex: none; color: #f0b25a; }
-.rq-book-again .rq-chevron { transform: rotate(-90deg); }
 .rq-help strong { white-space: nowrap; } /* one action, one line */
 
-/* ---------- Home: rows that open in place ---------- */
-.rq .rq-item { gap: 12px; cursor: pointer; }
-.rq .rq-item.is-open { cursor: default; }
-.rq .rq-item:not(.is-open):active { background-color: color-mix(in srgb, var(--panel-dark), var(--text-cream) 5%); }
-.rq-item-head {
-  display: flex; align-items: flex-start; gap: 12px; width: 100%; min-height: 44px; padding: 0; margin: 0;
-  background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer;
-}
-.rq-item-head:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 4px; border-radius: 6px; }
-.rq-item-main { flex: 1; min-width: 0; display: grid; gap: 4px; }
-.rq-item-route { font-size: 16px; color: var(--rq-meta); }
-.rq-item.is-open .rq-item-route { display: none; } /* the full From/To shows below */
-.rq-item .rq-stepper-line { display: none; }        /* the status line below says it, with a time */
-.rq-chevron { flex: none; margin-top: 2px; color: var(--rq-meta); transition: transform 300ms var(--rq-ease-drawer); }
-.rq-item-head[aria-expanded="true"] .rq-chevron { transform: rotate(180deg); }
 .rq-status-line { font-size: 16px; color: var(--rq-meta); }
 .rq-status-word { color: #f0b25a; font-weight: 600; }
 .rq-chip {
   display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 15px; font-weight: 600;
   color: var(--text-cream); background: rgb(224 151 47 / 0.14); border: 1px solid var(--accent-amber);
 }
-.rq-item-details { display: grid; gap: 16px; padding-top: 12px; border-top: 1px solid rgb(var(--cream-rgb) / 0.12); }
-.rq-item-details[hidden] { display: none; }
 figure.rq-map { position: relative; margin: 0; }
 .rq-map figcaption {
   position: absolute; left: 8px; bottom: 8px; padding: 4px 10px; border-radius: 999px;
   background: rgb(21 22 15 / 0.85); color: var(--text-cream); font-size: 15px; font-weight: 600;
 }
-
-/* ---------- Rate sheet (one driver at a time; swipe left to skip) ---------- */
-.rq-rate-stage { position: relative; overflow: hidden; }
-.rq-rate-card { display: grid; gap: 12px; touch-action: pan-y; }
-.rq-rate-q { font-size: 18px; }
-.rq-rate-foot { font-size: 16px; }
-.rq-rate-card .rq-card-actions .rq-btn:first-child { flex: 1; }
 
 /* ---------- Book a new date sheet ---------- */
 .rq-new-date .field { display: grid; gap: 6px; }
@@ -435,7 +402,6 @@ figure.rq-map { position: relative; margin: 0; }
     padding: 36px 64px 0;
   }
   .rq .rq-display { font-size: 44px; }
-  .rq-summary { font-size: 17px; }
   /* Book is always visible on desktop; #book just focuses it */
   .rq #view-book {
     display: block; position: sticky; top: 24px;
@@ -454,4 +420,200 @@ figure.rq-map { position: relative; margin: 0; }
   .rq:not(.dv) .rq-sheet.is-shown { transform: none; opacity: 1; transition-duration: 200ms; }
   .rq:not(.dv) .rq-sheet-grab { display: none; }
   .rq .rq-display { letter-spacing: -0.01em; }
+}
+
+/* ================================================
+   Home v5 (Figma mobile "Dashboard — Sakada", 256:2).
+   Design sizes below 14px text / 44px targets are raised to the
+   project's floors; everything else follows the frame.
+   ================================================ */
+.rq-hello-small { color: var(--text-muted); font-size: 14px; line-height: 1.3; }
+.rq-hello-name { font-size: 20px; font-weight: 600; line-height: 1.3; margin: 2px 0 0; font-family: inherit; letter-spacing: 0; }
+.rq:not(.dv) .rq-hello { margin-bottom: 24px; }
+.rq:not(.dv) .rq-hello .rq-avatar { width: 48px; height: 48px; background: var(--panel-dark); font-size: 19px; font-weight: 600; color: var(--accent-amber); }
+.rq:not(.dv) .rq-bell { background: var(--panel-dark); border-color: var(--line); }
+
+/* Brand banner: the landing's tractor photo with a left-side shade */
+.rq-hero {
+  position: relative; display: grid; align-content: center; gap: 8px;
+  min-height: 156px; padding: 18px; margin-bottom: 24px; border-radius: 18px; overflow: hidden;
+  background:
+    /* taste-skill-ignore: a neutral scrim over the photo, so the words read */
+    linear-gradient(90deg, rgb(var(--ink-rgb) / 0.92) 0%, rgb(var(--ink-rgb) / 0.55) 55%, rgb(var(--ink-rgb) / 0.1) 100%),
+    url("../assets/hero-mobile.webp") 62% 45% / cover no-repeat,
+    var(--panel-dark);
+}
+.rq-hero-mark { font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 14px; letter-spacing: 0.14em; color: var(--text-cream); }
+.rq-hero-mark span, .rq-hero-line span { color: var(--accent-amber); }
+.rq-hero-line {
+  font-family: "Barlow Condensed", sans-serif; font-weight: 800; text-transform: uppercase;
+  font-size: clamp(36px, 11vw, 46px); line-height: 1.02; color: var(--text-cream);
+}
+
+/* Track your shipment */
+.rq-track { margin-bottom: 24px; }
+.rq-track[hidden] { display: none; }
+.rq-track-box {
+  display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 8px 8px 16px;
+  border-radius: 18px; background: var(--panel-dark); border: 1px solid var(--line);
+  transition: border-color 150ms var(--rq-ease-out);
+}
+.rq-track-box:focus-within { border-color: var(--accent-amber); }
+.rq-track-box > svg { flex: none; color: var(--text-muted); }
+.rq-track input {
+  flex: 1; min-width: 0; min-height: 44px; padding: 0; background: none; border: 0; outline: none;
+  color: var(--text-cream); font: inherit; font-size: 16px;
+}
+.rq-track input::placeholder { color: var(--text-muted); opacity: 1; }
+.rq-track input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.rq-track .field-error { margin: 8px 4px 0; }
+
+/* Amber pill buttons: Track, View details */
+.rq .rq-pill {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px;
+  background: var(--accent-amber); color: var(--text-on-amber);
+  font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: transform 100ms var(--rq-ease-out), background-color 150ms var(--rq-ease-out);
+}
+.rq .rq-pill:active { transform: scale(0.97); }
+
+/* Delivery status tiles */
+.rq-status { margin-bottom: 28px; }
+.rq-status[hidden] { display: none; }
+.rq-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.rq:not(.dv) .rq-section-title { font-family: inherit; font-size: 18px; font-weight: 600; line-height: 1.3; margin: 0 0 12px; }
+.rq:not(.dv) .rq-section-head .rq-section-title { margin: 0; }
+.rq-count { color: var(--text-muted); font-weight: 500; }
+.rq-more {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px;
+  color: var(--accent-amber); font-size: 15px; font-weight: 600; text-decoration: none;
+}
+.rq-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rq-tile {
+  display: grid; justify-items: center; align-content: center; gap: 4px;
+  min-height: 112px; padding: 14px 6px; border-radius: 18px;
+  background: var(--panel-dark); border: 1px solid var(--line); color: var(--text-cream);
+  font: inherit; cursor: pointer; transition: transform 100ms var(--rq-ease-out);
+}
+.rq-tile:active { transform: scale(0.97); }
+.rq-tile > svg { color: var(--accent-amber); }
+.rq-tile-count {
+  font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 30px; line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.rq-tile-label { font-size: 14px; line-height: 1.3; color: var(--text-muted); text-align: center; }
+
+/* Active shipment cards */
+.rq:not(.dv) .rq-ship { gap: 14px; padding: 16px; border-radius: 18px; border-color: var(--line); }
+.rq-ship.is-late { border-color: var(--accent-amber); }
+.rq-ship-what { font-size: 14px; color: var(--text-muted); }
+.rq-ship-ends { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.rq-ship-ends p { display: grid; gap: 4px; font-size: 16px; font-weight: 600; line-height: 1.3; }
+.rq-ship-ends p:last-child { text-align: right; }
+.rq-ship-label { display: block; font-size: 14px; font-weight: 400; color: var(--text-muted); }
+/* Route line: dashed ahead, amber behind the truck */
+.rq-ship-route { position: relative; height: 28px; --dot: 10px; --truck: 34px; }
+.rq-ship-route::before {
+  content: ""; position: absolute; left: 5px; right: 5px; top: 50%;
+  border-top: 1.5px dashed rgb(184 180 166 / 0.45);
+}
+.rq-ship-route::after {
+  content: ""; position: absolute; right: 0; top: 50%; width: var(--dot); height: var(--dot);
+  margin-top: calc(var(--dot) / -2); border-radius: 50%; box-sizing: border-box;
+  border: 3px solid var(--panel-dark); outline: 1px solid var(--text-muted); outline-offset: 0; background: var(--text-muted);
+}
+.rq-ship-fill {
+  position: absolute; left: 0; top: 50%; height: 2px; margin-top: -1px;
+  width: calc(var(--p) * (100% - var(--truck)) + var(--truck) / 2); background: var(--accent-amber);
+}
+.rq-ship-fill::before {
+  content: ""; position: absolute; left: 0; top: 50%; width: var(--dot); height: var(--dot);
+  margin-top: calc(var(--dot) / -2); box-sizing: border-box; border-radius: 50%;
+  border: 1px solid var(--accent-amber); background: var(--panel-dark);
+}
+.rq-ship-truck {
+  position: absolute; top: 0; left: calc(var(--p) * (100% - var(--truck))); width: var(--truck); height: 28px;
+  display: grid; place-items: center; background: var(--panel-dark); color: var(--accent-amber);
+}
+.rq-ship-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rq-ship-foot p { min-width: 0; }
+.rq-ship-value { display: block; font-size: 16px; font-weight: 600; color: var(--accent-amber); }
+.rq-ship.is-late .rq-ship-value { color: #f0b25a; }
+
+/* Real route map on the card (replaces the drawn line; the line stays as the fallback) */
+.rq-ship-map { position: relative; margin: 0 -4px; border-radius: 12px; overflow: hidden; aspect-ratio: 2 / 1; background: #1b1c16; }
+.rq-ship-map img { display: block; width: 100%; height: 100%; object-fit: cover; transition: opacity 200ms var(--rq-ease-out); }
+.rq-ship-map img.is-loading { opacity: 0; }
+.rq-ship.has-map .rq-ship-route { display: none; }
+.rq-ship:not(.has-map) .rq-ship-map { display: none; }
+/* The whole card opens details; it dips slightly under the finger */
+.rq:not(.dv) .rq-ship { cursor: pointer; transition: transform 160ms var(--rq-ease-out), border-color 150ms var(--rq-ease-out); }
+.rq:not(.dv) .rq-ship:active:not(:has(button:active)) { transform: scale(0.985); }
+
+/* Active shipments: one card at a time, swiped sideways (native scroll-snap
+   momentum and edge bounce). The next card peeks in as the hint. */
+.rq-ships { position: relative; display: grid; gap: 12px; }
+.rq-ship-pos { color: var(--text-muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.rq-dots { display: none; }
+@media (max-width: 1023px) {
+  .rq-ships.is-many {
+    grid-auto-flow: column; grid-auto-columns: calc(100% - 28px);
+    margin: 0 -20px; padding: 2px 20px 4px; scroll-padding: 0 20px;
+    overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .rq-ships.is-many::-webkit-scrollbar { display: none; }
+  .rq-ships.is-many:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
+  .rq-ships.is-many .rq-ship { scroll-snap-align: start; scroll-snap-stop: always; margin-bottom: 0; }
+  .rq-dots { display: flex; justify-content: center; margin-top: 4px; }
+  .rq-dot {
+    display: grid; place-items: center; width: 28px; height: 44px; padding: 0;
+    background: none; border: 0; cursor: pointer;
+  }
+  .rq-dot::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%; background: rgb(184 180 166 / 0.45);
+    transition: transform 200ms var(--rq-ease-out), background-color 200ms var(--rq-ease-out);
+  }
+  .rq-dot[aria-current="true"]::before { background: var(--accent-amber); transform: scale(1.35); }
+}
+@media (min-width: 1024px) { .rq-ship-pos { display: none; } }
+
+/* Details sheet */
+.rq-details { display: grid; gap: 16px; overflow-wrap: anywhere; }
+.rq-details .rq-card-actions { flex-direction: column; }
+.rq-details .rq-stepper-line { display: none; } /* the status line below says it, with a time */
+
+/* Phones: no grid behind Home, and a floating tab bar with an amber pill */
+@media (max-width: 1023px) {
+  .rq:not(.dv) { background-image: none; --rq-tab-h: 66px; padding-bottom: calc(66px + 40px + env(safe-area-inset-bottom)); }
+  .rq:not(.dv) .rq-tabs {
+    left: 24px; right: 24px; bottom: calc(12px + env(safe-area-inset-bottom));
+    gap: 4px; padding: 8px; border: 1px solid var(--line); border-radius: 999px;
+    background: var(--panel-dark); box-shadow: 0 8px 24px rgb(0 0 0 / 0.45); /* taste-skill-ignore: floats over the page */
+  }
+  .rq:not(.dv) .rq-tabs a {
+    justify-content: center; gap: 3px; min-height: 48px; padding: 4px 0; border-radius: 999px;
+    color: var(--text-muted); font-size: 13px; font-weight: 600;
+    transition: background-color 150ms var(--rq-ease-out), color 150ms var(--rq-ease-out);
+  }
+  .rq:not(.dv) .rq-tabs a svg { width: 22px; height: 22px; }
+  .rq:not(.dv) .rq-tabs a[aria-current="page"] { background: var(--accent-amber); color: var(--text-on-amber); }
+  .rq:not(.dv) .rq-tabs a[aria-current="page"]::before { display: none; }
+  .rq:not(.dv) .rq-tabs a[aria-current="page"] svg { color: var(--text-on-amber); }
+}
+
+/* Desktop: Home keeps the same pieces in the main column */
+@media (min-width: 1024px) {
+  .rq-hero { min-height: 200px; padding: 28px 32px; }
+  .rq-hero-line { font-size: 56px; }
+  .rq-hello-name { font-size: 28px; }
+}
+
+/* Press and hover for the Home v5 controls (hover only with a real pointer) */
+.rq-more { transition: opacity 100ms var(--rq-ease-out); }
+.rq-more:active { opacity: 0.6; }
+@media (hover: hover) and (pointer: fine) {
+  .rq .rq-pill:hover { background: var(--accent-amber-dim); }
+  .rq-tile:hover, .rq:not(.dv) .rq-ship:hover { border-color: rgb(var(--cream-rgb) / 0.24); }
 }

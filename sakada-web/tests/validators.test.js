@@ -15,6 +15,7 @@ import {
   checkVehicleType,
   checkMessage,
   checkBookingCode,
+  checkTrackQuery,
 } from "../js/validators.js";
 import { validateFields, showFieldError } from "../js/field-errors.js";
 
@@ -169,5 +170,14 @@ describe("field errors", () => {
     showFieldError(name, "");
     expect(document.getElementById("nameError").hidden).toBe(true);
     expect(name.hasAttribute("aria-invalid")).toBe(false);
+  });
+});
+
+describe("checkTrackQuery", () => {
+  it("needs something to search for", () => {
+    expect(checkTrackQuery("  ")).toBe("Type a booking code, like SK-00142.");
+    expect(checkTrackQuery("SK-00142")).toBe("");
+    expect(checkTrackQuery("tomatoes")).toBe("");
+    expect(checkTrackQuery("x".repeat(61))).toBe("Keep it under 60 characters.");
   });
 });

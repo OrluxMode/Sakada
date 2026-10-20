@@ -20,6 +20,8 @@ import {
   isQuoteStale,
   renderDriverLine,
   rebookValues,
+  findDelivery,
+  shipmentProgress,
 } from "../js/dashboard-shared.js";
 
 describe("HISTORY_STATUSES", () => {
@@ -423,5 +425,36 @@ describe("driver dashboard helpers", () => {
     expect(paymentLine({ payment_status: "paid" })).toBe("delivered and paid in cash");
     expect(paymentLine({ payment_status: "unpaid" })).toMatch(/not paid/);
     expect(paymentLine({ payment_status: null })).toBe("delivered");
+  });
+});
+
+describe("findDelivery", () => {
+  const rows = [
+    { delivery_code: "SK-00012", goods_description: "Tomatoes, 40 crates", status: "delivered" },
+    { delivery_code: "SK-00013", goods_description: "Tomatoes, 10 crates", status: "pending" },
+    { delivery_code: "SK-00142", goods_description: "Mangoes", status: "in_transit" },
+  ];
+  it("matches a code however it's typed", () => {
+    expect(findDelivery(rows, "SK-00142").delivery_code).toBe("SK-00142");
+    expect(findDelivery(rows, "sk142").delivery_code).toBe("SK-00142");
+    expect(findDelivery(rows, " 12 ").delivery_code).toBe("SK-00012");
+  });
+  it("matches goods, preferring an active booking", () => {
+    expect(findDelivery(rows, "tomatoes").delivery_code).toBe("SK-00013");
+    expect(findDelivery(rows, "mango").delivery_code).toBe("SK-00142");
+  });
+  it("returns null when nothing matches", () => {
+    expect(findDelivery(rows, "SK-99999")).toBeNull();
+    expect(findDelivery(rows, "rice")).toBeNull();
+    expect(findDelivery(rows, "")).toBeNull();
+  });
+});
+
+describe("shipmentProgress", () => {
+  it("runs from 0 waiting to 1 delivered", () => {
+    expect(shipmentProgress("pending")).toBe(0);
+    expect(shipmentProgress("picked_up")).toBe(0.5);
+    expect(shipmentProgress("delivered")).toBe(1);
+    expect(shipmentProgress("cancelled")).toBe(0);
   });
 });
