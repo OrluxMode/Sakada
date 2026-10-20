@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b0c09" />
     <title>
       Sakada Logistics — Book Agricultural Delivery, No More Guesswork
     </title>
@@ -16,6 +17,7 @@
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/nav.css" />
     <link rel="stylesheet" href="css/pages.css" />
+    <link rel="stylesheet" href="css/welcome.css" />
     <link
       rel="preload"
       href="assets/fonts/barlow-condensed-800.woff2"
@@ -57,6 +59,67 @@
     <meta name="twitter:image" content="https://sakada-blue.vercel.app/assets/hero.jpg" />
   </head>
   <body>
+    <!-- Phone welcome screen. Shown instead of the landing page on phones
+         (css/welcome.css); hidden on wider screens. -->
+    <section class="welcome" aria-labelledby="welcomeTitle">
+      <!-- Phones get the tractor photo; wider screens get a 1px placeholder
+           so they never download it. -->
+      <picture class="welcome-photo" aria-hidden="true">
+        <source media="(max-width: 600px)" type="image/webp" srcset="assets/hero-mobile.webp" />
+        <source media="(max-width: 600px)" srcset="assets/hero-mobile.jpg" />
+        <img
+          src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+          alt=""
+          width="1200"
+          height="900"
+          fetchpriority="high"
+        />
+      </picture>
+      <script src="js/welcome.js"></script>
+      <div class="welcome-wordmark" aria-hidden="true">SAKA<span>DA</span></div>
+      <div class="welcome-intro">
+        <p class="welcome-lede">
+          Book a truck for your harvest and see the fare before you book.
+        </p>
+        <h1 class="welcome-title" id="welcomeTitle">
+          Your Harvest.<br />Their Truck.<br /><span>One Booking.</span>
+        </h1>
+      </div>
+      <div class="welcome-actions">
+        <a class="welcome-start" href="auth/register.html" data-dashboard-link draggable="false">
+          <span class="welcome-start-knob" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 20 20" fill="none">
+              <path
+                d="M4 10h11M11 5l5 5-5 5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+          <span class="welcome-start-text">
+            <span class="welcome-start-label">Get started</span>
+            <span class="welcome-start-sub" data-auth="guest">Farmer, vendor or driver</span>
+            <span class="welcome-start-sub" data-auth="member" hidden>Go to your dashboard</span>
+          </span>
+          <svg class="welcome-start-chevron" aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path
+              d="m8 5 5 5-5 5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </a>
+        <p class="welcome-login" data-auth="guest">
+          Already have an account? <a href="auth/login.html">Log in</a>
+        </p>
+        <a class="welcome-more" href="pages/how-it-works.html">See how Sakada works</a>
+      </div>
+    </section>
+
     <a class="skip-link" href="#main">Skip to content</a>
 
     <header class="site-header">
@@ -251,5 +314,6 @@
 
     <script src="js/main.js"></script>
     <script type="module" src="js/landing-auth.js"></script>
+    <script type="module" src="js/welcome-swipe.js"></script>
   </body>
 </html>

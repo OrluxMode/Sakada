@@ -1,0 +1,253 @@
+/* Phone welcome screen (index.html). On phones it replaces the landing
+   page; wider screens never see it. Approved design: Figma `mobile` page,
+   node 244:3. */
+
+.welcome {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  body > :not(.welcome) {
+    display: none !important;
+  }
+
+  .welcome {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    min-height: 100svh;
+    padding: calc(24px + env(safe-area-inset-top)) 24px
+      calc(20px + env(safe-area-inset-bottom));
+    overflow: hidden;
+    background: var(--bg-black);
+    -webkit-tap-highlight-color: transparent;
+    /* Same strong ease-out as the dashboards (--rq-ease-out). */
+    --welcome-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  /* The approved tractor photo, dimmed and set low so the headline sits on
+     dark sky and the tractor lands just above the button. */
+  .welcome-photo {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    display: block;
+  }
+
+  /* Centred on the tractor (49% across the photo), top edge 9% down. */
+  .welcome-photo img {
+    position: absolute;
+    top: 9svh;
+    left: 49%;
+    width: auto;
+    max-width: none;
+    height: max(107%, 600px);
+    transform: translateX(-49%);
+    transition: opacity 400ms var(--welcome-ease);
+  }
+
+  /* Slow connection: welcome.js fades the photo in once it has decoded. */
+  .welcome-photo.is-loading img {
+    opacity: 0;
+  }
+
+  .welcome-photo::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    /* Gradient keeps the headline on dark sky; the flat layer under it
+       dims the whole photo (cheaper than a filter on a full-screen image). */
+    background:
+      linear-gradient(
+        180deg,
+        var(--bg-black) 0%,
+        var(--bg-black) 40%,
+        rgb(var(--ink-rgb) / 0.55) 49%,
+        rgb(var(--ink-rgb) / 0.15) 58%,
+        rgb(var(--ink-rgb) / 0.35) 67%,
+        rgb(var(--ink-rgb) / 0.85) 77%,
+        var(--bg-black) 85%
+      ),
+      rgb(var(--ink-rgb) / 0.35);
+  }
+
+  .welcome-wordmark {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    color: var(--text-cream);
+  }
+
+  .welcome-wordmark span {
+    color: var(--accent-amber);
+  }
+
+  .welcome-intro {
+    display: grid;
+    gap: 16px;
+    margin-top: 40px;
+  }
+
+  .welcome-lede {
+    max-width: 16em;
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+
+  /* 60px on a 390px phone, shrinking so "Your Harvest." always fits. */
+  .welcome-title {
+    font-size: clamp(40px, calc((100vw - 48px) / 5.7), 60px);
+    line-height: 0.9;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    color: var(--text-cream);
+  }
+
+  .welcome-title span {
+    color: var(--accent-amber);
+  }
+
+  .welcome-actions {
+    display: grid;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 32px;
+  }
+
+  /* Swipe-to-start (js/welcome-swipe.js): the knob is dragged across the
+     pill. pan-y keeps vertical scrolling with the browser; sideways is ours. */
+  .welcome-start {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 80px;
+    padding: 10px 22px 10px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    background: var(--panel-dark);
+    color: var(--text-cream);
+    text-decoration: none;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    transition: border-color 160ms var(--welcome-ease);
+  }
+
+  .welcome-start:active {
+    border-color: rgb(var(--cream-rgb) / 0.24);
+  }
+
+  .welcome-start:focus-visible {
+    outline-offset: 4px;
+  }
+
+  .welcome-start-knob {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--accent-amber);
+    color: var(--text-on-amber);
+    box-shadow: 0 6px 18px rgb(224 151 47 / 0.3);
+    position: relative;
+    z-index: 1;
+    will-change: transform;
+  }
+
+  .welcome-start-text {
+    display: grid;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .welcome-start-label {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .welcome-start-sub {
+    font-size: 16px;
+    line-height: 1.35;
+    color: var(--text-muted);
+  }
+
+  .welcome-start-chevron {
+    flex: none;
+    color: var(--text-muted);
+  }
+
+  .welcome-login {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  /* Padding gives the short link a 44px tap area without moving the text. */
+  .welcome-login a {
+    display: inline-block;
+    padding: 10px 4px;
+    font-weight: 600;
+    color: var(--accent-amber);
+    text-underline-offset: 3px;
+    touch-action: manipulation;
+    transition: opacity 100ms var(--welcome-ease);
+  }
+
+  /* Quiet way into the rest of the site, since phones skip the landing page. */
+  .welcome-more {
+    justify-self: center;
+    margin-top: -8px; /* sits with Log in; the 44px tap areas still don't overlap */
+    padding: 10px 4px;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-muted);
+    text-underline-offset: 3px;
+    touch-action: manipulation;
+    transition: opacity 100ms var(--welcome-ease);
+  }
+
+  .welcome-login a:active,
+  .welcome-more:active {
+    opacity: 0.6;
+  }
+}
+
+/* Smallest phones: tighter button so "Farmer, vendor or driver" stays on one line. */
+@media (max-width: 359px) {
+  .welcome-start {
+    gap: 12px;
+    padding-right: 16px;
+  }
+
+  .welcome-start-knob {
+    width: 52px;
+    height: 52px;
+  }
+
+  /* The amber arrow already says "go"; the chevron is the first thing to drop. */
+  .welcome-start-chevron {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) and (hover: hover) and (pointer: fine) {
+  .welcome-start:hover {
+    border-color: rgb(var(--cream-rgb) / 0.24);
+  }
+}
+
+/* Reduced motion: welcome-swipe.js still lets the knob follow the finger
+   (that's direct manipulation, not animation) but skips the springs. */

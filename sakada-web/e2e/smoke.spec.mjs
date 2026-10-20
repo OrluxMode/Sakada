@@ -101,13 +101,79 @@ test.describe("logged in (faked)", () => {
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("menu opens and Escape closes it", async ({ page }) => {
+  test("home shows the welcome screen instead of the landing page", async ({ page }) => {
     await page.goto("/index.html");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/One Booking/);
+    await expect(page.locator(".site-header")).toBeHidden();
+    await expect(page.getByRole("link", { name: /Get started/ })).toHaveAttribute("href", "auth/register.html");
+    await expect(page.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "auth/login.html");
+    await expect(page.getByRole("link", { name: "See how Sakada works" })).toHaveAttribute("href", "pages/how-it-works.html");
+    const photo = await page.locator(".welcome-photo img").evaluate((img) => img.currentSrc);
+    expect(photo).toMatch(/hero-mobile\.webp$/);
+    const width = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(width).toBeLessThanOrEqual(390);
+  });
+
+  // Drags the welcome knob sideways by `distance` px in small, slow steps.
+  async function swipeKnob(page, distance) {
+    const box = await page.locator(".welcome-start-knob").boundingBox();
+    const y = box.y + box.height / 2;
+    let x = box.x + box.width / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    for (let i = 0; i < 20; i++) {
+      x += distance / 20;
+      await page.mouse.move(x, y);
+      await page.waitForTimeout(16);
+    }
+    await page.waitForTimeout(150); // stop before letting go, so it isn't a flick
+    await page.mouse.up();
+  }
+
+  test("swiping the knob across opens sign-up", async ({ page }) => {
+    await page.goto("/index.html");
+    await swipeKnob(page, 300);
+    await expect(page).toHaveURL(/auth\/register(\.html)?$/);
+  });
+
+  test("a short swipe springs back and stays on the welcome screen", async ({ page }) => {
+    await page.goto("/index.html");
+    await swipeKnob(page, 60);
+    await page.waitForTimeout(800);
+    await expect(page).toHaveURL(/\/(index\.html)?$/);
+    const x = await page.locator(".welcome-start-knob").evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
+    expect(Math.abs(x)).toBeLessThan(1);
+  });
+
+  test("tapping slides the knob across by itself and opens sign-up", async ({ page }) => {
+    await page.goto("/index.html");
+    await page.locator(".welcome-start-knob").click();
+    await expect(page).toHaveURL(/auth\/register(\.html)?$/);
+  });
+
+  test("Enter on Get started follows the link", async ({ page }) => {
+    await page.goto("/index.html");
+    await page.locator(".welcome-start").focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/auth\/register(\.html)?$/);
+  });
+
+  test("signed-in welcome goes to the dashboard", async ({ page }) => {
+    await fakeLogin(page, "vendor");
+    await page.goto("/index.html");
+    const start = page.getByRole("link", { name: /Get started/ });
+    await expect(start).toHaveAttribute("href", /dashboard\/vendor\/index\.html$/);
+    await expect(start).toContainText("Go to your dashboard");
+    await expect(page.getByRole("link", { name: "Log in" })).toBeHidden();
+  });
+
+  test("menu opens and Escape closes it", async ({ page }) => {
+    await page.goto("/pages/about.html");
     const toggle = page.locator(".nav-toggle");
     await toggle.click();
-    await expect(page.locator("#primary-menu")).toBeVisible();
+    await expect(page.locator(".nav-links")).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(page.locator("#primary-menu")).toBeHidden();
+    await expect(page.locator(".nav-links")).toBeHidden();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 });

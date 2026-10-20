@@ -475,7 +475,8 @@ function statusLine(d) {
   if (d.status === "picked_up") return `${word} ${isToday(at) ? "at" : "on"} ${when}`;
   if (d.status === "in_transit") return `${word} since ${when}`;
   if (pickupPassed(d)) return `<span class="rq-chip">Pickup date passed · drivers can't see it</span>`;
-  return d.scheduled_pickup_at ? `${word} · pickup ${day(d.scheduled_pickup_at)}` : word;
+  // "pickup Oct 22" stays on one line.
+  return d.scheduled_pickup_at ? `${word} · pickup&nbsp;${day(d.scheduled_pickup_at).replace(" ", "&nbsp;")}` : word;
 }
 const shortRoute = (d) => `${esc(shortPlace(d.pickup_address))} → ${esc(shortPlace(d.dropoff_address))}`;
 let openId = null;
@@ -573,8 +574,11 @@ function renderHome() {
   const active = deliveries.filter((d) => !HISTORY_STATUSES.includes(d.status));
   const { onRoad, assigned, waiting } = groupActive(active);
   const toRate = toRateList();
-  // With exactly one truck on the road, that's the one being watched: open it.
-  if (openId === null && !homeOpenedOnce && onRoad.length === 1) openId = onRoad[0].id;
+  // Open the one being watched: a lone truck on the road, or the only booking there is.
+  if (openId === null && !homeOpenedOnce) {
+    if (onRoad.length === 1) openId = onRoad[0].id;
+    else if (active.length === 1) openId = active[0].id;
+  }
   homeOpenedOnce = true;
   if (openId && !active.some((d) => d.id === openId)) openId = null;
   $("homeSummary").textContent = homeSummary({
@@ -587,12 +591,25 @@ function renderHome() {
     ? needsYou(active) +
       section("On the road", "", onRoad.map(activeCard)) +
       section("Driver assigned", "Goods not picked up yet", assigned.map(activeCard)) +
-      section("Waiting for a driver", "", waiting.map(activeCard)) ||
+      section("Waiting for a driver", "", waiting.map(activeCard)) +
+      bookAgain(active) ||
       `<div class="rq-card rq-empty"><p><strong>Nothing in progress.</strong></p><p class="rq-muted">Your past deliveries are in History.</p><a class="rq-btn" href="#book">Book a truck</a></div>`
     : firstVisit();
   markAdvanced(active);
 }
 let homeOpenedOnce = false;
+
+/** Under a short list, the next likely step: book the latest route again. */
+function bookAgain(active) {
+  const last = deliveries[0];
+  if (!last || !active.length || active.length > 2) return "";
+  return `
+    <button type="button" class="rq-row rq-book-again" data-rebook-id="${esc(last.id)}">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>
+      <span class="rq-rate-text"><strong>Book again</strong><br /><span class="rq-muted">${esc(last.goods_description)} · ${shortRoute(last)}</span></span>
+      ${CHEVRON}
+    </button>`;
+}
 
 /** Re-render Home while sliding whatever moved from where it was (FLIP). */
 function withFlip(change) {
@@ -779,7 +796,20 @@ function subscribeTracking() {
           // Load the new map off-screen first, so a slow connection never shows a blank box.
           const next = new Image();
           next.src = staticMapUrl(updated.current_lat, updated.current_lng);
-          next.decode().then(() => (img.src = next.src), () => {});
+          next.decode().then(() => {
+            if (reduceMotion() || !img.isConnected) return (img.src = next.src);
+            // Fade the new position in over the old one, then keep it. No slide or zoom: it's a map you read.
+            const layer = img.cloneNode();
+            layer.removeAttribute("id");
+            layer.className = "rq-map-next";
+            layer.src = next.src;
+            img.after(layer);
+            layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "cubic-bezier(0.23, 1, 0.32, 1)" })
+              .finished.then(() => {
+                img.src = next.src;
+                layer.remove();
+              });
+          }, () => {});
         }
         const caption = document.getElementById(`map-caption-${d.id}`);
         if (caption) caption.textContent = `Truck here ${timeAgo(updated.updated_at || new Date())}`;
@@ -787,6 +817,23 @@ function subscribeTracking() {
       });
       activeSubscriptions.set(d.id, channel);
     });
+}
+
+/**
+ * A booking leaves Home: its row and its "Needs you" card fade out together,
+ * then everything below slides up into place instead of jumping.
+ */
+async function leaveHome(id) {
+  const gone = [...$("homeLists").querySelectorAll(`[data-delivery-id="${CSS.escape(id)}"], [data-need="${CSS.escape(id)}"]`)];
+  if (gone.length && !reduceMotion()) {
+    await Promise.all(gone.map((el) => el.animate(
+      [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(8px)" }],
+      { duration: 180, easing: "cubic-bezier(0.23, 1, 0.32, 1)", fill: "forwards" },
+    ).finished));
+  }
+  const local = deliveries.find((x) => x.id === id);
+  if (local) local.status = "cancelled";
+  withFlip(() => renderAll());
 }
 
 /** Fill the Book form with an old booking (date left empty) and go there. */
@@ -1021,6 +1068,7 @@ $("newDateConfirm").addEventListener("click", async () => {
   // The new booking is in; now retire the old one.
   const { error: cancelError } = await cancelMyDelivery(d.id, profile.id);
   await closeSheet($("newDateSheet"));
+  if (!cancelError) await leaveHome(d.id);
   highlightId = result.data?.id || null;
   await loadDeliveries();
   if (cancelError) toastError(`Your new booking is in, but ${d.delivery_code} couldn't be cancelled. Cancel it from Home.`);
@@ -1151,25 +1199,24 @@ $("cancelConfirm").addEventListener("click", async () => {
     return;
   }
   toastSuccess("Request cancelled");
-  // Let the card leave before the list redraws without it.
-  const card = document.querySelector(`#homeLists [data-delivery-id="${CSS.escape(d.id)}"]`);
-  if (card && !reduceMotion()) {
-    card.classList.add("rq-leave");
-    await new Promise((resolve) => {
-      card.addEventListener("animationend", resolve, { once: true });
-      setTimeout(resolve, 220);
-    });
-  }
+  await leaveHome(d.id);
   loadDeliveries();
 });
 
 // ---------- Notifications ----------
 let notifications = [];
+let lastUnread = null; // null until the first count, so page load never pops
 function renderUnread() {
   const unread = notifications.filter((n) => !n.is_read).length;
+  const grew = lastUnread !== null && unread > lastUnread;
+  lastUnread = unread;
   document.querySelectorAll("[data-unread]").forEach((b) => {
     b.hidden = unread === 0;
     b.textContent = unread > 9 ? "9+" : String(unread);
+    // A new notification: one quick pop, only when the count goes up.
+    if (grew && !reduceMotion()) {
+      b.animate([{ transform: "scale(0.85)" }, { transform: "scale(1)" }], { duration: 160, easing: "cubic-bezier(0.23, 1, 0.32, 1)" });
+    }
   });
   document.querySelectorAll("[data-open-notifs]").forEach((b) =>
     b.setAttribute("aria-label", unread ? `Notifications, ${unread} unread` : "Notifications"),
