@@ -33,16 +33,20 @@
     inset: 0;
     z-index: -1;
     display: block;
+    /* Taller screens than the design's 805px: move the photo and its fades
+       down by half the extra height so it stays between headline and button. */
+    --photo-shift: max(0px, (100svh - 805px) / 2);
   }
 
-  /* Centred on the tractor (49% across the photo), top edge 9% down. */
+  /* Placed to match Figma 244:3: tractor just under the headline,
+     slightly right of centre. */
   .welcome-photo img {
     position: absolute;
-    top: 9svh;
-    left: 49%;
+    top: calc(34px + var(--photo-shift));
+    left: calc(49% + 15px);
     width: auto;
     max-width: none;
-    height: max(107%, 600px);
+    height: 232vw; /* the photo's width is about 3x the screen, as in the design */
     transform: translateX(-49%);
     transition: opacity 400ms var(--welcome-ease);
   }
@@ -52,24 +56,34 @@
     opacity: 0;
   }
 
+  /* Warm dusk tone over the photo: multiplying by a brown darkens it and
+     pushes the sky toward amber, as in the design (cheaper than a filter). */
+  .welcome-photo::before,
   .welcome-photo::after {
     content: "";
     position: absolute;
     inset: 0;
-    /* Gradient keeps the headline on dark sky; the flat layer under it
-       dims the whole photo (cheaper than a filter on a full-screen image). */
-    background:
-      linear-gradient(
-        180deg,
-        var(--bg-black) 0%,
-        var(--bg-black) 40%,
-        rgb(var(--ink-rgb) / 0.55) 49%,
-        rgb(var(--ink-rgb) / 0.15) 58%,
-        rgb(var(--ink-rgb) / 0.35) 67%,
-        rgb(var(--ink-rgb) / 0.85) 77%,
-        var(--bg-black) 85%
-      ),
-      rgb(var(--ink-rgb) / 0.35);
+    z-index: 1; /* above the img, which comes later in the box */
+  }
+
+  .welcome-photo::before {
+    background: rgb(125 102 78);
+    mix-blend-mode: multiply;
+  }
+
+  /* Dark sky behind the text, glow from just under the headline, then the
+     field sinks into black well above the button. */
+  .welcome-photo::after {
+    background: linear-gradient(
+      180deg,
+      var(--bg-black) 0,
+      var(--bg-black) calc(300px + var(--photo-shift)),
+      rgb(var(--ink-rgb) / 0.5) calc(330px + var(--photo-shift)),
+      rgb(var(--ink-rgb) / 0) calc(375px + var(--photo-shift)),
+      rgb(var(--ink-rgb) / 0) calc(470px + var(--photo-shift)),
+      rgb(var(--ink-rgb) / 0.7) calc(530px + var(--photo-shift)),
+      var(--bg-black) calc(600px + var(--photo-shift))
+    );
   }
 
   .welcome-wordmark {

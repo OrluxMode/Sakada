@@ -1967,4 +1967,12 @@ Owner's exact task-to-skill assignments:
 
 - 2026-10-20: iPhone (Chrome) couldn't load the LAN address: ufw is enabled on this computer (needs `sudo ufw allow 4400/tcp`) and iOS Chrome needs Local Network permission. Owner chose to deploy instead, including EVERYTHING local (welcome screen + swipe, and the earlier dashboard animations + quiet-state tweaks). Lint clean, unit 158, e2e 73/73; committed and pushed to main by Claude at owner's request.
 
+- 2026-10-20: Owner confirmed migration 0022 (past pickup date) is applied in Supabase. Deploy 8fbe823 (welcome screen + swipe + dashboard motion) is live on Vercel; GitHub Actions passed. Remaining: owner checks welcome swipe and dashboard motion on a real iPhone.
+
+- 2026-10-20: Owner asked to download https://github.com/leonxlnx/taste-skill. Cloned to scratchpad, reviewed (MIT; scripts: local 127.0.0.1 server, spawn Chrome for screenshots, ~/.taste-skill history, assets.mjs fetches from Wikimedia/Openverse/NASA/Met/AIC/archive.org; no keys, no exfil, no prompt injection). Installed skills/taste-skill → `.claude/skills/taste-skill/` (skill name `design-taste-frontend`, commit 63aba5f) + LICENSE. Needs Node 22+ (have 22.23) and Chrome (present). Writes working files to `.taste-skill/` in project root. Not added to AGENTS.md routing; impeccable stays primary. Not committed.
+
+- 2026-10-20: Owner ran /taste-skill: 'copy Figma 244:3 as is'. Compared pixel samples of the Figma render vs ours (aligned for the 39px status bar): layout already matched within 1–3px. Changes in css/welcome.css: photo sized by width (232vw), top 34px, left 49%+15px; warm multiply layer rgb(125 102 78) above the photo (pseudo z-index 1); px-based fade (solid to 300px, clear 375–470px, black by 600px); on screens taller than 805px photo + fades move down half the extra (--photo-shift). Removed 'See how Sakada works' (not in design) + its e2e assert. Sky/field colours now within a few RGB of Figma. Kept brand amber/cream tokens (Figma flattened image reads #d7993f/#faf7ee, likely capture colour shift). taste inspect: phone FAILs are approved-design choices (3-line headline, knob shadow); remaining FAILs on desktop landing (out of scope). Added .taste-skill/ to .gitignore. Lint clean, unit 158, e2e 73/73. Not pushed.
+
+- 2026-10-20: Owner said deploy the Figma-matched welcome screen. Committed welcome.css/index.html/smoke.spec/.gitignore/log and pushed to main (taste-skill folder left uncommitted).
+
 <!-- Add the next session's entry above this line -->

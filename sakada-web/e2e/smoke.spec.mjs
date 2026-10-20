@@ -107,7 +107,6 @@ test.describe("phone", () => {
     await expect(page.locator(".site-header")).toBeHidden();
     await expect(page.getByRole("link", { name: /Get started/ })).toHaveAttribute("href", "auth/register.html");
     await expect(page.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "auth/login.html");
-    await expect(page.getByRole("link", { name: "See how Sakada works" })).toHaveAttribute("href", "pages/how-it-works.html");
     const photo = await page.locator(".welcome-photo img").evaluate((img) => img.currentSrc);
     expect(photo).toMatch(/hero-mobile\.webp$/);
     const width = await page.evaluate(() => document.documentElement.scrollWidth);
