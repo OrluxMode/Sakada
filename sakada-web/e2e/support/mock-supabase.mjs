@@ -24,7 +24,7 @@ const NAMES = {
   admin: "Dina Admin",
 };
 
-function delivery(n, status, extra = {}) {
+export function delivery(n, status, extra = {}) {
   return {
     id: `00000000-0000-4000-8000-0000000de${String(n).padStart(3, "0")}`,
     delivery_code: `SK-${String(n).padStart(5, "0")}`,
@@ -113,12 +113,17 @@ function rpcResult(name, db, userId) {
   if (name === "get_my_delivery_drivers") {
     return db.deliveries
       .filter((d) => d.requester_id === userId && d.driver_id)
-      .map((d) => ({
-        delivery_id: d.id,
-        driver_name: NAMES.driver,
-        vehicle_type: db.driver_profiles[0]?.vehicle_type ?? null,
-        vehicle_plate: db.driver_profiles[0]?.vehicle_plate ?? null,
-      }));
+      .map((d) => {
+        // Each driver's own name and vehicle, falling back to the default driver.
+        const name = db.profiles.find((p) => p.id === d.driver_id)?.full_name ?? NAMES.driver;
+        const vehicle = db.driver_profiles.find((v) => v.id === d.driver_id) ?? db.driver_profiles[0];
+        return {
+          delivery_id: d.id,
+          driver_name: name,
+          vehicle_type: vehicle?.vehicle_type ?? null,
+          vehicle_plate: vehicle?.vehicle_plate ?? null,
+        };
+      });
   }
   return null; // update_my_last_login and anything else: no content
 }

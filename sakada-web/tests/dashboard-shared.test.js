@@ -275,6 +275,11 @@ describe("initialsFor", () => {
     expect(initialsFor("carlo")).toBe("C");
     expect(initialsFor("  ")).toBe("?");
   });
+  it("skips a name suffix", () => {
+    expect(initialsFor("Maria Concepcion Villanueva-Dela Cruz III")).toBe("MC");
+    expect(initialsFor("Juan Santos Jr.")).toBe("JS");
+    expect(initialsFor("Jr")).toBe("J");
+  });
 });
 
 describe("groupActive and homeSummary", () => {

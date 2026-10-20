@@ -17,6 +17,12 @@ function trackErrors(page) {
 const oneJob = () => fixtures().deliveries.filter((d) => d.delivery_code !== "SK-00003");
 const PHONE = { width: 390, height: 844 }; // the next-step bar is phone-only
 const code = (db, c) => db.deliveries.find((d) => d.delivery_code === c);
+// Pickup dates must be today or later, so book two days ahead of whenever the test runs.
+const futureDate = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 2);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 test.describe("dashboards (fake sign-in)", () => {
   test("farmer sees their deliveries grouped by stage", async ({ page }) => {
@@ -67,7 +73,7 @@ test.describe("dashboards (fake sign-in)", () => {
     await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
     await page.fill("#goodsDescription", "Eggplant, 32 crates");
     await page.fill("#quantityKg", "800");
-    await page.fill("#scheduledPickup", "2026-10-16");
+    await page.fill("#scheduledPickup", futureDate());
     await page.locator("#estimateBtn").click();
     await expect(page.locator("#quoteAmount")).toHaveText("₱3,526"); // 150 + 118.4 km × 15 + 800 kg × 2
     expect(db.deliveries).toHaveLength(6); // nothing booked until confirm
@@ -88,7 +94,7 @@ test.describe("dashboards (fake sign-in)", () => {
     await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
     await page.fill("#goodsDescription", "Eggplant, 32 crates");
     await page.fill("#quantityKg", "800");
-    await page.fill("#scheduledPickup", "2026-10-16");
+    await page.fill("#scheduledPickup", futureDate());
     await page.locator("#estimateBtn").click();
     await expect(page.locator("#pickupAddressError")).toHaveText("We couldn't find this address. Add the town and province.");
     await expect(page.locator("#pickupAddress")).toBeFocused();

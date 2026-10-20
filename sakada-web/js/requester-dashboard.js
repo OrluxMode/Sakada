@@ -27,6 +27,7 @@ import {
   isQuoteStale,
   rebookValues,
   renderStageStepper,
+  STAGES,
   initialsFor,
   groupActive,
   homeSummary,
@@ -37,6 +38,8 @@ import {
   contactUrl,
 } from "./dashboard-shared.js";
 import { toastSuccess, toastError } from "./toast.js";
+import { enableSheetDrag } from "./sheet-drag.js";
+import { paginate } from "./pagination.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
 import {
   checkAddress,
@@ -66,6 +69,7 @@ updateLastLogin();
 const $ = (id) => document.getElementById(id);
 const firstName = profile.full_name.split(" ")[0];
 document.querySelectorAll("[data-user-name]").forEach((el) => (el.textContent = profile.full_name));
+document.querySelector(".rq-account")?.setAttribute("title", profile.full_name); // long names are cut off there
 document.querySelectorAll("[data-initials]").forEach((el) => (el.textContent = initialsFor(profile.full_name)));
 $("homeTitle").textContent = `Hello, ${firstName}`;
 supabase.auth.getUser().then(({ data }) => {
@@ -100,16 +104,81 @@ function goTo(view) {
 showView(location.hash.slice(1));
 
 // ---------- Sheets ----------
+// Sheets slide up from the bottom (phones) or fade in centred (desktop) and
+// leave the same way. Every close path goes through closeSheet.
+const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const isPhone = () => matchMedia("(max-width: 1023px)").matches;
+
+// iOS Safari only applies :active press styles once a touch listener exists.
+document.addEventListener("touchstart", () => {}, { passive: true });
+
 function openSheet(dialog) {
+  if (dialog._closing) {
+    cancelClose(dialog);
+    return;
+  }
   dialog._returnFocus = document.activeElement;
   dialog.showModal();
+  // Two frames so the off-screen start position paints before it moves.
+  requestAnimationFrame(() => requestAnimationFrame(() => dialog.classList.add("is-shown")));
+}
+/** A finger or tap caught a closing sheet: bring it back from where it is. */
+function cancelClose(dialog) {
+  if (!dialog._closing) return;
+  dialog._closing.cancel();
+  dialog.classList.add("is-shown");
+}
+/** Resolves once the sheet has finished leaving and is closed. */
+function closeSheet(dialog, { immediate = false } = {}) {
+  if (!dialog.open) return Promise.resolve();
+  if (dialog._closing && !immediate) return dialog._closing.done;
+  dialog._closing?.cancel();
+  let finish;
+  let timer;
+  const done = new Promise((resolve) => {
+    finish = () => {
+      clearTimeout(timer);
+      dialog.removeEventListener("transitionend", onEnd);
+      dialog._closing = null;
+      dialog.close();
+      resolve();
+    };
+  });
+  const onEnd = (e) => {
+    if (e.target === dialog && e.propertyName === "transform") finish();
+  };
+  dialog.classList.remove("is-shown");
+  if (immediate || reduceMotion()) {
+    finish();
+    return done;
+  }
+  dialog.addEventListener("transitionend", onEnd);
+  timer = setTimeout(finish, 360);
+  dialog._closing = {
+    done,
+    cancel: () => {
+      clearTimeout(timer);
+      dialog.removeEventListener("transitionend", onEnd);
+      dialog._closing = null;
+    },
+  };
+  return done;
 }
 document.querySelectorAll("dialog").forEach((dialog) => {
   dialog.addEventListener("close", () => dialog._returnFocus?.focus?.());
   dialog.addEventListener("click", (e) => {
-    if (e.target === dialog) dialog.close(); // tap on the scrim
+    if (e.target === dialog) closeSheet(dialog); // tap on the scrim
   });
-  dialog.querySelectorAll("[data-close-sheet]").forEach((b) => b.addEventListener("click", () => dialog.close()));
+  dialog.addEventListener("cancel", (e) => {
+    e.preventDefault(); // Escape / Android back: leave the same way as Close
+    closeSheet(dialog);
+  });
+  dialog.querySelectorAll("[data-close-sheet]").forEach((b) => b.addEventListener("click", () => closeSheet(dialog)));
+  enableSheetDrag(dialog, {
+    canDrag: isPhone,
+    onGrab: () => cancelClose(dialog),
+    onDismiss: ({ offscreen }) => closeSheet(dialog, { immediate: offscreen }),
+  });
 });
 
 // ---------- Booking form ----------
@@ -153,6 +222,12 @@ function setBusy(button, busy, label) {
   button.disabled = busy;
   button.setAttribute("aria-busy", String(busy));
   button.innerHTML = busy ? `<span class="spinner" aria-hidden="true"></span>${label}` : label;
+}
+/** Ease an element in each time it's revealed (restarts the animation). */
+function arrive(el) {
+  el.classList.remove("rq-arrive");
+  void el.offsetWidth;
+  el.classList.add("rq-arrive");
 }
 function resetQuote({ stale = false } = {}) {
   pendingQuote = null;
@@ -221,6 +296,7 @@ form.addEventListener("submit", async (e) => {
     $("matchedDropoff").textContent = `Drop-off: ${dropoff.placeName}`;
     quoteStaleEl.hidden = true;
     quoteEl.hidden = false;
+    arrive(quoteEl);
     estimateBtn.hidden = true;
     confirmBtn.hidden = false;
     confirmBtn.textContent = `Confirm booking · ${formatPeso(cost)}`;
@@ -291,6 +367,7 @@ confirmBtn.addEventListener("click", async () => {
   resetQuote();
   highlightId = result.data?.id || null;
   $("bookedBanner").hidden = false;
+  arrive($("bookedBanner"));
   goTo("home");
   await loadDeliveries();
 });
@@ -301,6 +378,7 @@ let driversById = new Map();
 let ratingsMap = new Map();
 let highlightId = null;
 let historyFilter = "all";
+let historyPage = 1;
 const activeSubscriptions = new Map();
 
 const dismissed = new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || "[]"));
@@ -316,7 +394,15 @@ const time = (iso) =>
   new Date(iso).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
 
 function titleLine(d) {
-  return `${esc(d.goods_description)} · ${Number(d.quantity_kg).toLocaleString("en-PH")} kg`;
+  // Old bookings may have no weight saved; the number and "kg" never split across lines.
+  if (d.quantity_kg == null) return esc(d.goods_description);
+  return `${esc(d.goods_description)} · ${Number(d.quantity_kg).toLocaleString("en-PH")}&nbsp;kg`;
+}
+/** The fare, or a plain note when an old booking has none saved (never "₱0"). */
+function fareAmount(d) {
+  return d.estimated_cost == null
+    ? `<span class="rq-fare-amount rq-fare-amount--none">Fare not set</span>`
+    : `<span class="rq-fare-amount">${formatPeso(d.estimated_cost)}</span>`;
 }
 function metaLine(d) {
   const bits = [esc(d.delivery_code)];
@@ -366,7 +452,7 @@ function mapBlock(d) {
 function fareBlock(d) {
   return `
     <div class="rq-fare">
-      <span class="rq-fare-amount">${formatPeso(d.estimated_cost)}</span>
+      ${fareAmount(d)}
       <span class="rq-muted">Whoever receives the goods pays the driver this in cash at drop-off. Tolls included.</span>
     </div>`;
 }
@@ -464,6 +550,23 @@ function renderHome() {
       section("Rate your driver", "", toRate.map(rateCard)) ||
       `<div class="rq-card rq-empty"><p><strong>Nothing in progress.</strong></p><p class="rq-muted">Your past deliveries are in History.</p><a class="rq-btn" href="#book">Book a truck</a></div>`
     : firstVisit();
+  markAdvanced(active);
+}
+
+// Statuses as of the last Home render, so a driver accepting (or picking up)
+// can be marked once. Null until the first render: page load never animates.
+let lastStatus = null;
+function markAdvanced(active) {
+  if (lastStatus) {
+    for (const d of active) {
+      const before = lastStatus.get(d.id);
+      if (!before || STAGES.indexOf(d.status) <= STAGES.indexOf(before)) continue;
+      const card = $("homeLists").querySelector(`.rq-card[data-delivery-id="${CSS.escape(d.id)}"]`);
+      card?.classList.add("is-advanced");
+      card?.querySelector(".rq-step--current")?.classList.add("is-advanced");
+    }
+  }
+  lastStatus = new Map(deliveries.map((d) => [d.id, d.status]));
 }
 
 function historyCard(d) {
@@ -478,7 +581,7 @@ function historyCard(d) {
       <h3 class="rq-card-title">${titleLine(d)}</h3>
       <p class="rq-muted"><span class="status-pill" data-status="${esc(d.status)}">${statusLabel(d.status)}</span> ${metaLine(d)}</p>
       <p>${esc(d.pickup_address)} → ${esc(d.dropoff_address)}</p>
-      ${d.status === "delivered" ? `<div class="rq-fare"><span class="rq-fare-amount">${formatPeso(d.estimated_cost)}</span>${rated ? `<span class="rq-muted">You rated ${esc(driver || "the driver")} ${rated.rating} of 5</span>` : ""}</div>` : ""}
+      ${d.status === "delivered" ? `<div class="rq-fare">${fareAmount(d)}${rated ? `<span class="rq-muted">You rated ${esc(driver || "the driver")} ${rated.rating} of 5</span>` : ""}</div>` : ""}
       <div class="rq-rate-slot"></div>
       <div class="rq-card-actions">
         ${rateBtn}
@@ -500,11 +603,27 @@ function renderHistory() {
     b.setAttribute("aria-pressed", String(f === historyFilter));
   });
   const shown = historyFilter === "all" ? history : history.filter((d) => d.status === historyFilter);
+  // 25 at a time, so a busy trader's 400 past deliveries don't all render on a budget phone.
+  const pageState = paginate(shown, historyPage);
+  historyPage = pageState.page;
   $("historyList").innerHTML = shown.length
-    ? shown.map(historyCard).join("")
+    ? pageState.rows.map(historyCard).join("") + historyPager(pageState)
     : history.length
       ? `<div class="rq-card rq-empty"><p><strong>No ${historyFilter} deliveries</strong></p><button type="button" class="rq-btn rq-btn--ghost" data-filter-reset>Show all</button></div>`
       : `<div class="rq-card rq-empty"><p><strong>No past deliveries yet</strong></p><p class="rq-muted">Delivered and cancelled bookings show up here.</p></div>`;
+}
+
+function historyPager(state) {
+  if (state.totalPages < 2) return "";
+  return `
+    <nav class="rq-pager" aria-label="History pages">
+      <p class="rq-muted">Showing ${state.from}–${state.to} of ${state.total}</p>
+      <div class="rq-pager-controls">
+        <button type="button" class="rq-btn rq-btn--ghost" data-history-page="${state.page - 1}"${state.page === 1 ? " disabled" : ""}>Previous</button>
+        <span class="rq-pager-status">Page ${state.page} of ${state.totalPages}</span>
+        <button type="button" class="rq-btn rq-btn--ghost" data-history-page="${state.page + 1}"${state.page === state.totalPages ? " disabled" : ""}>Next</button>
+      </div>
+    </nav>`;
 }
 
 function renderRecentRoute() {
@@ -516,7 +635,9 @@ function renderRecentRoute() {
   }
   btn.hidden = false;
   btn.dataset.rebookId = last.id;
-  $("recentRouteText").textContent = `${last.pickup_address.split(",")[0]} → ${last.dropoff_address.split(",")[0]} · ${last.goods_description}`;
+  const text = `${last.pickup_address.split(",")[0]} → ${last.dropoff_address.split(",")[0]} · ${last.goods_description}`;
+  $("recentRouteText").textContent = text;
+  btn.title = text; // the button shows two lines at most
 }
 
 function renderAll() {
@@ -663,12 +784,23 @@ document.addEventListener("click", async (e) => {
 
   if (t.dataset.filter) {
     historyFilter = t.dataset.filter;
+    historyPage = 1;
     renderHistory();
     return;
   }
   if (t.matches("[data-filter-reset]")) {
     historyFilter = "all";
+    historyPage = 1;
     renderHistory();
+    return;
+  }
+  if (t.dataset.historyPage) {
+    historyPage = Number(t.dataset.historyPage);
+    renderHistory();
+    // Back to the top of the list, with focus where a keyboard user expects it.
+    $("historyTitle").scrollIntoView({ block: "start" });
+    $("historyTitle").setAttribute("tabindex", "-1");
+    $("historyTitle").focus({ preventScroll: true });
   }
 });
 
@@ -685,11 +817,11 @@ $("cancelConfirm").addEventListener("click", async () => {
   btn.disabled = false;
   btn.removeAttribute("aria-busy");
   btn.textContent = "Cancel request";
-  $("cancelSheet").close();
+  const sheetClosed = closeSheet($("cancelSheet"));
   if (error) {
     // No row matched: a driver accepted it in the meantime.
     if (error.code === "PGRST116" || /no rows|not found|multiple \(or no\)/i.test(error.message || "")) {
-      await loadDeliveries();
+      await Promise.all([loadDeliveries(), sheetClosed]);
       const card = document.querySelector(`[data-delivery-id="${CSS.escape(d.id)}"]`);
       card?.insertAdjacentHTML(
         "afterbegin",
@@ -702,6 +834,15 @@ $("cancelConfirm").addEventListener("click", async () => {
     return;
   }
   toastSuccess("Request cancelled");
+  // Let the card leave before the list redraws without it.
+  const card = document.querySelector(`#homeLists [data-delivery-id="${CSS.escape(d.id)}"]`);
+  if (card && !reduceMotion()) {
+    card.classList.add("rq-leave");
+    await new Promise((resolve) => {
+      card.addEventListener("animationend", resolve, { once: true });
+      setTimeout(resolve, 220);
+    });
+  }
   loadDeliveries();
 });
 
@@ -749,15 +890,17 @@ $("notifList").addEventListener("click", async (e) => {
   if (item.classList.contains("is-unread")) {
     markNotificationRead(item.dataset.notifId).then(loadNotifications);
   }
-  $("notifSheet").close();
+  const sheet = $("notifSheet");
   const d = deliveries.find((x) => x.id === item.dataset.delivery);
+  if (d) sheet._returnFocus = null; // focus goes to the card instead of the bell
+  const closed = closeSheet(sheet);
   if (!d) return;
   goTo(HISTORY_STATUSES.includes(d.status) ? "history" : "home");
-  requestAnimationFrame(() => {
-    const card = document.querySelector(`[data-delivery-id="${CSS.escape(d.id)}"]`);
-    card?.scrollIntoView({ block: "center" });
-    card?.focus({ preventScroll: true });
-  });
+  // The page behind a modal sheet can't take focus, so wait for it to leave.
+  await closed;
+  const card = document.querySelector(`[data-delivery-id="${CSS.escape(d.id)}"]`);
+  card?.scrollIntoView({ block: "center" });
+  card?.focus({ preventScroll: true });
 });
 
 loadDeliveries();

@@ -65,6 +65,33 @@ driver can each leave one rating about the other side for the same
 delivery. The RLS policy only allows inserting a rating once `status =
 'delivered'`, so you can't rate a delivery that hasn't happened yet.
 
+## Booking and profile limits (0021)
+
+Database checks enforce these limits on inserts and updates, including direct
+API writes. Text lengths are measured after trimming surrounding spaces.
+
+| Constraint | Allowed value |
+|---|---|
+| `deliveries_pickup_address_len` | 5–200 characters |
+| `deliveries_dropoff_address_len` | 5–200 characters |
+| `deliveries_goods_description_len` | 2–120 characters |
+| `deliveries_notes_len` | NULL or at most 500 characters |
+| `deliveries_quantity_kg_range` | NULL or 1–100000 kg (inclusive) |
+| `profiles_full_name_len` | 2–120 characters |
+
+`quantity_kg` and `estimated_cost` remain nullable. Migration `0021` adds all
+checks as `NOT VALID`, then validates each check only when existing rows pass.
+It never changes existing data; its header includes a query counting violations
+per column. A check left `NOT VALID` still rejects invalid inserts and updates,
+including updates to legacy rows that still violate it. After correcting old
+data, run `ALTER TABLE <table> VALIDATE CONSTRAINT <constraint>` for each
+remaining check.
+
+The signup trigger trims and caps metadata names to 120 characters before
+creating a profile. Names shorter than two characters fall back to the trimmed,
+capped email local part, then to `User` if needed. Google signups still start
+as unconfirmed farmers; explicit valid signup roles remain confirmed (0018).
+
 ## Security note
 
 Since the front end (and later, the mobile app) talks to Supabase directly

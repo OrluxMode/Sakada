@@ -256,7 +256,11 @@ export function renderStageStepper(status) {
 
 /** "Ana Reyes" -> "AR"; one name -> one letter; empty -> "?". */
 export function initialsFor(name) {
-  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  // "Juan Dela Cruz Jr." and "… Villanueva III" take initials from the surname, not the suffix.
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter((p, i, all) => p && !(i > 0 && i === all.length - 1 && /^(jr|sr|ii|iii|iv|v)\.?$/i.test(p)));
   if (!parts.length) return "?";
   const first = parts[0][0];
   const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
