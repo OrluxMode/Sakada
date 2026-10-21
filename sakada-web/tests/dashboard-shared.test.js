@@ -13,6 +13,9 @@ vi.mock("../js/notifications.js", () => ({
 globalThis.DOMPurify = DOMPurify(new JSDOM("").window);
 
 import {
+  parseTrackHash,
+  trackHeadline,
+  ratingSummary,
   statusLabel,
   timeAgo,
   HISTORY_STATUSES,
@@ -456,5 +459,45 @@ describe("shipmentProgress", () => {
     expect(shipmentProgress("picked_up")).toBe(0.5);
     expect(shipmentProgress("delivered")).toBe(1);
     expect(shipmentProgress("cancelled")).toBe(0);
+  });
+});
+
+describe("parseTrackHash", () => {
+  it("reads the Track tab and one booking", () => {
+    expect(parseTrackHash("#track")).toEqual({ code: null });
+    expect(parseTrackHash("track")).toEqual({ code: null });
+    expect(parseTrackHash("#track/SK-00142")).toEqual({ code: "SK-00142" });
+    expect(parseTrackHash("#track/")).toEqual({ code: null });
+    expect(parseTrackHash("#track/SK%2000142")).toEqual({ code: "SK 00142" });
+  });
+  it("ignores other views", () => {
+    expect(parseTrackHash("#home")).toBeNull();
+    expect(parseTrackHash("#tracking")).toBeNull();
+    expect(parseTrackHash("")).toBeNull();
+  });
+});
+
+describe("trackHeadline", () => {
+  it("follows the status", () => {
+    expect(trackHeadline("pending")).toEqual(["Waiting for", "a driver."]);
+    expect(trackHeadline("pending", true)).toEqual(["Pickup date", "has passed."]);
+    expect(trackHeadline("in_transit")).toEqual(["Your shipment", "is on the road."]);
+    expect(trackHeadline("delivered")).toEqual(["Your shipment", "arrived."]);
+    expect(trackHeadline("cancelled")).toEqual(["Booking", "cancelled."]);
+  });
+});
+
+describe("ratingSummary", () => {
+  it("shows the real average and count", () => {
+    expect(ratingSummary({ rating_avg: 4.833, rating_count: 12 })).toEqual({ avg: "4.8", label: "12 ratings" });
+    expect(ratingSummary({ rating_avg: "5.0", rating_count: 1 })).toEqual({ avg: "5.0", label: "1 rating" });
+    expect(ratingSummary({ rating_avg: 4, rating_count: 1200 })).toEqual({ avg: "4.0", label: "1,200 ratings" });
+  });
+  it("says a new driver has no ratings", () => {
+    expect(ratingSummary({ rating_avg: null, rating_count: 0 })).toEqual({ avg: null, label: "No ratings yet" });
+  });
+  it("shows nothing when the server sent no rating", () => {
+    expect(ratingSummary({ driver_name: "Carlo" })).toBeNull();
+    expect(ratingSummary(undefined)).toBeNull();
   });
 });

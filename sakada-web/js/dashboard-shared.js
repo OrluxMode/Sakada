@@ -341,6 +341,47 @@ export function contactUrl(base, code) {
   return code ? `${base}?code=${encodeURIComponent(code)}` : base;
 }
 
+// ---------- Track page ----------
+
+/** "#track" -> { code: null }; "#track/SK-00142" -> { code: "SK-00142" }; any other hash -> null. */
+export function parseTrackHash(hash) {
+  const m = /^#?track(?:\/([^/?#]*))?$/i.exec(String(hash || ""));
+  if (!m) return null;
+  let code = m[1] || "";
+  try {
+    code = decodeURIComponent(code);
+  } catch { /* a stray "%": use it as typed */ }
+  code = code.trim();
+  return { code: code || null };
+}
+
+/** The Track page's two-line headline for a booking: [first line, second line]. */
+export function trackHeadline(status, late = false) {
+  if (status === "pending") return late ? ["Pickup date", "has passed."] : ["Waiting for", "a driver."];
+  if (status === "driver_assigned") return ["Driver", "assigned."];
+  if (status === "picked_up") return ["Goods", "picked up."];
+  if (status === "in_transit") return ["Your shipment", "is on the road."];
+  if (status === "delivered") return ["Your shipment", "arrived."];
+  if (status === "cancelled") return ["Booking", "cancelled."];
+  return ["Your", "shipment."];
+}
+
+/**
+ * A driver's real average rating, from get_my_delivery_drivers (0023):
+ * { avg: "4.8", label: "12 ratings" }, { avg: null, label: "No ratings yet" }
+ * for a new driver, or null when the server sent no rating (before 0023),
+ * so nothing is shown rather than a made-up number.
+ */
+export function ratingSummary(row) {
+  if (!row || row.rating_count == null) return null;
+  const count = Number(row.rating_count);
+  if (!count || row.rating_avg == null) return { avg: null, label: "No ratings yet" };
+  return {
+    avg: Number(row.rating_avg).toFixed(1),
+    label: `${count.toLocaleString("en-PH")} rating${count === 1 ? "" : "s"}`,
+  };
+}
+
 // ---------- Driver dashboard (v4 design) ----------
 
 /** A driver's four stages. Pending isn't theirs yet, so the line starts at Accepted. */

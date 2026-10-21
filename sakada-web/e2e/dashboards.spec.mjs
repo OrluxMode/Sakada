@@ -54,17 +54,19 @@ test.describe("dashboards (fake sign-in)", () => {
     await page.goto("/dashboard/farmer/index.html");
     const card = page.locator("#homeLists [data-delivery-id]", { hasText: "SK-00001" });
     await card.getByRole("button", { name: "View details" }).click();
-    const details = page.locator("#detailsSheet");
-    await expect(details).toContainText("Cabanatuan City, Nueva Ecija");
-    await details.getByRole("button", { name: "Cancel request" }).click();
-    await expect(details).toBeHidden();
+    // View details opens the booking's Track page.
+    const track = page.locator("#trackPage");
+    await expect(page).toHaveURL(/#track\/SK-00001$/);
+    await expect(track).toContainText("Cabanatuan City, Nueva Ecija");
+    await track.getByRole("button", { name: "Cancel request" }).click();
     await expect(page.locator("#cancelSheet")).toBeVisible();
     await page.locator("#cancelConfirm").click();
     await expect.poll(() => db.deliveries.find((d) => d.delivery_code === "SK-00001").status).toBe("cancelled");
+    await expect(page.locator("#trackTitle")).toContainText("cancelled");
     await expect(page.locator("#homeLists")).not.toContainText("SK-00001");
   });
 
-  test("a delivered notification opens the stars on that delivery", async ({ page }) => {
+  test("a delivered notification opens the stars on its Track page", async ({ page }) => {
     const base = fixtures();
     const db = await mockSupabase(page, "farmer", {
       notifications: [{ ...base.notifications[0], delivery_id: base.deliveries[3].id, message: "Your delivery SK-00004 was delivered." }],
@@ -72,11 +74,16 @@ test.describe("dashboards (fake sign-in)", () => {
     await page.goto("/dashboard/farmer/index.html");
     await page.locator("[data-open-notifs]").first().click();
     await page.locator("#notifList").getByText("SK-00004").click();
-    const card = page.locator("#historyList [data-delivery-id]", { hasText: "SK-00004" });
-    await expect(card.getByRole("radio", { name: "1 star" })).toBeFocused(); // the stars open, ready to pick
-    await card.getByRole("radio", { name: "5 stars" }).click();
-    await card.getByRole("button", { name: "Send rating" }).click();
+    const track = page.locator("#trackPage");
+    await expect(page.locator("#trackTitle")).toContainText("arrived");
+    await expect(track.getByRole("radio", { name: "1 star" })).toBeFocused(); // the stars, ready to pick
+    await track.getByRole("radio", { name: "5 stars" }).click();
+    await track.getByRole("button", { name: "Send rating" }).click();
     await expect.poll(() => db.ratings.length).toBe(1);
+    await expect(track).toContainText("You rated Carlo 5 of 5");
+    // The driver's average is the real one, now including this rating.
+    await expect(track.locator('[aria-label="Rated 5.0 out of 5"]')).toBeVisible();
+    await expect(track).toContainText("1 rating");
     await expect(page.locator("#historyList [data-delivery-id]", { hasText: "SK-00004" })).toContainText("You rated Carlo 5 of 5");
   });
 
@@ -171,9 +178,60 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.locator("#trackInputError")).toContainText("Nothing on your account matches");
     await page.fill("#trackInput", "sk3");
     await page.keyboard.press("Enter");
-    await expect(page.locator("#detailsSheet")).toBeVisible();
-    await expect(page.locator("#detailsSheet")).toContainText("SK-00003");
+    // The code opens that booking's Track page.
+    await expect(page).toHaveURL(/#track\/SK-00003$/);
+    const shipment = page.locator("#trackPage");
+    await expect(shipment).toContainText("SK-00003");
+    await expect(page.locator("#trackTitle")).toContainText("on the road");
+    await expect(shipment).toContainText("Carlo Santos");
+    await expect(shipment).toContainText("No ratings yet"); // a driver nobody has rated yet: no made-up stars
+    await expect(shipment).toContainText("Truck here");
+    await expect(shipment).not.toContainText("Message Driver");
+    // Back returns to Home, where the search was.
+    await page.getByRole("button", { name: "Back" }).click();
+    await expect(page.locator("#trackInput")).toBeVisible();
     await expect(page.locator("#trackInputError")).toBeHidden();
+  });
+
+  test("on a phone the Track tab lists active shipments and opens one", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    const base = fixtures();
+    const rating = (n, by, value) => ({
+      id: `00000000-0000-4000-8000-0000000a000${n}`, delivery_id: base.deliveries[3].id,
+      rated_by: by, rated_user_id: IDS.driver, rating: value, comment: null, created_at: "2026-10-12T00:00:00.000Z",
+    });
+    // Two real ratings from two different requesters: average 4.5.
+    await mockSupabase(page, "farmer", { ratings: [rating(1, IDS.farmer, 5), rating(2, IDS.vendor, 4)] });
+    await page.goto("/dashboard/farmer/index.html");
+    await page.locator(".rq-tabs").getByRole("link", { name: "Track" }).click();
+    const track = page.locator("#trackPage");
+    await expect(track.locator(".rq-track-row")).toHaveText([/SK-00003/, /SK-00002/, /SK-00001/]); // on the road first
+    await track.getByRole("link", { name: /SK-00002/ }).click();
+    await expect(page).toHaveURL(/#track\/SK-00002$/);
+    await expect(page.locator("#trackTitle")).toContainText("assigned");
+    await expect(track.locator('[aria-label="Rated 4.5 out of 5"]')).toBeVisible();
+    await expect(track).toContainText("2 ratings");
+    await expect(track).toContainText("The truck shows on the map once Carlo picks up your goods.");
+    await page.getByRole("button", { name: "Back" }).click();
+    await expect(track.locator(".rq-track-row")).toHaveCount(3);
+  });
+
+  test("the Track tab opens a lone booking, says when nothing is moving, and handles a wrong code", async ({ page }) => {
+    await mockSupabase(page, "vendor"); // one booking, still waiting, and its pickup date (Oct 15) has passed
+    await page.goto("/dashboard/vendor/index.html#track");
+    await expect(page.locator("#trackTitle")).toContainText("Pickup date");
+    await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0); // it's the tab itself
+    await expect(page.locator("#trackPage").getByRole("button", { name: "Book a new date" })).toBeVisible();
+    await expect(page.locator("#trackPage").getByRole("button", { name: "Cancel request" })).toBeVisible();
+
+    const past = fixtures().deliveries.filter((d) => d.status === "delivered" || d.status === "cancelled");
+    await mockSupabase(page, "farmer", { deliveries: past });
+    await page.goto("/dashboard/farmer/index.html#track");
+    await expect(page.locator("#trackTitle")).toContainText("Nothing on");
+    await expect(page.locator("#trackPage").getByRole("link", { name: "Book a truck" })).toBeVisible();
+    await page.goto("/dashboard/farmer/index.html#track/SK-99999");
+    await expect(page.locator("#trackTitle")).toContainText("found");
+    await expect(page.locator("#trackPage")).toContainText("We couldn't find SK-99999 on your account.");
   });
 
   test("on a phone the shipments are swiped one card at a time", async ({ page }) => {
@@ -186,7 +244,7 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.getByRole("button", { name: "Show SK-00001" })).toHaveAttribute("aria-current", "true");
     // Tapping the card itself opens its details.
     await page.locator("#shipList [data-delivery-id]", { hasText: "SK-00001" }).locator(".rq-ship-ends").click();
-    await expect(page.locator("#detailsSheet")).toContainText("Cabanatuan City, Nueva Ecija");
+    await expect(page.locator("#trackPage")).toContainText("Cabanatuan City, Nueva Ecija");
   });
 
   test("the Delivered tile opens History filtered to delivered", async ({ page }) => {
@@ -204,7 +262,8 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.locator("#notifSheet")).toBeVisible();
     await page.locator("#notifList").getByText("SK-00003").click();
     await expect(page.locator("#notifSheet")).toBeHidden();
-    await expect(page.locator("[data-delivery-id]", { hasText: "SK-00003" })).toBeFocused();
+    await expect(page.locator("#trackTitle")).toBeFocused();
+    await expect(page.locator("#trackPage")).toContainText("SK-00003");
     await expect.poll(() => db.notifications[0].is_read).toBe(true);
   });
 

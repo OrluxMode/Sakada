@@ -117,11 +117,16 @@ function rpcResult(name, db, userId) {
         // Each driver's own name and vehicle, falling back to the default driver.
         const name = db.profiles.find((p) => p.id === d.driver_id)?.full_name ?? NAMES.driver;
         const vehicle = db.driver_profiles.find((v) => v.id === d.driver_id) ?? db.driver_profiles[0];
+        // Like migration 0023: the driver's real average over every rating they received.
+        const theirs = db.ratings.filter((r) => r.rated_user_id === d.driver_id);
+        const avg = theirs.length ? Math.round((theirs.reduce((s, r) => s + r.rating, 0) / theirs.length) * 10) / 10 : null;
         return {
           delivery_id: d.id,
           driver_name: name,
           vehicle_type: vehicle?.vehicle_type ?? null,
           vehicle_plate: vehicle?.vehicle_plate ?? null,
+          rating_avg: avg,
+          rating_count: theirs.length,
         };
       });
   }

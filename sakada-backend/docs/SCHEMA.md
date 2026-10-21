@@ -114,6 +114,26 @@ All 0020 functions remain unchanged, including the two-active-job cap and its
 message. The migration header provides a read-only count of requests that
 will disappear from drivers' open lists.
 
+## Requester driver function (0019, 0023)
+
+`get_my_delivery_drivers()` returns one row per caller-owned delivery with an
+assigned driver. Its columns, in order, are `delivery_id uuid`,
+`driver_name text`, `vehicle_type text`, `vehicle_plate text`,
+`rating_avg numeric`, and `rating_count integer`.
+
+The average is `round(avg(rating)::numeric, 1)` over all ratings whose
+`rated_user_id` is that driver, including ratings from other requesters'
+deliveries. Ratings the driver gave a requester do not count. An unrated
+driver returns NULL for `rating_avg` and 0 for `rating_count`; no default
+stars are supplied. Ratings are aggregated once per relevant driver.
+
+This stable SECURITY DEFINER function uses `search_path = public`. Only
+`authenticated` has EXECUTE permission (revoked from public and anon).
+Profiles and individual ratings retain their existing RLS: the function
+exposes no comments, rater identities, or drivers absent from the caller's
+own assigned deliveries. Migration 0023 drops and recreates the function in
+one transaction because its return type changes.
+
 ## Security note
 
 Since the front end (and later, the mobile app) talks to Supabase directly
