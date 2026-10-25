@@ -2071,4 +2071,8 @@ Owner's exact task-to-skill assignments:
 
 - 2026-10-25: Owner said commit + push, including `claude roadmap - MLP.md` and `.claude/skills/taste-skill/`. Committed Book flow + drive time + icons + 0024 backend + roadmap + taste-skill. Push from Claude's shell failed (no GitHub credentials); owner to run git push.
 
+- 2026-10-25: Owner will push b28d80f themselves. After that: check the live site (Book + Track), then roadmap #2 saved addresses (Figma first, then Codex table + RLS, then Claude).
+
+- 2026-10-25: Owner said "bro" (no request). Checked status, asked what's next. No changes.
+
 <!-- Add the next session's entry above this line -->
