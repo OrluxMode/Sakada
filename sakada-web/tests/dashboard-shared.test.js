@@ -25,6 +25,12 @@ import {
   rebookValues,
   findDelivery,
   shipmentProgress,
+  PICKUP_WINDOWS,
+  windowLabel,
+  openWindows,
+  dayChoices,
+  bookDateLabel,
+  monthCells,
 } from "../js/dashboard-shared.js";
 
 describe("HISTORY_STATUSES", () => {
@@ -231,6 +237,7 @@ describe("rebookValues", () => {
       dropoffAddress: "B",
       goodsDescription: "Eggplant",
       quantityKg: "500",
+      recipientName: "",
     });
   });
 
@@ -240,6 +247,7 @@ describe("rebookValues", () => {
       dropoffAddress: "",
       goodsDescription: "",
       quantityKg: "",
+      recipientName: "",
     });
   });
 });
@@ -251,6 +259,7 @@ import {
   homeSummary,
   formatPeso,
   fareBreakdown,
+  driveTimeLabel,
   pickupPassed,
   bookingErrorCopy,
   contactUrl,
@@ -310,6 +319,27 @@ describe("formatPeso and fareBreakdown", () => {
   it("formats pesos", () => expect(formatPeso(3550)).toBe("₱3,550"));
   it("shows the real distance", () =>
     expect(fareBreakdown(118.43, 800)).toBe("₱150 base + 118.4 km × ₱15 + 800 kg × ₱2, rounded. Tolls included."));
+});
+
+describe("driveTimeLabel", () => {
+  it("rounds short drives to 5 minutes", () => {
+    expect(driveTimeLabel(1)).toBe("About 5 min drive");
+    expect(driveTimeLabel(38)).toBe("About 40 min drive");
+    expect(driveTimeLabel(57)).toBe("About 55 min drive");
+  });
+  it("rounds to the half hour up to 10 hours", () => {
+    expect(driveTimeLabel(58)).toBe("About 1 h drive");
+    expect(driveTimeLabel(148)).toBe("About 2 h 30 min drive");
+    expect(driveTimeLabel(184)).toBe("About 3 h drive");
+    expect(driveTimeLabel(584)).toBe("About 9 h 30 min drive");
+  });
+  it("rounds long hauls to the hour", () => {
+    expect(driveTimeLabel(585)).toBe("About 10 h drive");
+    expect(driveTimeLabel(14 * 60 + 25)).toBe("About 14 h drive");
+  });
+  it("is empty when the time is unknown", () => {
+    for (const m of [null, undefined, 0, -5, NaN, "x"]) expect(driveTimeLabel(m)).toBe("");
+  });
 });
 
 describe("pickupPassed", () => {
@@ -499,5 +529,40 @@ describe("ratingSummary", () => {
   it("shows nothing when the server sent no rating", () => {
     expect(ratingSummary({ driver_name: "Carlo" })).toBeNull();
     expect(ratingSummary(undefined)).toBeNull();
+  });
+});
+
+describe("Book pickup day and window", () => {
+  const at = (h) => new Date(2026, 9, 21, h, 30); // Wed 21 Oct 2026
+
+  it("names each window and nothing for old bookings", () => {
+    expect(PICKUP_WINDOWS.map((w) => w.id)).toEqual(["08-10", "10-12", "13-15"]);
+    expect(windowLabel("10-12")).toBe("10:00 AM–12:00 PM");
+    expect(windowLabel(null)).toBe("");
+  });
+
+  it("keeps only windows that haven't started today, all of them later", () => {
+    expect(openWindows("2026-10-21", at(7)).map((w) => w.id)).toEqual(["08-10", "10-12", "13-15"]);
+    expect(openWindows("2026-10-21", at(9)).map((w) => w.id)).toEqual(["10-12", "13-15"]);
+    expect(openWindows("2026-10-21", at(13))).toEqual([]);
+    expect(openWindows("2026-10-22", at(16))).toHaveLength(3);
+    expect(openWindows("2026-10-20", at(7))).toEqual([]);
+  });
+
+  it("offers the five days from tomorrow, across a month end", () => {
+    expect(dayChoices(at(9))).toEqual(["2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25", "2026-10-26"]);
+    expect(dayChoices(new Date(2026, 9, 30, 9))).toEqual(["2026-10-31", "2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04"]);
+  });
+
+  it("writes the day like the design", () => {
+    expect(bookDateLabel("2026-10-24")).toBe("Sat, 24 Oct");
+    expect(bookDateLabel("")).toBe("");
+  });
+
+  it("lays a month out Sunday first", () => {
+    const oct = monthCells(2026, 9);
+    expect(oct.slice(0, 5)).toEqual([null, null, null, null, "2026-10-01"]); // 1 Oct 2026 is a Thursday
+    expect(oct.at(-1)).toBe("2026-10-31");
+    expect(oct.filter(Boolean)).toHaveLength(31);
   });
 });

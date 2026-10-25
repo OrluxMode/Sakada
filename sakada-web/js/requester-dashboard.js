@@ -3,7 +3,7 @@ import { supabase } from "./supabase-client.js";
 import { requireRole, signOut, updateLastLogin } from "./auth.js";
 import {
   geocodeAddress,
-  getDrivingDistanceKm,
+  getDrivingRoute,
   estimateCost,
   getRouteLine,
   routeMapUrl,
@@ -35,6 +35,7 @@ import {
   shipmentProgress,
   formatPeso,
   fareBreakdown,
+  driveTimeLabel,
   pickupPassed,
   shortPlace,
   bookingErrorCopy,
@@ -42,6 +43,14 @@ import {
   parseTrackHash,
   trackHeadline,
   ratingSummary,
+  PICKUP_WINDOWS,
+  windowLabel,
+  ymd,
+  parseYmd,
+  openWindows,
+  dayChoices,
+  bookDateLabel,
+  monthCells,
 } from "./dashboard-shared.js";
 import { toastSuccess, toastError } from "./toast.js";
 import { enableSheetDrag } from "./sheet-drag.js";
@@ -54,6 +63,7 @@ import {
   checkPickupDate,
   checkNotes,
   checkTrackQuery,
+  checkRecipient,
   localDateString,
 } from "./validators.js";
 import { validateFields, clearWhenFixed, showFieldError } from "./field-errors.js";
@@ -100,6 +110,10 @@ function showView(hash, { focus = false } = {}) {
   if (!VIEWS.includes(view)) view = "home";
   const changed = document.body.dataset.view !== view;
   document.body.dataset.view = view;
+  if (view === "book" && changed && viewsReady && bookStep === 4 && isPhone()) {
+    sentBooking = null;
+    setStep(1, { focus: false });
+  }
   // Moving inside Track (list -> one shipment) gets the same small entrance as a tab switch.
   if (view === "track") renderTrack({ animate: !changed && viewsReady });
   if (changed && viewsReady) enterView(view);
@@ -218,36 +232,52 @@ document.querySelectorAll("dialog").forEach((dialog) => {
   });
 });
 
-// ---------- Booking form ----------
+// ---------- Book (Figma "Book —"): route & schedule → details → review → request sent ----------
 const form = $("deliveryForm");
-const estimateBtn = $("estimateBtn");
+const bookView = $("view-book");
 const confirmBtn = $("confirmBtn");
-const quoteEl = $("quote");
-const quoteStaleEl = $("quoteStale");
 const messageEl = $("formMessage");
 const inputs = {
   pickupAddress: $("pickupAddress"),
   dropoffAddress: $("dropoffAddress"),
+  recipientName: $("recipientName"),
   goodsDescription: $("goodsDescription"),
   quantityKg: $("quantityKg"),
-  scheduledPickup: $("scheduledPickup"),
   notes: $("notes"),
 };
-inputs.scheduledPickup.min = localDateString(); // no pickups in the past
-
-const BOOKING_RULES = [
+const ROUTE_RULES = [
   [inputs.pickupAddress, (v) => checkAddress(v, "pickup")],
   [inputs.dropoffAddress, (v) => checkAddress(v, "drop-off")],
+];
+const DETAIL_RULES = [
+  [inputs.recipientName, checkRecipient],
   [inputs.goodsDescription, checkGoods],
   [inputs.quantityKg, checkKg],
-  [inputs.scheduledPickup, (v) => checkPickupDate(v)],
   [inputs.notes, checkNotes],
 ];
-clearWhenFixed(BOOKING_RULES);
+clearWhenFixed([...ROUTE_RULES, ...DETAIL_RULES]);
+/** True when every rule passes, without showing anything. */
+const passes = (rules) => rules.every(([input, check]) => {
+  const r = check(input.value);
+  return !(typeof r === "string" ? r : r?.message);
+});
 
+// The pickup day (YYYY-MM-DD) and two-hour window. Tomorrow, 8–10 AM to start.
+const pickup = { date: dayChoices()[0], window: PICKUP_WINDOWS[0].id };
 let pendingQuote = null;
+let bookStep = 1;
+let sentBooking = null; // what the Request sent screen shows
+
+const STEP_COPY = {
+  1: ["Book shipment", "Book a shipment", "Route & schedule · 1 of 3"],
+  2: ["Book shipment", "Shipment details", "Recipient & cargo · 2 of 3"],
+  3: ["Review booking", "Check your booking", "Review your details · 3 of 3"],
+  4: ["Booking request", "Request sent.", "Waiting for a driver to accept your booking."],
+};
 
 function showMessage(text) {
+  // The message sits just above the step's main button, where the eye is.
+  bookView.querySelector(`.rq-bstep[data-step="${bookStep}"] .rq-bbtn`)?.before(messageEl);
   messageEl.textContent = text;
   messageEl.hidden = false;
 }
@@ -260,78 +290,131 @@ function setBusy(button, busy, label) {
   button.setAttribute("aria-busy", String(busy));
   button.innerHTML = busy ? `<span class="spinner" aria-hidden="true"></span>${label}` : label;
 }
-/** Ease an element in each time it's revealed (restarts the animation). */
-function arrive(el) {
-  el.classList.remove("rq-arrive");
-  void el.offsetWidth;
-  el.classList.add("rq-arrive");
+/** The furthest step the current answers allow (a Back/Forward can't skip a check). */
+function reachableStep(n) {
+  if (n === 4) return sentBooking ? 4 : 1;
+  if (n >= 2 && !(passes(ROUTE_RULES) && !checkPickupDate(pickup.date) && windowOpen())) return 1;
+  if (n >= 3 && !(passes(DETAIL_RULES) && quoteFresh())) return 2;
+  return n;
 }
-// "Booked." stays for 2 seconds, then fades and folds away so Home slides up instead of jumping.
-let bookedTimer = 0;
-function showBooked() {
-  const el = $("bookedBanner");
-  clearTimeout(bookedTimer);
-  el.getAnimations().forEach((a) => a.cancel()); // a second booking mid-fade starts fresh
-  el.hidden = false;
-  arrive(el);
-  bookedTimer = setTimeout(hideBooked, 2000);
+function setStep(n, { focus = true } = {}) {
+  n = reachableStep(n);
+  const changed = n !== bookStep;
+  bookStep = n;
+  bookView.dataset.step = String(n);
+  bookView.querySelectorAll(".rq-bstep").forEach((el) => (el.hidden = Number(el.dataset.step) !== n));
+  const [where, title, sub] = STEP_COPY[n];
+  $("bookWhere").textContent = where;
+  $("bookTitle").textContent = title;
+  $("bookSub").textContent = sub;
+  clearMessage();
+  if (n === 3) renderReview();
+  if (n === 4) renderSent();
+  if (changed && viewsReady) enterStep(n);
+  if (!focus) return;
+  $("bookTitle").setAttribute("tabindex", "-1");
+  $("bookTitle").focus({ preventScroll: true });
+  if (isPhone()) window.scrollTo({ top: 0 });
+  else bookView.scrollIntoView({ block: "nearest" });
 }
-async function hideBooked() {
-  const el = $("bookedBanner");
-  if (el.hidden) return;
-  try {
-    if (reduceMotion()) {
-      await el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, fill: "forwards" }).finished;
-    } else {
-      await el.animate(
-        [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(-6px)" }],
-        { duration: 200, easing: "cubic-bezier(0.23, 1, 0.32, 1)", fill: "forwards" },
-      ).finished;
-      const { marginBottom, paddingTop, paddingBottom } = getComputedStyle(el);
-      await el.animate(
-        [
-          { height: `${el.offsetHeight}px`, marginBottom, paddingTop, paddingBottom, opacity: 0 },
-          { height: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px", borderWidth: "0px", opacity: 0 },
-        ],
-        { duration: 220, easing: "cubic-bezier(0.32, 0.72, 0, 1)" },
-      ).finished;
-    }
-  } catch {
-    return; // cancelled by a new booking, which shows the banner again
+/**
+ * A new step fades in while rising 6px, 180ms, like a tab switch; no slide
+ * and no stagger, so typing is never delayed. Request sent only fades (the
+ * booking code stays still). Reduced motion: a 120ms fade.
+ */
+function enterStep(n) {
+  const els = [bookView.querySelector(".rq-book-title"), bookView.querySelector(`.rq-bstep[data-step="${n}"]`)];
+  const fadeOnly = reduceMotion() || n === 4;
+  for (const el of els) {
+    el?.animate(
+      fadeOnly ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }],
+      { duration: reduceMotion() ? 120 : 180, easing: "cubic-bezier(0.23, 1, 0.32, 1)" },
+    );
   }
-  el.hidden = true;
-  el.getAnimations().forEach((a) => a.cancel());
 }
-
-function resetQuote({ stale = false } = {}) {
-  pendingQuote = null;
-  quoteEl.hidden = true;
-  quoteStaleEl.hidden = !stale;
-  confirmBtn.hidden = true;
-  estimateBtn.hidden = false;
-  estimateBtn.textContent = stale ? "Get the fare again" : "Get the fare";
-  document.body.classList.remove("rq-has-quote");
+/** Forward a step. On phones each step is a history entry, so the system Back goes back a step. */
+function goStep(n) {
+  if (isPhone()) history.pushState({ bookStep: n }, "", "#book");
+  setStep(n);
 }
+window.addEventListener("popstate", (e) => {
+  if (isPhone() && location.hash === "#book") setStep(e.state?.bookStep || 1, { focus: false });
+});
+$("bookBack").addEventListener("click", () => {
+  if (bookStep === 4) return finishSent();
+  if (bookStep === 1) return goTo("home");
+  if (isPhone() && history.state?.bookStep === bookStep) history.back();
+  else setStep(bookStep - 1);
+});
 
-["pickupAddress", "dropoffAddress", "quantityKg"].forEach((id) => {
-  inputs[id].addEventListener("input", () => {
-    if (pendingQuote) resetQuote({ stale: true });
-  });
+// --- Step 1: route, day and time ---
+function windowOpen(date = pickup.date, id = pickup.window) {
+  return openWindows(date).some((w) => w.id === id);
+}
+const longDay = (value) => parseYmd(value).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+function renderQuickDates() {
+  $("quickDates").innerHTML = dayChoices().map((value) => {
+    const d = parseYmd(value);
+    return `<button type="button" class="rq-bday" data-pick-date="${value}" aria-label="${longDay(value)}" aria-pressed="false">
+      <span>${d.toLocaleDateString("en-GB", { weekday: "short" })}</span><strong>${d.getDate()}</strong></button>`;
+  }).join("");
+  showPickup();
+}
+function showPickup() {
+  $("pickupDateValue").textContent = bookDateLabel(pickup.date);
+  $("pickupTimeValue").textContent = windowLabel(pickup.window);
+  $("quickDates").querySelectorAll("[data-pick-date]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.pickDate === pickup.date)));
+}
+function datePicked(value) {
+  pickup.date = value;
+  // A window that has already started today gives way to the next one still open.
+  if (!windowOpen()) pickup.window = openWindows(value)[0]?.id || pickup.window;
+  dateProblem("");
+  showPickup();
+}
+function dateProblem(text) {
+  $("pickupDateError").textContent = text;
+  $("pickupDateError").hidden = !text;
+}
+$("quickDates").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-pick-date]");
+  if (b) datePicked(b.dataset.pickDate);
+});
+
+function toDetails() {
+  const routeOk = validateFields(ROUTE_RULES);
+  let when = checkPickupDate(pickup.date);
+  if (!when && !windowOpen()) when = "That pickup time has passed. Pick a later time or day.";
+  dateProblem(when);
+  if (!routeOk) return;
+  if (when) {
+    $("openDate").focus();
+    return;
+  }
+  goStep(2);
+}
+$("toDetails").addEventListener("click", toDetails);
+
+// --- Step 2 → 3: the fare is worked out on the way to the review ---
+const quoteFresh = () => pendingQuote && !isQuoteStale(pendingQuote, {
+  pickupAddress: inputs.pickupAddress.value,
+  dropoffAddress: inputs.dropoffAddress.value,
+  quantityKg: inputs.quantityKg.value,
 });
 form.addEventListener("input", clearMessage);
 
 function showBookingError(error) {
   const copy = bookingErrorCopy(error);
-  if (copy.field === "pickup") {
-    showFieldError(inputs.pickupAddress, copy.message);
-    inputs.pickupAddress.focus();
-  } else if (copy.field === "dropoff") {
-    showFieldError(inputs.dropoffAddress, copy.message);
-    inputs.dropoffAddress.focus();
+  if (copy.field === "pickup" || copy.field === "dropoff") {
+    // An address Mapbox can't place is fixed on step 1, so go there and point at it.
+    const input = copy.field === "pickup" ? inputs.pickupAddress : inputs.dropoffAddress;
+    if (bookStep !== 1) setStep(1, { focus: false });
+    showFieldError(input, copy.message);
+    input.focus();
   } else {
     showMessage(copy.message);
   }
-  if (copy.kind === "mismatch") resetQuote({ stale: true });
+  if (copy.kind === "mismatch") pendingQuote = null;
 }
 
 async function geocodeLabelled(address, which) {
@@ -343,107 +426,264 @@ async function geocodeLabelled(address, which) {
   }
 }
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (getIsOffline()) {
-    showMessage("No connection. Check your signal and try again. Your details are still here.");
-    return;
-  }
-  if (!validateFields(BOOKING_RULES)) return;
+async function toReview() {
+  if (!validateFields(DETAIL_RULES)) return;
+  if (quoteFresh()) return goStep(3);
+  if (getIsOffline()) return showMessage("No connection. Check your signal and try again. Your details are still here.");
+  const btn = $("toReview");
   clearMessage();
-  setBusy(estimateBtn, true, "Getting the fare…");
+  setBusy(btn, true, "Getting the fare…");
   try {
     const pickupAddress = inputs.pickupAddress.value.trim();
     const dropoffAddress = inputs.dropoffAddress.value.trim();
     const quantityKg = parseFloat(inputs.quantityKg.value);
-    const [pickup, dropoff] = await Promise.all([
+    const [from, to] = await Promise.all([
       geocodeLabelled(pickupAddress, "pickup"),
       geocodeLabelled(dropoffAddress, "dropoff"),
     ]);
-    const distanceKm = await getDrivingDistanceKm(pickup, dropoff);
-    const cost = estimateCost(distanceKm, quantityKg);
-    pendingQuote = { pickupAddress, dropoffAddress, pickup, dropoff, distanceKm, quantityKg, cost };
-
-    $("quoteAmount").textContent = formatPeso(cost);
-    $("quoteBreakdown").textContent = fareBreakdown(distanceKm, quantityKg);
-    $("matchedPickup").textContent = `Pickup: ${pickup.placeName}`;
-    $("matchedDropoff").textContent = `Drop-off: ${dropoff.placeName}`;
-    quoteStaleEl.hidden = true;
-    quoteEl.hidden = false;
-    arrive(quoteEl);
-    estimateBtn.hidden = true;
-    confirmBtn.hidden = false;
-    confirmBtn.textContent = `Confirm booking · ${formatPeso(cost)}`;
-    document.body.classList.add("rq-has-quote");
-    quoteEl.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    const { distanceKm, minutes } = await getDrivingRoute(from, to);
+    pendingQuote = { pickupAddress, dropoffAddress, pickup: from, dropoff: to, distanceKm, minutes, quantityKg, cost: estimateCost(distanceKm, quantityKg) };
+    goStep(3);
   } catch (err) {
     showBookingError(err);
   } finally {
-    estimateBtn.disabled = false;
-    estimateBtn.removeAttribute("aria-busy");
-    if (!pendingQuote) estimateBtn.textContent = quoteStaleEl.hidden ? "Get the fare" : "Get the fare again";
+    setBusy(btn, false, "Review booking");
   }
+}
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault(); // Enter in a field moves the step it's on forward
+  if (bookStep === 1) toDetails();
+  else if (bookStep === 2) toReview();
 });
 
-$("notRight").addEventListener("click", () => {
-  inputs.pickupAddress.focus();
-  inputs.pickupAddress.select();
-});
+// --- Step 3: the ticket ---
+const NOTCHES = `<img class="rq-notch rq-notch--l" src="../../assets/icons/book/notch.svg" width="18" height="18" alt="" /><img class="rq-notch rq-notch--r" src="../../assets/icons/book/notch.svg" width="18" height="18" alt="" />`;
+const cityOf = (geo, address) => geo?.city || shortPlace(address);
+function ticketRoute(from, to, places = []) {
+  const stop = (label, city, place) => `
+    <div class="rq-ticket-stop">
+      <p class="rq-ticket-label">${label}</p>
+      <p class="rq-ticket-city">${esc(city)}</p>
+      ${place ? `<p class="rq-ticket-place">${esc(place)}</p>` : ""}
+    </div>`;
+  return `<div class="rq-ticket-pair">${stop("Pickup", from, places[0])}${stop("Drop-off", to, places[1])}</div>`;
+}
+// "About 2 h 30 min drive" never breaks inside; a narrow line breaks at the "·" instead.
+const keepUnits = (text) => text.replaceAll(" ", "\u00a0");
+function ticketDrive(q) {
+  const drive = driveTimeLabel(q.minutes);
+  return `<p class="rq-ticket-drive">${Math.round(q.distanceKm).toLocaleString("en-PH")}&nbsp;km by road${drive ? ` · ${esc(keepUnits(drive))}` : ""}</p>`;
+}
+const ticketWhen = (date, window) => `
+  <div class="rq-ticket-pair">
+    <div><p class="rq-ticket-label">Pickup date</p><p class="rq-ticket-value">${esc(bookDateLabel(date))}</p></div>
+    <div><p class="rq-ticket-label">Pickup time</p><p class="rq-ticket-value">${esc(windowLabel(window))}</p></div>
+  </div>`;
+function renderReview() {
+  const q = pendingQuote;
+  if (!q) return;
+  const notes = inputs.notes.value.trim();
+  $("reviewTicket").innerHTML = `
+    ${ticketRoute(cityOf(q.pickup, q.pickupAddress), cityOf(q.dropoff, q.dropoffAddress), [q.pickup.placeName, q.dropoff.placeName])}
+    ${ticketDrive(q)}
+    ${ticketWhen(pickup.date, pickup.window)}
+    <div class="rq-ticket-cut" aria-hidden="true">${NOTCHES}</div>
+    <div><p class="rq-ticket-label">Recipient</p><p class="rq-ticket-name">${esc(inputs.recipientName.value.trim())}</p></div>
+    <div class="rq-ticket-pair rq-ticket-pair--load">
+      <div><p class="rq-ticket-label">What you're shipping</p><p class="rq-ticket-value">${esc(inputs.goodsDescription.value.trim())}</p></div>
+      <div><p class="rq-ticket-label">Total weight</p><p class="rq-ticket-value">${q.quantityKg.toLocaleString("en-PH")}&nbsp;kg</p></div>
+    </div>
+    ${notes ? `<div><p class="rq-ticket-label">Notes for the driver</p><p class="rq-ticket-notes">${esc(notes)}</p></div>` : ""}
+    <div class="rq-ticket-rule" aria-hidden="true"></div>
+    <div class="rq-ticket-fare">
+      <div><p class="rq-ticket-value">Estimated fare</p><p class="rq-ticket-label">Cash at drop-off</p></div>
+      <p class="rq-ticket-amount">${formatPeso(q.cost)}</p>
+    </div>
+    <p class="rq-ticket-formula">${esc(fareBreakdown(q.distanceKm, q.quantityKg))}</p>`;
+}
 
 confirmBtn.addEventListener("click", async () => {
-  if (!pendingQuote) return;
-  if (!validateFields(BOOKING_RULES)) return;
-  if (isQuoteStale(pendingQuote, {
-    pickupAddress: inputs.pickupAddress.value,
-    dropoffAddress: inputs.dropoffAddress.value,
-    quantityKg: inputs.quantityKg.value,
-  })) {
-    resetQuote({ stale: true });
-    return;
+  if (!quoteFresh() || !passes(DETAIL_RULES)) return setStep(2);
+  if (!windowOpen() || checkPickupDate(pickup.date)) {
+    setStep(1, { focus: false });
+    dateProblem("That pickup time has passed. Pick a later time or day.");
+    return $("openDate").focus();
   }
-  if (getIsOffline()) {
-    showMessage("No connection. Check your signal and try again. Your details are still here.");
-    return;
-  }
-  const label = confirmBtn.textContent;
-  setBusy(confirmBtn, true, "Booking…");
+  if (getIsOffline()) return showMessage("No connection. Check your signal and try again. Your details are still here.");
+  const q = pendingQuote;
+  const booking = {
+    requester_id: profile.id,
+    pickup_address: q.pickupAddress,
+    pickup_lat: q.pickup.lat,
+    pickup_lng: q.pickup.lng,
+    dropoff_address: q.dropoffAddress,
+    dropoff_lat: q.dropoff.lat,
+    dropoff_lng: q.dropoff.lng,
+    recipient_name: inputs.recipientName.value.trim(),
+    goods_description: inputs.goodsDescription.value.trim(),
+    quantity_kg: q.quantityKg,
+    scheduled_pickup_at: new Date(pickup.date).toISOString(),
+    pickup_window: pickup.window,
+    notes: inputs.notes.value.trim() || null,
+    estimated_cost: q.cost,
+    distance_km: q.distanceKm,
+  };
+  clearMessage();
+  setBusy(confirmBtn, true, "Sending request…");
   let result;
   try {
-    result = await createDelivery({
-      requester_id: profile.id,
-      pickup_address: pendingQuote.pickupAddress,
-      pickup_lat: pendingQuote.pickup.lat,
-      pickup_lng: pendingQuote.pickup.lng,
-      dropoff_address: pendingQuote.dropoffAddress,
-      dropoff_lat: pendingQuote.dropoff.lat,
-      dropoff_lng: pendingQuote.dropoff.lng,
-      goods_description: inputs.goodsDescription.value.trim(),
-      quantity_kg: pendingQuote.quantityKg,
-      scheduled_pickup_at: inputs.scheduledPickup.value
-        ? new Date(inputs.scheduledPickup.value).toISOString()
-        : null,
-      notes: inputs.notes.value.trim() || null,
-      estimated_cost: pendingQuote.cost,
-      distance_km: pendingQuote.distanceKm,
-    });
+    result = await createDelivery(booking);
   } catch (err) {
     result = { error: err };
   }
-  confirmBtn.disabled = false;
-  confirmBtn.removeAttribute("aria-busy");
-  confirmBtn.textContent = label;
+  setBusy(confirmBtn, false, "Request booking");
+  if (result.error) return showBookingError(result.error);
 
-  if (result.error) {
-    showBookingError(result.error);
-    return;
-  }
+  sentBooking = {
+    ...booking,
+    ...result.data,
+    date: pickup.date,
+    from: cityOf(q.pickup, q.pickupAddress),
+    to: cityOf(q.dropoff, q.dropoffAddress),
+  };
   form.reset();
-  resetQuote();
+  pendingQuote = null;
+  pickup.date = dayChoices()[0];
+  pickup.window = PICKUP_WINDOWS[0].id;
+  showPickup();
   highlightId = result.data?.id || null;
-  showBooked();
-  goTo("home");
+  // Request sent replaces the review in history, so Back can't land on a sent form.
+  if (isPhone()) history.replaceState({ bookStep: 4 }, "", "#book");
+  setStep(4);
   await loadDeliveries();
 });
+
+// --- Request sent ---
+const sentStatus = (status) => `<span class="rq-sdot" data-status="${esc(status)}"></span>${esc(STATUS_WORD[status] || statusLabel(status))}`;
+function renderSent() {
+  const b = sentBooking;
+  if (!b) return;
+  const live = deliveries.find((d) => d.id === b.id) || b;
+  const status = live.status || "pending";
+  const kg = b.quantity_kg != null ? ` · ${Number(b.quantity_kg).toLocaleString("en-PH")}&nbsp;kg` : "";
+  $("bookSent").innerHTML = `
+    <div class="rq-bcard rq-bcode">
+      <p class="rq-bcode-label">Booking code</p>
+      <p class="rq-bcode-value">${esc(live.delivery_code || "")}</p>
+      <p class="rq-bcode-note">Keep this code for tracking and support.</p>
+      ${NOTCHES}
+    </div>
+    <div class="rq-bcard rq-ticket">
+      ${ticketRoute(b.from, b.to)}
+      ${ticketWhen(b.date, b.pickup_window)}
+      <div class="rq-ticket-rule" aria-hidden="true"></div>
+      <p class="rq-ticket-value">${esc(b.recipient_name)} · ${esc(b.goods_description)}${kg}</p>
+    </div>
+    <p class="rq-bstatus" id="sentStatus" data-status="${esc(status)}" aria-live="polite">${sentStatus(status)}</p>
+    <button class="rq-btn rq-bbtn" type="button" id="sentDone">${isPhone() ? "Back to Home" : "Book another shipment"}</button>`;
+}
+/** A driver can accept while Request sent is still open: only the status line changes. */
+function refreshSent() {
+  const el = $("sentStatus");
+  const live = sentBooking && deliveries.find((d) => d.id === sentBooking.id);
+  if (!el || !live || el.dataset.status === live.status) return;
+  el.dataset.status = live.status;
+  el.innerHTML = sentStatus(live.status);
+}
+function finishSent() {
+  sentBooking = null;
+  setStep(1, { focus: !isPhone() });
+  if (isPhone()) goTo("home");
+}
+$("bookSent").addEventListener("click", (e) => {
+  if (e.target.closest("#sentDone")) finishSent();
+});
+
+// --- Date and time sheets (keep the choice only on "Use …") ---
+let calMonth = null;
+let draftDate = null;
+const MONTHS_AHEAD = 2; // this month and the next two
+function calBounds() {
+  const now = new Date();
+  return { first: new Date(now.getFullYear(), now.getMonth(), 1), last: new Date(now.getFullYear(), now.getMonth() + MONTHS_AHEAD, 1) };
+}
+function dayOpen(value) {
+  return !checkPickupDate(value) && openWindows(value).length > 0;
+}
+function renderCal() {
+  const { first, last } = calBounds();
+  const today = ymd(new Date());
+  $("calMonth").textContent = calMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  $("calPrev").disabled = calMonth <= first;
+  $("calNext").disabled = calMonth >= last;
+  $("calGrid").innerHTML = monthCells(calMonth.getFullYear(), calMonth.getMonth()).map((value) => {
+    if (!value) return `<span class="rq-cal-blank"></span>`;
+    const off = !dayOpen(value);
+    return `<button type="button" class="rq-cal-day" data-cal-date="${value}" aria-label="${longDay(value)}" aria-pressed="${value === draftDate}"${value === today ? ' aria-current="date"' : ""}${off ? " disabled" : ""}>${parseYmd(value).getDate()}</button>`;
+  }).join("");
+  $("dateSheetValue").textContent = bookDateLabel(draftDate);
+}
+$("openDate").addEventListener("click", () => {
+  draftDate = pickup.date;
+  const d = parseYmd(draftDate);
+  calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+  renderCal();
+  openSheet($("dateSheet"));
+});
+$("calPrev").addEventListener("click", () => {
+  calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1);
+  renderCal();
+});
+$("calNext").addEventListener("click", () => {
+  calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
+  renderCal();
+});
+$("calGrid").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-cal-date]");
+  if (!b || b.disabled) return;
+  draftDate = b.dataset.calDate;
+  $("calGrid").querySelectorAll("[data-cal-date]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  $("dateSheetValue").textContent = bookDateLabel(draftDate);
+});
+$("useDate").addEventListener("click", () => {
+  if (dayOpen(draftDate)) datePicked(draftDate);
+  closeSheet($("dateSheet"));
+});
+
+let draftWindow = null;
+function renderWindows() {
+  const open = openWindows(pickup.date).map((w) => w.id);
+  $("timeWindows").innerHTML = PICKUP_WINDOWS.map((w) => `
+    <button type="button" class="rq-window" data-window="${w.id}" aria-pressed="${w.id === draftWindow}"${open.includes(w.id) ? "" : " disabled"}>
+      <span>${w.label}</span><img src="../../assets/icons/book/check-amber.svg" width="16.4167" height="16.4167" alt="" />
+    </button>`).join("");
+  $("timeSheetValue").textContent = windowLabel(draftWindow);
+  const note = $("timeSheetNote");
+  note.hidden = open.length === PICKUP_WINDOWS.length;
+  note.textContent = "Earlier times today have passed.";
+}
+$("openTime").addEventListener("click", () => {
+  draftWindow = pickup.window;
+  renderWindows();
+  openSheet($("timeSheet"));
+});
+$("timeWindows").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-window]");
+  if (!b || b.disabled) return;
+  draftWindow = b.dataset.window;
+  $("timeWindows").querySelectorAll("[data-window]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  $("timeSheetValue").textContent = windowLabel(draftWindow);
+});
+$("useTime").addEventListener("click", () => {
+  if (windowOpen(pickup.date, draftWindow)) {
+    pickup.window = draftWindow;
+    dateProblem("");
+    showPickup();
+  }
+  closeSheet($("timeSheet"));
+});
+renderQuickDates();
 
 // ---------- Rendering ----------
 let deliveries = [];
@@ -557,10 +797,12 @@ function renderTiles(active) {
 
 // ---------- Real maps on the shipment cards ----------
 // The road between pickup and drop-off never changes, so each booking's
-// route is fetched once and kept for the session.
+// route (and its drive time) is fetched once and kept for the session.
 const routeLines = new Map();
+const driveMins = new Map();
 const routeLoading = new Set();
 const ROUTE_KEY = (id) => `sakada.route.${id}`;
+const DRIVE_KEY = (id) => `sakada.drive.${id}`;
 const hasCoords = (d) => d.pickup_lat != null && d.pickup_lng != null && d.dropoff_lat != null && d.dropoff_lng != null;
 const truckAt = (d) => (d.status === "picked_up" || d.status === "in_transit") && d.current_lat && d.current_lng
   ? { lat: d.current_lat, lng: d.current_lng }
@@ -573,6 +815,20 @@ function cachedLine(id) {
   } catch { /* private mode: fetch again next time */ }
   return routeLines.get(id) ?? null;
 }
+/** Minutes of driving, null when Mapbox had none, undefined when not fetched yet. */
+function cachedMinutes(id) {
+  if (!driveMins.has(id)) {
+    try {
+      const saved = sessionStorage.getItem(DRIVE_KEY(id));
+      if (saved !== null) driveMins.set(id, saved ? Number(saved) : null);
+    } catch { /* private mode: fetch again next time */ }
+  }
+  return driveMins.get(id);
+}
+function needsRoute(d) {
+  const line = cachedLine(d.id);
+  return (line === null && !routeLines.has(d.id)) || cachedMinutes(d.id) === undefined;
+}
 function shipMapUrl(d) {
   return routeMapUrl({
     pickup: { lat: d.pickup_lat, lng: d.pickup_lng },
@@ -581,15 +837,21 @@ function shipMapUrl(d) {
     line: cachedLine(d.id),
   });
 }
-/** Fetch the road for cards that don't have it yet, then redraw just their maps. */
+/** Fetch the road for cards that don't have it yet, then redraw just their maps and drive time. */
 function loadRouteLines(list) {
-  list.filter((d) => hasCoords(d) && !routeLines.has(d.id) && cachedLine(d.id) === null && !routeLoading.has(d.id)).forEach((d) => {
+  list.filter((d) => hasCoords(d) && !routeLoading.has(d.id) && needsRoute(d)).forEach((d) => {
     routeLoading.add(d.id);
     getRouteLine({ lat: d.pickup_lat, lng: d.pickup_lng }, { lat: d.dropoff_lat, lng: d.dropoff_lng })
-      .then((line) => {
+      .then(({ line, minutes }) => {
+        const had = routeLines.get(d.id);
         routeLines.set(d.id, line);
-        try { sessionStorage.setItem(ROUTE_KEY(d.id), line || ""); } catch { /* fine */ }
-        if (!line) return;
+        driveMins.set(d.id, minutes);
+        try {
+          sessionStorage.setItem(ROUTE_KEY(d.id), line || "");
+          sessionStorage.setItem(DRIVE_KEY(d.id), minutes ?? "");
+        } catch { /* fine */ }
+        showDrive(d.id);
+        if (!line || line === had) return;
         for (const img of [$(`shipmap-${d.id}`), $(`trackmap-${d.id}`)]) if (img) swapMap(img, shipMapUrl(d));
       }, () => {}) // no road: the pins alone still show where it goes
       .finally(() => routeLoading.delete(d.id));
@@ -844,9 +1106,23 @@ function trackRate(d) {
     </div>`;
 }
 
+/** The Track page's "· About 2 h drive", filled in place when Mapbox answers. */
+function driveSpan(d, sep) {
+  const drive = driveTimeLabel(cachedMinutes(d.id));
+  return `<span data-drive="${esc(d.id)}"${sep ? " data-sep" : ""}>${drive ? `${sep ? " · " : ""}${esc(keepUnits(drive))}` : ""}</span>`;
+}
+function showDrive(id) {
+  const span = document.querySelector(`[data-drive="${CSS.escape(id)}"]`);
+  const drive = driveTimeLabel(cachedMinutes(id));
+  if (span && drive) span.textContent = `${span.hasAttribute("data-sep") ? " · " : ""}${keepUnits(drive)}`;
+}
+
 function trackRoute(d) {
   const facts = [];
-  if (d.scheduled_pickup_at) facts.push(`Pickup ${keep(day(d.scheduled_pickup_at))}`);
+  if (d.scheduled_pickup_at) {
+    const window = windowLabel(d.pickup_window);
+    facts.push(`Pickup ${keep(day(d.scheduled_pickup_at))}${window ? `, ${keep(window)}` : ""}`);
+  }
   if (d.distance_km != null) facts.push(`${Math.round(Number(d.distance_km)).toLocaleString("en-PH")}&nbsp;km by road`);
   return `
     <div class="rq-tcard">
@@ -858,7 +1134,7 @@ function trackRoute(d) {
         <p class="rq-stop rq-stop--from"><span class="rq-muted">Pickup</span><br />${esc(d.pickup_address)}</p>
         <p class="rq-stop rq-stop--to"><span class="rq-muted">Drop-off</span><br />${esc(d.dropoff_address)}</p>
       </div>
-      ${facts.length ? `<p class="rq-track-small">${facts.join(" · ")}</p>` : ""}
+      ${facts.length || hasCoords(d) ? `<p class="rq-track-small">${facts.join(" · ")}${driveSpan(d, facts.length > 0)}</p>` : ""}
     </div>`;
 }
 
@@ -893,7 +1169,7 @@ function trackDetail(d, { back }) {
     <div class="rq-tcard rq-track-fare">
       ${fareAmount(d)}
       <p class="rq-track-small">Fare for this trip · tolls included</p>
-      <p>Whoever receives the goods pays the driver this amount in cash at drop-off.</p>
+      <p>${d.recipient_name ? esc(d.recipient_name) : "Whoever receives the goods"} pays the driver this amount in cash at drop-off.</p>
     </div>
     ${actions ? `<div class="rq-track-actions">${actions}</div>` : ""}
     <a class="rq-track-help" href="${contactUrl(CONTACT, d.delivery_code)}">Something wrong? Send Sakada a message about ${esc(d.delivery_code)}</a>`;
@@ -946,7 +1222,10 @@ function trackMissing(code) {
 // (a half-typed rating comment survives a notification arriving).
 let trackShown = null;
 // The parts a live truck update changes; those are swapped in place, not redrawn.
-const withoutLive = (html) => html.replace(/Truck here [^<]*/, "").replace(/ src="https:\/\/api\.mapbox\.com[^"]*"/, "");
+const withoutLive = (html) => html
+  .replace(/Truck here [^<]*/, "")
+  .replace(/ src="https:\/\/api\.mapbox\.com[^"]*"/, "")
+  .replace(/(<span data-drive="[^"]*"[^>]*>)[^<]*/, "$1"); // drive time arrives on its own
 function renderTrack({ animate = false } = {}) {
   if (document.body.dataset.view !== "track") return;
   const page = $("trackPage");
@@ -1058,19 +1337,19 @@ function historyPager(state) {
 
 function renderRecentRoute() {
   const last = deliveries[0];
-  const btn = $("recentRoute");
-  if (!last) {
-    btn.hidden = true;
-    return;
-  }
-  btn.hidden = false;
+  $("recentRoute").hidden = !last;
+  if (!last) return;
+  const btn = $("recentRouteBtn");
   btn.dataset.rebookId = last.id;
-  const text = `${last.pickup_address.split(",")[0]} → ${last.dropoff_address.split(",")[0]} · ${last.goods_description}`;
-  $("recentRouteText").textContent = text;
-  btn.title = text; // the button shows two lines at most
+  const route = `${shortPlace(last.pickup_address)} → ${shortPlace(last.dropoff_address)}`;
+  const load = [last.goods_description, last.quantity_kg != null ? `${Number(last.quantity_kg).toLocaleString("en-PH")} kg` : ""].filter(Boolean).join(" · ");
+  $("recentRouteText").textContent = route;
+  $("recentRouteLoad").textContent = load;
+  btn.setAttribute("aria-label", `Use recent route: ${route}, ${load}`);
 }
 
 function renderAll() {
+  refreshSent();
   renderHome();
   renderHistory();
   renderRecentRoute();
@@ -1167,16 +1446,17 @@ async function leaveHome(id) {
   withFlip(() => renderAll());
 }
 
-/** Fill the Book form with an old booking (date left empty) and go there. */
+/** Fill the Book form with an old booking's route, recipient and load, then ask for the day. */
 function rebookIntoForm(d) {
   for (const [id, value] of Object.entries(rebookValues(d))) {
     inputs[id].value = value;
     inputs[id].dispatchEvent(new Event("input", { bubbles: true }));
   }
-  inputs.scheduledPickup.value = "";
-  resetQuote();
-  goTo("book");
-  inputs.scheduledPickup.focus({ preventScroll: true });
+  pendingQuote = null;
+  sentBooking = null;
+  if (document.body.dataset.view !== "book") goTo("book");
+  setStep(1, { focus: false });
+  $("openDate").focus({ preventScroll: true });
 }
 
 // ---------- Book a late request again with a new date ----------
@@ -1235,6 +1515,9 @@ $("newDateConfirm").addEventListener("click", async () => {
       goods_description: d.goods_description,
       quantity_kg: d.quantity_kg,
       scheduled_pickup_at: new Date(input.value).toISOString(),
+      // Same recipient and time of day as before (bookings from before 0024 have neither).
+      ...(d.recipient_name ? { recipient_name: d.recipient_name } : {}),
+      ...(d.pickup_window ? { pickup_window: d.pickup_window } : {}),
       notes: d.notes,
       estimated_cost: estimateCost(Number(d.distance_km), Number(d.quantity_kg)),
       distance_km: d.distance_km,

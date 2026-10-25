@@ -18,6 +18,7 @@ const oneJob = () => fixtures().deliveries.filter((d) => d.delivery_code !== "SK
 const PHONE = { width: 390, height: 844 }; // the next-step bar is phone-only
 const code = (db, c) => db.deliveries.find((d) => d.delivery_code === c);
 // Pickup dates must be today or later, so book two days ahead of whenever the test runs.
+const ymdOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const futureDate = () => {
   const d = new Date();
   d.setDate(d.getDate() + 2);
@@ -58,6 +59,7 @@ test.describe("dashboards (fake sign-in)", () => {
     const track = page.locator("#trackPage");
     await expect(page).toHaveURL(/#track\/SK-00001$/);
     await expect(track).toContainText("Cabanatuan City, Nueva Ecija");
+    await expect(track).toContainText(/About\s2\sh\s30\smin\sdrive/); // filled in once the route loads
     await track.getByRole("button", { name: "Cancel request" }).click();
     await expect(page.locator("#cancelSheet")).toBeVisible();
     await page.locator("#cancelConfirm").click();
@@ -119,39 +121,116 @@ test.describe("dashboards (fake sign-in)", () => {
     expect(errors).toEqual([]);
   });
 
-  test("farmer books a truck: fare first, then confirm", async ({ page }) => {
+  test("farmer books a shipment in three steps", async ({ page }) => {
     const errors = trackErrors(page);
     const db = await mockSupabase(page, "farmer");
     await page.goto("/dashboard/farmer/index.html#book");
+    // 1 of 3: route, day and time
+    await page.locator("#toDetails").click();
+    await expect(page.locator("#pickupAddressError")).toBeVisible();
     await page.fill("#pickupAddress", "Cabanatuan City, Nueva Ecija");
     await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
+    await page.locator("#quickDates button").nth(2).click();
+    await expect(page.locator("#quickDates button").nth(2)).toHaveAttribute("aria-pressed", "true");
+    await page.locator("#openTime").click();
+    await page.locator("#timeSheet").getByRole("button", { name: "10:00 AM–12:00 PM" }).click();
+    await page.locator("#useTime").click();
+    await expect(page.locator("#timeSheet")).toBeHidden();
+    await expect(page.locator("#pickupTimeValue")).toHaveText("10:00 AM–12:00 PM");
+    await page.locator("#toDetails").click();
+    // 2 of 3: recipient and cargo
+    await expect(page.locator("#bookTitle")).toHaveText("Shipment details");
+    await page.locator("#toReview").click();
+    await expect(page.locator("#recipientNameError")).toHaveText("Enter the name of the person who receives the goods.");
+    await expect(page.locator("#recipientName")).toBeFocused();
+    await page.fill("#recipientName", "Maria Santos");
     await page.fill("#goodsDescription", "Eggplant, 32 crates");
     await page.fill("#quantityKg", "800");
-    await page.fill("#scheduledPickup", futureDate());
-    await page.locator("#estimateBtn").click();
-    await expect(page.locator("#quoteAmount")).toHaveText("₱3,526"); // 150 + 118.4 km × 15 + 800 kg × 2
-    expect(db.deliveries).toHaveLength(6); // nothing booked until confirm
+    await page.fill("#notes", "Use the side gate.");
+    await page.locator("#toReview").click();
+    // 3 of 3: the ticket with the fare
+    await expect(page.locator("#bookTitle")).toHaveText("Check your booking");
+    const ticket = page.locator("#reviewTicket");
+    await expect(ticket).toContainText("₱3,526"); // 150 + 118.4 km × 15 + 800 kg × 2
+    await expect(ticket).toContainText(/118\skm by road · About\s2\sh\s30\smin\sdrive/); // Mapbox's 8,880 s
+    await expect(ticket).toContainText("Maria Santos");
+    await expect(ticket).toContainText("10:00 AM–12:00 PM");
+    await expect(ticket).toContainText("Use the side gate.");
+    expect(db.deliveries).toHaveLength(6); // nothing booked until Request booking
     await page.locator("#confirmBtn").click();
-    await expect(page.locator("#bookedBanner")).toBeVisible();
-    await expect(page.locator("#bookedBanner")).toBeHidden({ timeout: 4000 }); // fades after 2 seconds
+    // Request sent
+    await expect(page.locator("#bookTitle")).toHaveText("Request sent.");
+    await expect(page.locator(".rq-bcode-value")).toHaveText("SK-00007");
+    await expect(page.locator("#sentStatus")).toHaveText("Waiting for a driver");
     expect(db.deliveries).toHaveLength(7);
-    expect(db.deliveries[6]).toMatchObject({ goods_description: "Eggplant, 32 crates", quantity_kg: 800 });
+    expect(db.deliveries[6]).toMatchObject({
+      goods_description: "Eggplant, 32 crates",
+      quantity_kg: 800,
+      recipient_name: "Maria Santos",
+      pickup_window: "10-12",
+      notes: "Use the side gate.",
+    });
     await expect(page.locator("#homeLists [data-delivery-id]", { hasText: "SK-00007" })).toContainText("Waiting for a driver");
+    // Desktop: the panel starts a fresh booking
+    await page.getByRole("button", { name: "Book another shipment" }).click();
+    await expect(page.locator("#bookTitle")).toHaveText("Book a shipment");
+    await expect(page.locator("#pickupAddress")).toHaveValue("");
     expect(errors).toEqual([]);
   });
 
-  test("an address Mapbox can't find gets a plain error and no fare", async ({ page }) => {
+  test("the pickup date sheet keeps past days off and sets the day", async ({ page }) => {
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#book");
+    await page.locator("#openDate").click();
+    const sheet = page.locator("#dateSheet");
+    await expect(sheet).toBeVisible();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (yesterday.getMonth() === new Date().getMonth()) {
+      await expect(sheet.locator(`[data-cal-date="${ymdOf(yesterday)}"]`)).toBeDisabled();
+    }
+    await sheet.getByRole("button", { name: "Next month" }).click();
+    const next = new Date();
+    next.setDate(15);
+    next.setMonth(next.getMonth() + 1);
+    await sheet.locator(`[data-cal-date="${ymdOf(next)}"]`).click();
+    await page.locator("#useDate").click();
+    await expect(sheet).toBeHidden();
+    await expect(page.locator("#pickupDateValue")).toContainText(` ${next.getDate()} `);
+    await expect(page.locator("#quickDates [aria-pressed='true']")).toHaveCount(0);
+  });
+
+  test("an address Mapbox can't find sends you back to the route", async ({ page }) => {
     await mockSupabase(page, "farmer");
     await page.goto("/dashboard/farmer/index.html#book");
     await page.fill("#pickupAddress", "nowhere");
     await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
+    await page.locator("#toDetails").click();
+    await page.fill("#recipientName", "Maria Santos");
     await page.fill("#goodsDescription", "Eggplant, 32 crates");
     await page.fill("#quantityKg", "800");
-    await page.fill("#scheduledPickup", futureDate());
-    await page.locator("#estimateBtn").click();
+    await page.locator("#toReview").click();
+    await expect(page.locator("#bookTitle")).toHaveText("Book a shipment");
     await expect(page.locator("#pickupAddressError")).toHaveText("We couldn't find this address. Add the town and province.");
     await expect(page.locator("#pickupAddress")).toBeFocused();
-    await expect(page.locator("#quote")).toBeHidden();
+  });
+
+  test("on a phone each Book step is a Back step", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#book");
+    await page.fill("#pickupAddress", "Cabanatuan City, Nueva Ecija");
+    await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
+    await page.locator("#toDetails").click();
+    await expect(page.locator("#bookTitle")).toHaveText("Shipment details");
+    await page.fill("#recipientName", "Maria Santos");
+    await page.goBack();
+    await expect(page.locator("#bookTitle")).toHaveText("Book a shipment");
+    await expect(page.locator("#dropoffAddress")).toHaveValue("Marikina Public Market, Marikina");
+    await page.locator("#toDetails").click();
+    await expect(page.locator("#recipientName")).toHaveValue("Maria Santos"); // kept when going back
+    await page.locator("#bookBack").click();
+    await expect(page.locator("#bookTitle")).toHaveText("Book a shipment");
   });
 
   test("on a phone the tabs switch views and the landing link opens Book", async ({ page }) => {

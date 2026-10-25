@@ -168,7 +168,7 @@ export async function mockSupabase(page, role, overrides = {}) {
 
   await page.routeWebSocket(/\/realtime\/v1\//, () => {}); // never connects, never errors
   // Mapbox: geocoding echoes the query as a Philippine place, directions
-  // returns 118.4 km, and static map images are a 1x1 PNG.
+  // returns 118.4 km in 2 h 28 min, and static map images are a 1x1 PNG.
   await page.route("https://api.mapbox.com/**", (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/geocoding/")) {
@@ -177,7 +177,7 @@ export async function mockSupabase(page, role, overrides = {}) {
       return route.fulfill({ json: { features: [{ center: [121.0, 14.6], place_name: `${query}, Philippines` }] } });
     }
     if (url.pathname.startsWith("/directions/")) {
-      return route.fulfill({ json: { routes: [{ distance: 118400 }] } });
+      return route.fulfill({ json: { routes: [{ distance: 118400, duration: 8880 }] } });
     }
     return route.fulfill({
       contentType: "image/png",

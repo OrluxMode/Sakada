@@ -9,6 +9,7 @@ import {
   checkAddress,
   checkGoods,
   checkKg,
+  checkRecipient,
   checkPickupDate,
   checkNotes,
   checkPlate,
@@ -179,5 +180,14 @@ describe("checkTrackQuery", () => {
     expect(checkTrackQuery("SK-00142")).toBe("");
     expect(checkTrackQuery("tomatoes")).toBe("");
     expect(checkTrackQuery("x".repeat(61))).toBe("Keep it under 60 characters.");
+  });
+});
+
+describe("checkRecipient", () => {
+  it("needs a name of 2 to 80 characters", () => {
+    expect(checkRecipient("Maria Santos")).toBe("");
+    expect(checkRecipient("  ")).toBe("Enter the name of the person who receives the goods.");
+    expect(checkRecipient(" M ")).not.toBe("");
+    expect(checkRecipient("a".repeat(81))).not.toBe("");
   });
 });

@@ -28,7 +28,8 @@ sakada-backend/
 │       ├── 0020_driver_jobs_and_payment.sql ← two-active-job cap, payment status, status timestamps
 │       ├── 0021_text_limits.sql             ← booking/profile text and quantity limits
 │       ├── 0022_past_pickup_date.sql        ← Manila pickup-date checks and expired-job visibility
-│       └── 0023_driver_rating_average.sql  ← real driver rating averages and counts in requester RPC
+│       ├── 0023_driver_rating_average.sql  ← real driver rating averages and counts in requester RPC
+│       └── 0024_recipient_and_pickup_window.sql ← recipient name and Philippine-time pickup window
 ├── docs/
 │   ├── SCHEMA.md                            ← every table explained
 │   └── SETUP.md                             ← step-by-step setup guide
@@ -36,7 +37,7 @@ sakada-backend/
 
 Status
 
-Migrations 0001–0023 are written. Apply pending migrations in order; this list
+Migrations 0001–0024 are written. Apply pending migrations in order; this list
 does not confirm their deployment status. The frontend (sakada-web/) is fully wired to this backend with:
 - Real authentication (email/password + Google OAuth)
 - Role-based dashboards (farmer, vendor, driver, admin)

@@ -13,7 +13,7 @@ explained below rather than hidden.
 | Delivery requests, Bookings, Assignments | `deliveries` (see below) |
 | Goods                            | `goods_description`, `quantity_kg` columns on `deliveries` |
 | Locations                        | `pickup_lat/lng`, `dropoff_lat/lng`, `current_lat/lng` columns |
-| Schedules                        | `scheduled_pickup_at` column on `deliveries` |
+| Schedules                        | `scheduled_pickup_at`, `pickup_window` columns on `deliveries` |
 | Delivery statuses                | `delivery_status` enum + `delivery_status_history` table |
 | Notifications                    | `notifications` table |
 | Delivery history                 | `delivery_status_history` (every status change, timestamped) |
@@ -49,6 +49,20 @@ auto-generated. `status` moves through: `pending` → `driver_assigned` →
 `current_lat`/`current_lng` are what Phase 7 tracking updates while a
 delivery is in transit.
 
+Migration `0024` adds nullable `recipient_name` (the person receiving the goods
+and paying the driver at drop-off) and `pickup_window`. Window codes are
+`08-10` (8:00–10:00 AM), `10-12` (10:00 AM–12:00 PM), and `13-15`
+(1:00–3:00 PM), all Philippine time. Existing bookings keep NULL for both;
+there is no backfill. Requesters may provide them on insert; requesters and
+drivers cannot change them after booking because `guard_delivery_update()`
+checks all changed keys against allow-lists. Admins may edit them, subject to
+the constraints below. Assigned drivers can read both on their jobs through
+existing RLS and table-level SELECT privileges. Existing table-level INSERT
+privileges cover both columns; no new grants are needed.
+
+`scheduled_pickup_at` retains its existing UTC date encoding. The window does
+not affect `pickup_date_passed()` or any of migration `0022`'s past-date rules.
+
 **`delivery_status_history`** — every status a delivery ever passed through,
 who changed it, and when. Auto-populated by a trigger — the front end never
 writes to this table directly, so there's no risk of the audit trail and the
@@ -65,7 +79,7 @@ driver can each leave one rating about the other side for the same
 delivery. The RLS policy only allows inserting a rating once `status =
 'delivered'`, so you can't rate a delivery that hasn't happened yet.
 
-## Booking and profile limits (0021)
+## Booking and profile limits (0021, 0024)
 
 Database checks enforce these limits on inserts and updates, including direct
 API writes. Text lengths are measured after trimming surrounding spaces.
@@ -76,6 +90,8 @@ API writes. Text lengths are measured after trimming surrounding spaces.
 | `deliveries_dropoff_address_len` | 5–200 characters |
 | `deliveries_goods_description_len` | 2–120 characters |
 | `deliveries_notes_len` | NULL or at most 500 characters |
+| `deliveries_recipient_name_len` | NULL or 2–80 characters after trimming |
+| `deliveries_pickup_window_valid` | NULL or exactly `08-10`, `10-12`, `13-15` |
 | `deliveries_quantity_kg_range` | NULL or 1–100000 kg (inclusive) |
 | `profiles_full_name_len` | 2–120 characters |
 
@@ -86,6 +102,9 @@ per column. A check left `NOT VALID` still rejects invalid inserts and updates,
 including updates to legacy rows that still violate it. After correcting old
 data, run `ALTER TABLE <table> VALIDATE CONSTRAINT <constraint>` for each
 remaining check.
+
+The two `0024` checks are validated immediately. Both new columns are nullable
+with no default, so existing rows satisfy them without data changes.
 
 The signup trigger trims and caps metadata names to 120 characters before
 creating a profile. Names shorter than two characters fall back to the trimmed,

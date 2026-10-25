@@ -29,12 +29,25 @@ export async function geocodeAddress(address) {
     );
   }
 
-  const [lng, lat] = data.features[0].center;
-  return { lat, lng, placeName: data.features[0].place_name };
+  const feature = data.features[0];
+  const [lng, lat] = feature.center;
+  return { lat, lng, placeName: feature.place_name, city: placeCity(feature) };
 }
 
-/** Real driving distance in kilometers between two geocoded points. */
-export async function getDrivingDistanceKm(origin, destination) {
+/**
+ * The city or town a geocoding result sits in ("Marikina" for "Marikina
+ * Public Market, Marikina, Metro Manila"), or "" when Mapbox doesn't say.
+ */
+export function placeCity(feature) {
+  if (feature?.place_type?.includes("place")) return feature.text || "";
+  return feature?.context?.find((c) => String(c.id).startsWith("place."))?.text || "";
+}
+
+/**
+ * Real driving distance in kilometers between two geocoded points, and how
+ * long Mapbox says the drive takes, in minutes (no traffic, no stops).
+ */
+export async function getDrivingRoute(origin, destination) {
   const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?access_token=${MAPBOX_TOKEN}&overview=false`;
 
   const res = await fetch(url);
@@ -46,7 +59,14 @@ export async function getDrivingDistanceKm(origin, destination) {
     throw new Error("No driving route found between those two points.");
   }
 
-  return data.routes[0].distance / 1000; // meters -> km
+  const route = data.routes[0];
+  return { distanceKm: route.distance / 1000, minutes: routeMinutes(route) };
+}
+
+/** A Mapbox route's duration in minutes, or null when it doesn't give one. */
+export function routeMinutes(route) {
+  const seconds = Number(route?.duration);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds / 60 : null;
 }
 
 /**
@@ -81,14 +101,16 @@ export function staticMapUrl(
 
 /**
  * The road a booking takes, as Mapbox's encoded polyline (simplified, so
- * the static map URL stays short). Null if there's no route.
+ * the static map URL stays short), and the drive time in minutes. Line is
+ * null if there's no route.
  */
 export async function getRouteLine(origin, destination) {
   const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?access_token=${MAPBOX_TOKEN}&overview=simplified&geometries=polyline`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("Couldn't load the route.");
   const data = await res.json();
-  return data.routes?.[0]?.geometry || null;
+  const route = data.routes?.[0];
+  return { line: route?.geometry || null, minutes: routeMinutes(route) };
 }
 
 /**

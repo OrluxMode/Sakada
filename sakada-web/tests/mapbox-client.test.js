@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { estimateCost, staticMapUrl, routeMapUrl } from "../js/mapbox-client.js";
+import { estimateCost, staticMapUrl, routeMapUrl, placeCity, routeMinutes } from "../js/mapbox-client.js";
 
 describe("estimateCost", () => {
   it("calculates cost with base fare + distance + weight", () => {
@@ -81,5 +81,22 @@ describe("routeMapUrl", () => {
     const url = routeMapUrl({ pickup, dropoff, line: "x".repeat(7000) });
     expect(url).not.toContain("path-");
     expect(url).toContain("pin-s-a");
+  });
+});
+
+describe("placeCity", () => {
+  it("finds the city a result sits in", () => {
+    expect(placeCity({ place_type: ["poi"], text: "Marikina Public Market", context: [{ id: "locality.1", text: "Sto. Niño" }, { id: "place.9", text: "Marikina" }] })).toBe("Marikina");
+    expect(placeCity({ place_type: ["place"], text: "Cabanatuan City" })).toBe("Cabanatuan City");
+    expect(placeCity({ place_type: ["address"], text: "Rizal Ave" })).toBe("");
+  });
+});
+
+describe("routeMinutes", () => {
+  it("turns Mapbox seconds into minutes", () => expect(routeMinutes({ duration: 8880 })).toBe(148));
+  it("is null when the route has no duration", () => {
+    expect(routeMinutes({})).toBeNull();
+    expect(routeMinutes(undefined)).toBeNull();
+    expect(routeMinutes({ duration: 0 })).toBeNull();
   });
 });

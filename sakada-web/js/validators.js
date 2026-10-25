@@ -163,6 +163,14 @@ export function checkGoods(value) {
   return "";
 }
 
+export function checkRecipient(value) {
+  const v = value.trim();
+  if (!v) return "Enter the name of the person who receives the goods.";
+  if (v.length < 2) return "Enter the recipient's full name.";
+  if (v.length > 80) return "Keep the name to 80 characters or fewer.";
+  return "";
+}
+
 export function checkKg(value) {
   const v = String(value).trim();
   if (!v) return "Enter the weight in kg.";

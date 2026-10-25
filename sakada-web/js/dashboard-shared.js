@@ -219,7 +219,64 @@ export function rebookValues(d) {
     dropoffAddress: d.dropoff_address || "",
     goodsDescription: d.goods_description || "",
     quantityKg: d.quantity_kg != null ? String(d.quantity_kg) : "",
+    recipientName: d.recipient_name || "",
   };
+}
+
+// ---------- Book: pickup day and time window ----------
+
+/** The three two-hour pickup windows (Philippine time), as saved in deliveries.pickup_window. */
+export const PICKUP_WINDOWS = [
+  { id: "08-10", label: "8:00–10:00 AM", start: 8 },
+  { id: "10-12", label: "10:00 AM–12:00 PM", start: 10 },
+  { id: "13-15", label: "1:00–3:00 PM", start: 13 },
+];
+
+export function windowLabel(id) {
+  return PICKUP_WINDOWS.find((w) => w.id === id)?.label || "";
+}
+
+/** YYYY-MM-DD in local time. */
+export function ymd(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/** A YYYY-MM-DD string as a local Date at midnight. */
+export function parseYmd(value) {
+  const [y, m, d] = String(value).split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Windows a truck can still make on `date`: every one on a later day, only those not yet started today. */
+export function openWindows(date, now = new Date()) {
+  const today = ymd(now);
+  if (date < today) return [];
+  if (date > today) return PICKUP_WINDOWS;
+  return PICKUP_WINDOWS.filter((w) => now.getHours() < w.start);
+}
+
+/** The quick-pick days on the Book page: tomorrow and the `count - 1` days after it. */
+export function dayChoices(now = new Date(), count = 5) {
+  return Array.from({ length: count }, (_, i) => ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1 + i)));
+}
+
+/** "Sat, 24 Oct" (the Book flow's date format). */
+export function bookDateLabel(value) {
+  if (!value) return "";
+  const d = parseYmd(value);
+  const weekday = d.toLocaleDateString("en-GB", { weekday: "short" });
+  const month = d.toLocaleDateString("en-GB", { month: "short" });
+  return `${weekday}, ${d.getDate()} ${month}`;
+}
+
+/** One month as calendar cells, Sunday first: null for the blanks before day 1, then YYYY-MM-DD per day. */
+export function monthCells(year, month) {
+  const blanks = new Date(year, month, 1).getDay();
+  const days = new Date(year, month + 1, 0).getDate();
+  return [
+    ...Array(blanks).fill(null),
+    ...Array.from({ length: days }, (_, i) => ymd(new Date(year, month, i + 1))),
+  ];
 }
 
 // ---------- Requester dashboard (v4 design) ----------
@@ -300,6 +357,23 @@ export function formatPeso(amount) {
 /** The fare formula with this booking's numbers, as shown on the quote. */
 export function fareBreakdown(distanceKm, quantityKg) {
   return `₱150 base + ${Number(distanceKm).toFixed(1)} km × ₱15 + ${quantityKg} kg × ₱2, rounded. Tolls included.`;
+}
+
+/**
+ * Mapbox's drive time as a rough, honest figure: "About 40 min drive",
+ * "About 2 h 30 min drive", "About 14 h drive". Under an hour rounds to
+ * 5 min, under 10 h to the half hour, past that to the hour. It's the road
+ * time only (no traffic, no stops), so never an arrival time. "" if unknown.
+ */
+export function driveTimeLabel(minutes) {
+  const m = Number(minutes);
+  if (!Number.isFinite(m) || m <= 0) return "";
+  const step = m < 57.5 ? 5 : m < 585 ? 30 : 60;
+  const total = Math.max(5, Math.round(m / step) * step);
+  const h = Math.floor(total / 60);
+  const min = total % 60;
+  if (!h) return `About ${min} min drive`;
+  return `About ${h} h${min ? ` ${min} min` : ""} drive`;
 }
 
 /** True when a delivery is still waiting but its pickup date is before today. */
