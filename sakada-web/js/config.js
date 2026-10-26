@@ -18,4 +18,7 @@ export const config = {
   supabaseUrl: overrides.supabaseUrl || "https://aeeniueayubeugvooyqj.supabase.co",
   supabaseKey: overrides.supabaseKey || "sb_publishable_1Y6nsjO_nS0j2Vz6xKqfmA_VpCpPs82",
   mapboxToken: overrides.mapboxToken || "pk.eyJ1IjoicWFkcmlhbmNhcmxvIiwiYSI6ImNtdTJpMW5iYzA3MHMyeXNlcW1oYnpsODkifQ.eIvugh9G7UAa-sTCkJmZ7g",
+  // Phone alerts: the PUBLIC VAPID key from sakada-backend/docs/PUSH-SETUP.md.
+  // Empty until the backend is set up; Profile → Phone alerts says so meanwhile.
+  vapidPublicKey: overrides.vapidPublicKey || "",
 };

@@ -1,3 +1,5 @@
+import { t } from "./i18n.js";
+
 const TOAST_DURATION = 4000;
 const MAX_VISIBLE = 3;
 
@@ -37,7 +39,7 @@ export function showToast(message, type = "info") {
   const close = document.createElement("button");
   close.className = "toast__close";
   close.type = "button";
-  close.setAttribute("aria-label", "Dismiss");
+  close.setAttribute("aria-label", t("Dismiss"));
   close.textContent = "×";
 
   toast.appendChild(icon);

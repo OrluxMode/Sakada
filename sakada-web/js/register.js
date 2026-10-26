@@ -3,6 +3,11 @@ import { checkName, checkEmail, emailChecker, checkNewPassword } from "./validat
 import { validateFields, clearWhenFixed, showFieldError } from "./field-errors.js";
 import { wirePasswordToggle } from "./password-toggle.js";
 import { isExistingAccount, signupErrorCopy } from "./signup-result.js";
+import { t, useLanguage, translatePage } from "./i18n.js";
+
+// Log in and sign up follow the language last chosen on this phone (Profile → Language).
+useLanguage();
+translatePage();
 
 const ROLES = ["farmer", "vendor", "driver"];
 const NEXT_STEP = {
@@ -68,11 +73,11 @@ clearWhenFixed([
 form.addEventListener("input", clearMessage);
 
 function showExistingAccount() {
-  showFieldError(emailInput, "This email already has an account.");
+  showFieldError(emailInput, t("This email already has an account."));
   const link = document.createElement("a");
   link.href = "login.html";
   link.className = "field-error-link";
-  link.textContent = "Log in instead";
+  link.textContent = t("Log in instead");
   document.getElementById("emailError").append(" ", link);
   // A server-side error: any edit to the email clears it.
   emailInput.addEventListener("input", () => showFieldError(emailInput, ""), { once: true });
@@ -97,7 +102,7 @@ const successPanel = document.getElementById("signupSuccess");
 function showSuccess(email) {
   document.getElementById("successEmail").textContent = email;
   document.getElementById("successNext").textContent =
-    NEXT_STEP[selectedRole() === "driver" ? "driver" : "requester"];
+    t(selectedRole() === "driver" ? NEXT_STEP.driver : NEXT_STEP.requester);
   passwordInput.value = "";
   formPanel.hidden = true;
   successPanel.hidden = false;
@@ -114,7 +119,7 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearMessage();
   if (!validateFields(RULES)) return;
-  setBusy(submitBtn, true, "Creating account…");
+  setBusy(submitBtn, true, t("Creating account…"));
 
   const email = emailInput.value.trim();
   let result;
@@ -128,7 +133,7 @@ form.addEventListener("submit", async (e) => {
   } catch (err) {
     result = { error: err };
   }
-  setBusy(submitBtn, false, "Create account");
+  setBusy(submitBtn, false, t("Create account"));
 
   if (result.error) return showError(result.error);
   if (isExistingAccount(result.data)) return showExistingAccount();
@@ -139,7 +144,7 @@ form.addEventListener("submit", async (e) => {
 const googleBtn = document.getElementById("googleBtn");
 googleBtn.addEventListener("click", async () => {
   clearMessage();
-  setBusy(googleBtn, true, "Opening Google…");
+  setBusy(googleBtn, true, t("Opening Google…"));
   let error;
   try {
     ({ error } = await loginWithGoogle(selectedRole()));
@@ -147,11 +152,11 @@ googleBtn.addEventListener("click", async () => {
     error = err;
   }
   if (error) {
-    setBusy(googleBtn, false, "Continue with Google");
+    setBusy(googleBtn, false, t("Continue with Google"));
     showMessage(signupErrorCopy(error).message);
   }
 });
 // Coming back with the Back button restores the page from cache: un-stick the button.
 window.addEventListener("pageshow", (e) => {
-  if (e.persisted) setBusy(googleBtn, false, "Continue with Google");
+  if (e.persisted) setBusy(googleBtn, false, t("Continue with Google"));
 });

@@ -1,0 +1,5 @@
+project_id = "sakada-backend"
+
+[functions.send-push]
+# Authenticated inside the handler using x-push-webhook-secret.
+verify_jwt = false

@@ -7,6 +7,7 @@
 // For keyboards and screen readers the wheel is a spin button: ↑ ↓ one stop,
 // Page Up / Page Down ten, Home / End the ends.
 
+import { t } from "./i18n.js";
 import { kgStepsWith, kgLabel } from "./produce.js";
 import { checkKg } from "./validators.js";
 import { showFieldError } from "./field-errors.js";
@@ -73,8 +74,8 @@ export function createKgWheel({ dialog, openSheet, closeSheet }) {
     index = i;
     const kg = steps[i];
     wheel.setAttribute("aria-valuenow", String(kg));
-    wheel.setAttribute("aria-valuetext", `${kg.toLocaleString("en-PH")} kilograms`);
-    if (!typing) useBtn.textContent = `Use ${kgLabel(kg)}`;
+    wheel.setAttribute("aria-valuetext", t("{kg} kilograms", { kg: kg.toLocaleString("en-PH") }));
+    if (!typing) useBtn.textContent = t("Use {kg}", { kg: kgLabel(kg) });
   }
 
   /** Glide to a stop. The value changes now, so quick key presses add up. */
@@ -112,7 +113,7 @@ export function createKgWheel({ dialog, openSheet, closeSheet }) {
     showFieldError(exact, "");
     if (on) {
       exact.value = String(steps[index]);
-      useBtn.textContent = `Use ${kgLabel(steps[index])}`;
+      useBtn.textContent = t("Use {kg}", { kg: kgLabel(steps[index]) });
       exact.focus();
       exact.select();
     } else {
@@ -130,7 +131,7 @@ export function createKgWheel({ dialog, openSheet, closeSheet }) {
   exact.addEventListener("input", () => {
     exact.value = exact.value.replace(/\D/g, "");
     const ok = !checkKg(exact.value);
-    useBtn.textContent = ok ? `Use ${kgLabel(Number(exact.value))}` : "Use this weight";
+    useBtn.textContent = ok ? t("Use {kg}", { kg: kgLabel(Number(exact.value)) }) : t("Use this weight");
     if (exact.getAttribute("aria-invalid") === "true" && ok) showFieldError(exact, "");
   });
   exact.addEventListener("keydown", (e) => {

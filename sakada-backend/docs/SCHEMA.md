@@ -36,7 +36,7 @@ reason to split them later — not something to build in now.
 
 **`profiles`** — one row per authenticated user, any role. Created
 automatically on signup (see `0004_auth_trigger.sql`). Holds fields every
-role has in common: name, phone, avatar, `role` itself.
+role has in common: name, phone, avatar, `role` itself, and saved `language`.
 
 **`farmer_profiles` / `vendor_profiles` / `driver_profiles`** — role-specific
 fields only that role needs. A farmer never has a `license_number` column
@@ -212,3 +212,67 @@ updates. Only `authenticated` receives SELECT/INSERT/DELETE and UPDATE on
 `label,address,lat,lng,city`; ownership and timestamps cannot be edited.
 No anonymous grants or admin override are provided. See Readme.md for the
 PGlite test command and required manual Storage checks.
+
+## Saved language (0027)
+
+`profiles.language` is required text, defaults to `en`, and accepts only
+`en` (English), `fil` (Filipino), or `taglish` (Taglish). Existing profiles
+receive `en`. The owner can update `full_name,phone,avatar_url,language`;
+existing profile RLS prevents updates to other accounts. Role and server
+timestamps remain protected. The migration can be rerun without resetting
+saved preferences. Language controls future push alerts about the user's
+own bookings; existing stored notification text is unchanged.
+
+## Push subscriptions (0028)
+
+`push_subscriptions` stores at most ten browser/phone subscriptions per account:
+
+| Column | Definition |
+|---|---|
+| `id` | UUID primary key, generated automatically |
+| `user_id` | Required profile foreign key, cascades on profile deletion |
+| `endpoint` | Required unique text, starts with `https://`, at most 1000 characters |
+| `p256dh` / `auth` | Required browser encryption keys, 1–200 characters each |
+| `user_agent` | NULL or at most 300 characters, for phone support |
+| `created_at` | Required timestamp, default now |
+| `last_sent_at` | Nullable timestamp of last push accepted by the push service |
+
+An index supports lookup by `user_id`. RLS and explicit grants allow an
+authenticated caller to SELECT or DELETE only their own rows. Clients have
+no direct INSERT or UPDATE privileges. Service-role access permits server
+reads, success timestamp updates and expired-subscription deletion.
+
+`save_push_subscription(p_endpoint text, p_p256dh text, p_auth text,
+p_user_agent text)` returns void. It requires `auth.uid()`, locks the caller's
+profile row to serialize concurrent saves, and upserts on the unique endpoint.
+A shared phone moves to the caller's account, with fresh creation time and
+NULL `last_sent_at` when ownership changes. Same-account re-saves update keys
+and user agent while retaining timestamps. Excess rows are removed oldest
+first (UUID breaks timestamp ties), leaving at most ten on the receiving
+account. Endpoint ownership and encryption keys cannot be edited directly.
+
+`delete_push_subscription(p_endpoint text)` returns void and requires
+`auth.uid()`. It deletes only an endpoint currently owned by the caller;
+an absent/foreign endpoint is a no-op. Call it before sign-out and when
+turning off alerts. Both functions are SECURITY DEFINER with fixed
+`search_path = public`, EXECUTE granted only to `authenticated` (revoked from
+PUBLIC/anon). Migration 0028 can be rerun without deleting saved subscriptions.
+
+The `send-push` Edge Function receives asynchronous Database Webhooks for
+notification INSERTs, protected by `PUSH_WEBHOOK_SECRET`. It rereads the
+notification, language/role, subscriptions, and current delivery/driver data
+using the server client. Own bookings use the exact English/Filipino/Taglish
+copy for driver_assigned, picked_up, in_transit, delivered, or cancelled.
+Other notifications use title `Sakada` and their stored message. Payloads
+contain `{title, body, url, tag}`; shipment URLs point to
+`/dashboard/<role>/index.html#track/<CODE>` and the shipment code is the tag.
+Notifications without a delivery open the dashboard and use the notification
+ID as tag. VAPID-signed encrypted pushes have a 12-hour TTL.
+
+The function removes 404/410 subscriptions, stamps successes, and retains
+other failures for investigation. It checks ownership again before sending
+and qualifies cleanup/stamps by owner and keys, protecting subsequent
+account transfers. Already queued external pushes cannot be recalled.
+Network errors are isolated from booking updates; there is no durable retry
+queue or exactly-once delivery guarantee. See [PUSH-SETUP.md](PUSH-SETUP.md)
+for deployment, secret handling, tests and limitations.

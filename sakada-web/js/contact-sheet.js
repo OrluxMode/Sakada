@@ -3,6 +3,7 @@
 // email come from the account, so only the topic and message are asked.
 // Opened from Profile, or from a shipment with its booking code filled in.
 
+import { t } from "./i18n.js";
 import { supabase } from "./supabase-client.js";
 import { checkMessage, checkBookingCode } from "./validators.js";
 import { validateFields, clearWhenFixed, clearFieldErrors } from "./field-errors.js";
@@ -63,7 +64,7 @@ export function createContactSheet({ sheet, openSheet, profile, role, email }) {
     sending = on;
     submitBtn.disabled = on;
     submitBtn.setAttribute("aria-busy", String(on));
-    submitBtn.textContent = on ? "Sending…" : "Send message";
+    submitBtn.textContent = t(on ? "Sending…" : "Send message");
   }
 
   form.addEventListener("submit", async (e) => {
@@ -91,11 +92,11 @@ export function createContactSheet({ sheet, openSheet, profile, role, email }) {
     }
     setSending(false);
     if (error) {
-      submitBtn.textContent = "Try again";
+      submitBtn.textContent = t("Try again");
       sendError.hidden = false;
       return;
     }
-    $("contactSentLead").textContent = `We'll reply by email to ${to}.${code ? ` Your message is about ${code}.` : ""}`;
+    $("contactSentLead").textContent = `${t("We'll reply by email to {to}.", { to })}${code ? ` ${t("Your message is about {code}.", { code })}` : ""}`;
     formWrap.hidden = true;
     sent.hidden = false;
     $("contactSentTitle").focus();
@@ -108,7 +109,7 @@ export function createContactSheet({ sheet, openSheet, profile, role, email }) {
       form.reset();
       sent.hidden = true;
       formWrap.hidden = false;
-      submitBtn.textContent = "Send message";
+      submitBtn.textContent = t("Send message");
     }
     if (bookingCode) {
       topics.find((t) => t.value === "booking").checked = true;
@@ -118,7 +119,7 @@ export function createContactSheet({ sheet, openSheet, profile, role, email }) {
     sendError.hidden = true;
     clearFieldErrors([codeInput, message]);
     const to = email();
-    $("contactReply").textContent = to ? `We reply by email to ${to}.` : "We reply by email.";
+    $("contactReply").textContent = to ? t("We reply by email to {to}.", { to }) : t("We reply by email.");
     openSheet(sheet);
   };
 }

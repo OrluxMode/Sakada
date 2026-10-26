@@ -1,6 +1,8 @@
 // Turns a Supabase sign-up or log-in result into what the page shows.
 // Never show Supabase's own error.message: it's developer English.
 
+import { t } from "./i18n.js";
+
 /**
  * With email confirmation on, Supabase does NOT return an error for an
  * email that already has an account (so nobody can probe which emails
@@ -31,40 +33,40 @@ export function signupErrorCopy(error) {
   const status = error?.status;
 
   if (isOffline(error)) {
-    return { kind: "offline", field: null, message: OFFLINE_MESSAGE };
+    return { kind: "offline", field: null, message: t(OFFLINE_MESSAGE) };
   }
   if (
     code === "user_already_exists" ||
     code === "email_exists" ||
     /already registered/i.test(message)
   ) {
-    return { kind: "exists", field: "email", message: "This email already has an account." };
+    return { kind: "exists", field: "email", message: t("This email already has an account.") };
   }
   if (code.startsWith("over_") || status === 429) {
     return {
       kind: "rate",
       field: null,
-      message: "Too many sign-ups right now. Try again in a few minutes.",
+      message: t("Too many sign-ups right now. Try again in a few minutes."),
     };
   }
   if (code === "weak_password") {
     return {
       kind: "password",
       field: "password",
-      message: "Pick a harder password: at least 8 characters that aren't easy to guess.",
+      message: t("Pick a harder password: at least 8 characters that aren't easy to guess."),
     };
   }
   if (code === "email_address_invalid" || /email address .* is invalid/i.test(message)) {
     return {
       kind: "email",
       field: "email",
-      message: "This email address doesn't look right. Check it and try again.",
+      message: t("This email address doesn't look right. Check it and try again."),
     };
   }
   return {
     kind: "unknown",
     field: null,
-    message: "We couldn't create your account. Try again in a minute.",
+    message: t("We couldn't create your account. Try again in a minute."),
   };
 }
 
@@ -72,25 +74,25 @@ export function signupErrorCopy(error) {
 export function loginErrorCopy(error) {
   const code = String(error?.code || "");
   const message = String(error?.message || "");
-  if (isOffline(error)) return OFFLINE_MESSAGE;
+  if (isOffline(error)) return t(OFFLINE_MESSAGE);
   if (code === "email_not_confirmed" || /not confirmed/i.test(message)) {
-    return "Confirm your email first: tap the link we sent you. It signs you in.";
+    return t("Confirm your email first: tap the link we sent you. It signs you in.");
   }
   if (code === "invalid_credentials" || /invalid login credentials/i.test(message)) {
-    return "That email and password don't match. Check both and try again.";
+    return t("That email and password don't match. Check both and try again.");
   }
   if (code.startsWith("over_") || error?.status === 429) {
-    return "Too many tries. Wait a few minutes, then try again.";
+    return t("Too many tries. Wait a few minutes, then try again.");
   }
-  return "We couldn't log you in. Try again in a minute.";
+  return t("We couldn't log you in. Try again in a minute.");
 }
 
 /** Plain copy for a failed "send me a reset link" or "save my new password". */
 export function resetErrorCopy(error) {
   const code = String(error?.code || "");
-  if (isOffline(error)) return OFFLINE_MESSAGE;
-  if (code.startsWith("over_") || error?.status === 429) return "Too many emails for now. Wait a few minutes, then try again.";
-  if (code === "same_password") return "That's your current password. Pick a new one.";
-  if (code === "weak_password") return "Pick a stronger password: longer, with numbers or symbols.";
-  return "It didn't go through. Try again in a minute.";
+  if (isOffline(error)) return t(OFFLINE_MESSAGE);
+  if (code.startsWith("over_") || error?.status === 429) return t("Too many emails for now. Wait a few minutes, then try again.");
+  if (code === "same_password") return t("That's your current password. Pick a new one.");
+  if (code === "weak_password") return t("Pick a stronger password: longer, with numbers or symbols.");
+  return t("It didn't go through. Try again in a minute.");
 }

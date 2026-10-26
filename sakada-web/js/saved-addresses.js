@@ -3,6 +3,7 @@
 // booking from a saved address uses the same spot every time.
 // Table and rules: sakada-backend 0026 (own rows only, at most 10).
 
+import { t } from "./i18n.js";
 import { supabase } from "./supabase-client.js";
 
 export const SAVED_LIMIT = 10;
@@ -68,16 +69,16 @@ export function isSaved(rows, place) {
 /** A name for a saved address: 1–40 characters, not one they already use. */
 export function checkSavedLabel(value, rows = [], ownId = null) {
   const v = String(value || "").trim();
-  if (!v) return "Give it a name, like My farm.";
-  if (v.length > 40) return "Keep the name under 40 characters.";
-  if (rows.some((r) => r.id !== ownId && fold(r.label).trim() === fold(v))) return `You already have “${v}”. Use another name.`;
+  if (!v) return t("Give it a name, like My farm.");
+  if (v.length > 40) return t("Keep the name under 40 characters.");
+  if (rows.some((r) => r.id !== ownId && fold(r.label).trim() === fold(v))) return t("You already have “{name}”. Use another name.", { name: v });
   return "";
 }
 
 /** Plain words for a failed save. */
 export function savedErrorCopy(error) {
   const msg = String(error?.message || "");
-  if (/limit/i.test(msg)) return `You can save up to ${SAVED_LIMIT} addresses. Delete one to add another.`;
-  if (error?.code === "23505" || /duplicate|unique/i.test(msg)) return "You already have an address with that name. Use another name.";
-  return "It didn't save. Check your signal and try again.";
+  if (/limit/i.test(msg)) return t("You can save up to {n} addresses. Delete one to add another.", { n: SAVED_LIMIT });
+  if (error?.code === "23505" || /duplicate|unique/i.test(msg)) return t("You already have an address with that name. Use another name.");
+  return t("It didn't save. Check your signal and try again.");
 }

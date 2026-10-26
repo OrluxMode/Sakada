@@ -5,6 +5,7 @@
 // The rows write the booking's two hidden fields, goodsDescription and
 // quantityKg, so the fare, Review and Request booking read them as before.
 
+import { t } from "./i18n.js";
 import { attachPlaceSuggest } from "./place-suggest.js";
 import {
   MAX_PRODUCE, matchProduce, knownProduce, namedItems, totalKg, formatGoods, parseGoods, checkProduce, kgLabel,
@@ -37,7 +38,7 @@ export function createProduceRows({ card, list, total, error, hint, goods, kg, c
     const li = document.createElement("li");
     li.className = "rq-prow";
     li.innerHTML = `
-      <input class="rq-pname" id="produce${n}" type="text" placeholder="Add produce" autocomplete="off"
+      <input class="rq-pname" id="produce${n}" type="text" placeholder="${t("Add produce")}" autocomplete="off"
         autocapitalize="words" enterkeyhint="next" maxlength="40" spellcheck="false" />
       <button type="button" class="rq-kgchip"></button>
       <button type="button" class="rq-premove"></button>`;
@@ -53,12 +54,12 @@ export function createProduceRows({ card, list, total, error, hint, goods, kg, c
       host: card,
       minChars: 1,
       pauseMs: 0,
-      label: "Produce",
-      noun: ["produce", "produce"],
+      label: t("Produce"),
+      noun: [t("produce"), t("produce")],
       search: async (text) => {
         const found = matchProduce(text);
         const exact = found.some((p) => p.name.toLowerCase() === text.toLowerCase());
-        return exact ? found : [...found, { name: `Use “${text}” as typed`, typed: true, value: text }];
+        return exact ? found : [...found, { name: t("Use “{text}” as typed", { text }), typed: true, value: text }];
       },
       onPick: (p) => picked(li, p.typed ? p.value : p.name),
     });
@@ -85,15 +86,17 @@ export function createProduceRows({ card, list, total, error, hint, goods, kg, c
   function paint(li) {
     const i = rows().indexOf(li) + 1 || rows().length + 1;
     const name = li._name.value.trim();
-    li._name.setAttribute("aria-label", `Produce ${i}`);
+    li._name.setAttribute("aria-label", t("Produce {n}", { n: i }));
     const state = li._kg ? "set" : name && "missing" in li.dataset ? "error" : "empty";
     li._chip.dataset.state = state;
-    li._chip.textContent = li._kg ? kgLabel(li._kg) : state === "error" ? "Set kg" : "kg";
+    li._chip.textContent = li._kg ? kgLabel(li._kg) : state === "error" ? t("Set kg") : "kg";
     li._chip.disabled = !name && !li._kg;
-    li._chip.setAttribute("aria-label", li._kg ? `${name || "Produce"}: ${kgLabel(li._kg)}. Change the kg` : `Set the kg for ${name || `produce ${i}`}`);
+    li._chip.setAttribute("aria-label", li._kg
+      ? t("{name}: {kg}. Change the kg", { name: name || t("Produce"), kg: kgLabel(li._kg) })
+      : t("Set the kg for {name}", { name: name || t("produce {n}", { n: i }) }));
     const last = rows().at(-1) === li;
     li._remove.hidden = last && !name && !li._kg;
-    li._remove.setAttribute("aria-label", `Remove ${name || `produce ${i}`}`);
+    li._remove.setAttribute("aria-label", t("Remove {name}", { name: name || t("produce {n}", { n: i }) }));
   }
 
   /** Write the hidden fields and the total. */
@@ -105,7 +108,7 @@ export function createProduceRows({ card, list, total, error, hint, goods, kg, c
     goods.value = complete ? formatGoods(items) : "";
     kg.value = complete ? String(sum) : "";
     const full = rows().length >= MAX_PRODUCE && rows().every((li) => li._name.value.trim());
-    hint.textContent = full ? `That's ${MAX_PRODUCE} produce, the most for one booking.` : hintText;
+    hint.textContent = full ? t("That's {n} produce, the most for one booking.", { n: MAX_PRODUCE }) : hintText;
     if (showingError) validate({ focus: false, quiet: true });
   }
 
@@ -158,7 +161,7 @@ export function createProduceRows({ card, list, total, error, hint, goods, kg, c
     if (!name && !li._kg) return;
     li._chip.focus({ preventScroll: true }); // the sheet hands focus back here, not to the keyboard
     li._chip.dataset.open = "";
-    const chosen = await chooseKg({ name: name || "Produce", kg: li._kg });
+    const chosen = await chooseKg({ name: name || t("Produce"), kg: li._kg });
     delete li._chip.dataset.open;
     if (chosen == null) return;
     li._kg = chosen;

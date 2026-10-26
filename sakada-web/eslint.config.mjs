@@ -24,6 +24,11 @@ export default [
     languageOptions: { sourceType: "script" },
   },
   {
+    // The service worker (phone alerts).
+    files: ["sw.js"],
+    languageOptions: { ecmaVersion: 2023, sourceType: "script", globals: globals.serviceworker },
+  },
+  {
     // Unit tests, smoke tests and config files.
     files: ["tests/**/*.js", "e2e/**/*.mjs", "*.config.mjs"],
     languageOptions: {

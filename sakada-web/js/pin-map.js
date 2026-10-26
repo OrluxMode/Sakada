@@ -5,6 +5,7 @@
 // Leaflet (vendor/leaflet, ~42 KB gzipped) loads the first time the map
 // opens, so the Book page itself stays as light as before.
 
+import { t } from "./i18n.js";
 import { mapTilesUrl, placeAt, pinnedPlace } from "./mapbox-client.js";
 
 const LUZON = { lat: 15.48, lng: 120.97 }; // central Luzon, when there's nothing better
@@ -54,11 +55,11 @@ export function createPinMap({ area, mapEl, addressEl, hintEl, useBtn, locateBtn
   let locating = false;
 
   function hint(text = HINT, warn = false) {
-    hintEl.textContent = text;
+    hintEl.textContent = t(text);
     hintEl.classList.toggle("is-warn", warn);
   }
 
-  function waiting(text = "Finding the address…") {
+  function waiting(text = t("Finding the address…")) {
     spot = null;
     useBtn.disabled = true;
     addressEl.textContent = text;
@@ -150,14 +151,14 @@ export function createPinMap({ area, mapEl, addressEl, hintEl, useBtn, locateBtn
     async open(start, zoom = 16) {
       hint();
       if (isOffline()) {
-        waiting("The map needs a connection. Check your signal and try again.");
+        waiting(t("The map needs a connection. Check your signal and try again."));
         return;
       }
-      waiting("Loading the map…");
+      waiting(t("Loading the map…"));
       try {
         await ready();
       } catch {
-        waiting("The map didn't load. Check your connection and try again.");
+        waiting(t("The map didn't load. Check your connection and try again."));
         return;
       }
       map.invalidateSize();

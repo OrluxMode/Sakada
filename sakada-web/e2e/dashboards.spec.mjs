@@ -983,3 +983,151 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page).toHaveURL(/\/index(\.html)?$|\/$/);
   });
 });
+
+test.describe("language (Profile → Language)", () => {
+  test("choosing Taglish switches the app, saves it, and log in follows", async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.setViewportSize(PHONE);
+    const db = await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#profile");
+    await expect(page.locator("#langValue")).toHaveText("English");
+    await page.getByRole("link", { name: /^Language/ }).click();
+    await expect(page.getByRole("radio", { name: /^English/ })).toHaveAttribute("aria-checked", "true");
+    await page.getByRole("radio", { name: /^Taglish/ }).click();
+    // The page comes back in Taglish, on the same screen
+    await expect(page.locator('[data-profile-page="language"] h1')).toHaveText("Wika");
+    await expect(page.getByRole("radio", { name: /^Taglish/ })).toHaveAttribute("aria-checked", "true");
+    expect(db.profiles.find((p) => p.id === IDS.farmer).language).toBe("taglish");
+    await expect(page.locator("html")).toHaveAttribute("lang", "fil");
+    // Book in Taglish
+    await page.goto("/dashboard/farmer/index.html#book");
+    await expect(page.locator("#bookWhere")).toHaveText("Mag-book");
+    await page.fill("#pickupAddress", "Cabanatuan City, Nueva Ecija");
+    await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
+    await page.locator("#toDetails").click();
+    await expect(page.locator("#toReview")).toHaveText("I-review ang booking");
+    await expect(page.locator("#produceRows input").first()).toHaveAttribute("placeholder", "Magdagdag ng produce");
+    await page.locator("#toReview").click();
+    await expect(page.locator("#recipientNameError")).toHaveText("Ilagay ang pangalan ng recipient ng goods.");
+    // Log in on this phone follows the choice
+    await page.goto("/auth/login.html");
+    await expect(page.getByRole("button", { name: "Mag-log in" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Nakalimutan ang password?" })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test("the account's Filipino follows to a new phone, notifications included", async ({ page }) => {
+    const base = fixtures();
+    const profiles = base.profiles.map((p) => (p.id === IDS.farmer ? { ...p, language: "fil" } : p));
+    await mockSupabase(page, "farmer", { profiles });
+    await page.goto("/dashboard/farmer/index.html#home");
+    await expect(page.locator(".rq-topnav [data-tab=home]")).toHaveText("Simula");
+    await expect(page.locator("#statusTitle")).toHaveText("Kalagayan ng padala");
+    await page.locator(".rq-topbar [data-open-notifs]").click();
+    await expect(page.locator("#notifList")).toContainText("Nasa daan na ang iyong padala SK-00003.");
+    await page.locator("#notifSheet").getByRole("button", { name: "Isara" }).click();
+    await page.goto("/dashboard/farmer/index.html#track/SK-00003");
+    await expect(page.locator("#trackTitle")).toContainText("Nasa daan na");
+  });
+});
+
+/** Fake the browser's permission prompt and push service (headless Chrome has no push service). */
+function fakePush(page, { permission = "granted", ua } = {}) {
+  return page.addInitScript(([next, agent]) => {
+    window.__SAKADA_CONFIG__ = { vapidPublicKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U" };
+    if (agent) Object.defineProperty(navigator, "userAgent", { get: () => agent });
+    // Like a real phone, the permission and subscription survive a reload.
+    const keep = (k, v) => (v === undefined ? sessionStorage.getItem(k) : (v === null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v)));
+    Object.defineProperty(Notification, "permission", { get: () => keep("fake.perm") || "default" });
+    Notification.requestPermission = async () => (keep("fake.perm", next), next);
+    const sub = () => keep("fake.sub") && {
+      endpoint: "https://push.example/phone-1",
+      toJSON: () => ({ endpoint: "https://push.example/phone-1", keys: { p256dh: "key", auth: "secret" } }),
+      unsubscribe: async () => (keep("fake.sub", null), true),
+    };
+    PushManager.prototype.subscribe = async () => (keep("fake.sub", "1"), sub());
+    PushManager.prototype.getSubscription = async () => sub() || null;
+  }, [permission, ua]);
+}
+
+test.describe("phone alerts", () => {
+  test("offered on Request sent, saved to the account, off again in Profile and on log out", async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.setViewportSize(PHONE);
+    await fakePush(page);
+    const db = await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#book");
+    await page.fill("#pickupAddress", "Cabanatuan City, Nueva Ecija");
+    await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
+    await page.locator("#toDetails").click();
+    await page.fill("#recipientName", "Maria Santos");
+    await addProduce(page, "Toma", "Tomatoes", 400);
+    await page.locator("#toReview").click();
+    await page.locator("#confirmBtn").click();
+    const offer = page.locator("#alertsOffer");
+    await expect(offer).toContainText("Get a phone alert when a driver accepts");
+    await offer.getByRole("button", { name: "Turn on alerts" }).click();
+    await expect(offer).toHaveText("Phone alerts are on. Change it any time in Profile.");
+    expect(db.pushSubscriptions).toEqual([{ user_id: IDS.farmer, endpoint: "https://push.example/phone-1", p256dh: "key", auth: "secret" }]);
+    await page.goto("/dashboard/farmer/index.html#profile/alerts");
+    const sw = page.getByRole("switch", { name: /Alerts on this phone/ });
+    await expect(sw).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator("#alertsInfo")).toContainText("A driver accepts your booking");
+    await sw.click();
+    await expect(sw).toHaveAttribute("aria-checked", "false");
+    expect(db.pushSubscriptions).toEqual([]);
+    await sw.click(); // on again, then log out: a shared phone stops getting them
+    await expect(sw).toHaveAttribute("aria-checked", "true");
+    await page.goto("/dashboard/farmer/index.html#profile");
+    await expect(page.locator("#alertsValue")).toHaveText("On");
+    await page.getByRole("button", { name: "Log out" }).click();
+    await page.locator("#logoutConfirm").click();
+    await expect(page).toHaveURL(/:4400\/(index\.html)?$/);
+    expect(db.pushSubscriptions).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  test("Not now hides the offer for two weeks", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await fakePush(page);
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#book");
+    await page.fill("#pickupAddress", "Cabanatuan City, Nueva Ecija");
+    await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
+    await page.locator("#toDetails").click();
+    await page.fill("#recipientName", "Maria Santos");
+    await addProduce(page, "Toma", "Tomatoes", 400);
+    await page.locator("#toReview").click();
+    await page.locator("#confirmBtn").click();
+    await page.locator("#alertsOffer").getByRole("button", { name: "Not now" }).click();
+    await expect(page.locator("#alertsOffer .rq-offer")).toHaveCount(0);
+    const rested = await page.evaluate(() => Date.now() - Number(localStorage.getItem("sakada.alertsOffer")));
+    expect(rested).toBeLessThan(10_000);
+  });
+
+  test("blocked in the browser says how to allow it", async ({ page }) => {
+    await fakePush(page, { permission: "denied" });
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#profile/alerts");
+    await page.getByRole("switch", { name: /Alerts on this phone/ }).click();
+    await expect(page.locator("#alertsStatus")).toHaveText("Blocked by the browser");
+    await expect(page.locator("#alertsInfo")).toContainText("set Notifications to Allow");
+    await expect(page.getByRole("switch", { name: /Alerts on this phone/ })).toBeDisabled();
+  });
+
+  test("iPhone in Safari gets the Home Screen steps; no key yet says not ready", async ({ page }) => {
+    await fakePush(page, { ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1" });
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#profile/alerts");
+    await expect(page.locator("#alertsStatus")).toHaveText("Needs the Home Screen app");
+    await expect(page.locator("#alertsInfo")).toContainText("Tap Add to Home Screen.");
+  });
+
+  test("before the backend key is set, Phone alerts says it's almost ready", async ({ page }) => {
+    await mockSupabase(page, "vendor");
+    await page.goto("/dashboard/vendor/index.html#profile/alerts");
+    await expect(page.locator("#alertsStatus")).toHaveText("Not ready yet");
+    await expect(page.getByRole("switch", { name: /Alerts on this phone/ })).toBeDisabled();
+    await expect(page.locator("#alertsInfo")).toContainText("Phone alerts are almost ready");
+  });
+});

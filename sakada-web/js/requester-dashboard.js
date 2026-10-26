@@ -64,6 +64,9 @@ import { paintAvatar } from "./avatar.js";
 import { savedMatches, savedAsPlace, isSaved } from "./saved-addresses.js";
 import { createProduceRows } from "./produce-rows.js";
 import { createKgWheel } from "./kg-wheel.js";
+import { t, useLanguage, translatePage, dateLocale, currentLanguage } from "./i18n.js";
+import { createSettingsPages } from "./settings-pages.js";
+import { shouldOffer, notNow, disableAlerts } from "./push.js";
 import {
   checkAddress,
   checkPickupDate,
@@ -82,6 +85,9 @@ if (ROLE !== "farmer" && ROLE !== "vendor") {
 
 const profile = await requireRole(ROLE, "../../auth/login.html", "../../index.html");
 if (!profile) throw new Error("redirecting");
+// The account's language (Profile → Language) before anything is drawn.
+useLanguage(profile.language);
+translatePage();
 
 document.getElementById("pageLoader")?.classList.add("page-loader--hidden");
 initOfflineDetection();
@@ -120,7 +126,7 @@ function showView(hash, { focus = false } = {}) {
     view = "track";
     trackCode = track.code;
   }
-  const inProfile = /^profile\/(edit|addresses)$/.exec(view);
+  const inProfile = /^profile\/(edit|addresses|language|alerts)$/.exec(view);
   if (view === "profile" || inProfile) {
     const page = inProfile?.[1] || "main";
     const moved = page !== profilePage && document.body.dataset.view === "profile";
@@ -258,7 +264,10 @@ document.querySelectorAll("dialog").forEach((dialog) => {
 // ---------- Profile sheets (Figma 327:1289, 327:1474, 327:1583) ----------
 // Log out asks first; Contact Support and How it works stay in the app.
 $("signOutBtn").addEventListener("click", () => openSheet($("logoutSheet")));
-$("logoutConfirm").addEventListener("click", () => signOut("../../index.html"));
+$("logoutConfirm").addEventListener("click", async () => {
+  await disableAlerts().catch(() => {}); // a shared phone stops getting this account's alerts
+  signOut("../../index.html");
+});
 $("openHow").addEventListener("click", () => openSheet($("howSheet")));
 const openContact = createContactSheet({
   sheet: $("contactSheet"),
@@ -284,8 +293,11 @@ const profilePages = createProfilePages({
 });
 liftAboveKeyboard($("savedSheet"));
 profilePages.loadSaved();
+// Language and Phone alerts: pages inside the Profile tab too.
+const settingsPages = createSettingsPages({ profile });
 function showProfilePage(page, { animate = false } = {}) {
   if (page === "edit" && profilePage !== "edit") profilePages.openEdit();
+  if (page === "alerts") settingsPages.refreshAlerts(); // permission may have changed in the browser
   profilePage = page;
   document.querySelectorAll("[data-profile-page]").forEach((el) => {
     el.hidden = el.dataset.profilePage !== page;
@@ -406,7 +418,7 @@ for (const [which, input, next] of [
       usePlace(which, place);
       if (next && !next.value.trim()) next.focus();
     },
-    emptyAction: { label: "Pin it on the map instead", run: () => openPinMap(which) },
+    emptyAction: { label: t("Pin it on the map instead"), run: () => openPinMap(which) },
   }));
 }
 
@@ -442,8 +454,8 @@ async function pinStart(which) {
 async function openPinMap(which) {
   pinningFor = which;
   const pickup = which === "pickup";
-  $("mapSheetTitle").textContent = which === "saved" ? "Pin the address" : pickup ? "Pin pickup location" : "Pin drop-off location";
-  $("mapSpotLabel").textContent = which === "saved" ? "Address point" : pickup ? "Pickup point" : "Drop-off point";
+  $("mapSheetTitle").textContent = t(which === "saved" ? "Pin the address" : pickup ? "Pin pickup location" : "Pin drop-off location");
+  $("mapSpotLabel").textContent = t(which === "saved" ? "Address point" : pickup ? "Pickup point" : "Drop-off point");
   openSheet(mapSheet);
   const { at, zoom } = await pinStart(which);
   if (mapSheet.open) await pinMap.open(at, zoom);
@@ -510,12 +522,15 @@ function setStep(n, { focus = true } = {}) {
   bookView.dataset.step = String(n);
   bookView.querySelectorAll(".rq-bstep").forEach((el) => (el.hidden = Number(el.dataset.step) !== n));
   const [where, title, sub] = STEP_COPY[n];
-  $("bookWhere").textContent = where;
-  $("bookTitle").textContent = title;
-  $("bookSub").textContent = sub;
+  $("bookWhere").textContent = t(where);
+  $("bookTitle").textContent = t(title);
+  $("bookSub").textContent = t(sub);
   clearMessage();
   if (n === 3) renderReview();
-  if (n === 4) renderSent();
+  if (n === 4) {
+    renderSent();
+    offerAlerts();
+  }
   if (changed && viewsReady) enterStep(n);
   if (!focus) return;
   $("bookTitle").setAttribute("tabindex", "-1");
@@ -557,12 +572,12 @@ $("bookBack").addEventListener("click", () => {
 function windowOpen(date = pickup.date, id = pickup.window) {
   return openWindows(date).some((w) => w.id === id);
 }
-const longDay = (value) => parseYmd(value).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+const longDay = (value) => parseYmd(value).toLocaleDateString(dateLocale(), { weekday: "long", day: "numeric", month: "long" });
 function renderQuickDates() {
   $("quickDates").innerHTML = dayChoices().map((value) => {
     const d = parseYmd(value);
     return `<button type="button" class="rq-bday" data-pick-date="${value}" aria-label="${longDay(value)}" aria-pressed="false">
-      <span>${d.toLocaleDateString("en-GB", { weekday: "short" })}</span><strong>${d.getDate()}</strong></button>`;
+      <span>${d.toLocaleDateString(dateLocale(), { weekday: "short" })}</span><strong>${d.getDate()}</strong></button>`;
   }).join("");
   showPickup();
 }
@@ -590,7 +605,7 @@ $("quickDates").addEventListener("click", (e) => {
 function toDetails() {
   const routeOk = validateFields(ROUTE_RULES);
   let when = checkPickupDate(pickup.date);
-  if (!when && !windowOpen()) when = "That pickup time has passed. Pick a later time or day.";
+  if (!when && !windowOpen()) when = t("That pickup time has passed. Pick a later time or day.");
   dateProblem(when);
   if (!routeOk) return;
   if (when) {
@@ -641,10 +656,10 @@ async function toReview() {
   if (!produceOk && !checkRecipient(inputs.recipientName.value)) produceRows.validate();
   if (!produceOk || !fieldsOk) return;
   if (quoteFresh()) return goStep(3);
-  if (getIsOffline()) return showMessage("No connection. Check your signal and try again. Your details are still here.");
+  if (getIsOffline()) return showMessage(t("No connection. Check your signal and try again. Your details are still here."));
   const btn = $("toReview");
   clearMessage();
-  setBusy(btn, true, "Getting the fare…");
+  setBusy(btn, true, t("Getting the fare…"));
   try {
     const pickupAddress = inputs.pickupAddress.value.trim();
     const dropoffAddress = inputs.dropoffAddress.value.trim();
@@ -659,7 +674,7 @@ async function toReview() {
   } catch (err) {
     showBookingError(err);
   } finally {
-    setBusy(btn, false, "Review booking");
+    setBusy(btn, false, t("Review booking"));
   }
 }
 
@@ -679,7 +694,7 @@ function ticketRoute(from, to, places = []) {
       <p class="rq-ticket-city">${esc(city)}</p>
       ${place ? `<p class="rq-ticket-place">${esc(place)}</p>` : ""}
     </div>`;
-  return `<div class="rq-ticket-pair">${stop("Pickup", from, places[0])}${stop("Drop-off", to, places[1])}</div>`;
+  return `<div class="rq-ticket-pair">${stop(t("Pickup"), from, places[0])}${stop(t("Drop-off"), to, places[1])}</div>`;
 }
 // "About 2 h 30 min drive" never breaks inside; a narrow line breaks at the "·" instead.
 const keepUnits = (text) => text.replaceAll(" ", "\u00a0");
@@ -689,8 +704,8 @@ function ticketDrive(q) {
 }
 const ticketWhen = (date, window) => `
   <div class="rq-ticket-pair">
-    <div><p class="rq-ticket-label">Pickup date</p><p class="rq-ticket-value">${esc(bookDateLabel(date))}</p></div>
-    <div><p class="rq-ticket-label">Pickup time</p><p class="rq-ticket-value">${esc(windowLabel(window))}</p></div>
+    <div><p class="rq-ticket-label">${t("Pickup date")}</p><p class="rq-ticket-value">${esc(bookDateLabel(date))}</p></div>
+    <div><p class="rq-ticket-label">${t("Pickup time")}</p><p class="rq-ticket-value">${esc(windowLabel(window))}</p></div>
   </div>`;
 /** One produce: its name (the weight sits beside it). Several: a line each with its kg. */
 function reviewGoods() {
@@ -707,15 +722,15 @@ function renderReview() {
     ${ticketDrive(q)}
     ${ticketWhen(pickup.date, pickup.window)}
     <div class="rq-ticket-cut" aria-hidden="true">${NOTCHES}</div>
-    <div><p class="rq-ticket-label">Recipient</p><p class="rq-ticket-name">${esc(inputs.recipientName.value.trim())}</p></div>
+    <div><p class="rq-ticket-label">${t("Recipient")}</p><p class="rq-ticket-name">${esc(inputs.recipientName.value.trim())}</p></div>
     <div class="rq-ticket-pair rq-ticket-pair--load">
-      <div><p class="rq-ticket-label">What you're shipping</p><p class="rq-ticket-value">${reviewGoods()}</p></div>
-      <div><p class="rq-ticket-label">Total weight</p><p class="rq-ticket-value">${q.quantityKg.toLocaleString("en-PH")}&nbsp;kg</p></div>
+      <div><p class="rq-ticket-label">${t("What you're shipping")}</p><p class="rq-ticket-value">${reviewGoods()}</p></div>
+      <div><p class="rq-ticket-label">${t("Total weight")}</p><p class="rq-ticket-value">${q.quantityKg.toLocaleString("en-PH")}&nbsp;kg</p></div>
     </div>
-    ${notes ? `<div><p class="rq-ticket-label">Notes for the driver</p><p class="rq-ticket-notes">${esc(notes)}</p></div>` : ""}
+    ${notes ? `<div><p class="rq-ticket-label">${t("Notes for the driver")}</p><p class="rq-ticket-notes">${esc(notes)}</p></div>` : ""}
     <div class="rq-ticket-rule" aria-hidden="true"></div>
     <div class="rq-ticket-fare">
-      <div><p class="rq-ticket-value">Estimated fare</p><p class="rq-ticket-label">Cash at drop-off</p></div>
+      <div><p class="rq-ticket-value">${t("Estimated fare")}</p><p class="rq-ticket-label">${t("Cash at drop-off")}</p></div>
       <p class="rq-ticket-amount">${formatPeso(q.cost)}</p>
     </div>
     <p class="rq-ticket-formula">${esc(fareBreakdown(q.distanceKm, q.quantityKg))}</p>`;
@@ -725,10 +740,10 @@ confirmBtn.addEventListener("click", async () => {
   if (!quoteFresh() || !passes(DETAIL_RULES)) return setStep(2);
   if (!windowOpen() || checkPickupDate(pickup.date)) {
     setStep(1, { focus: false });
-    dateProblem("That pickup time has passed. Pick a later time or day.");
+    dateProblem(t("That pickup time has passed. Pick a later time or day."));
     return $("openDate").focus();
   }
-  if (getIsOffline()) return showMessage("No connection. Check your signal and try again. Your details are still here.");
+  if (getIsOffline()) return showMessage(t("No connection. Check your signal and try again. Your details are still here."));
   const q = pendingQuote;
   const booking = {
     requester_id: profile.id,
@@ -748,14 +763,14 @@ confirmBtn.addEventListener("click", async () => {
     distance_km: q.distanceKm,
   };
   clearMessage();
-  setBusy(confirmBtn, true, "Sending request…");
+  setBusy(confirmBtn, true, t("Sending request…"));
   let result;
   try {
     result = await createDelivery(booking);
   } catch (err) {
     result = { error: err };
   }
-  setBusy(confirmBtn, false, "Request booking");
+  setBusy(confirmBtn, false, t("Request booking"));
   if (result.error) return showBookingError(result.error);
 
   sentBooking = {
@@ -779,7 +794,7 @@ confirmBtn.addEventListener("click", async () => {
 });
 
 // --- Request sent ---
-const sentStatus = (status) => `<span class="rq-sdot" data-status="${esc(status)}"></span>${esc(STATUS_WORD[status] || statusLabel(status))}`;
+const sentStatus = (status) => `<span class="rq-sdot" data-status="${esc(status)}"></span>${esc(STATUS_WORD[status] ? t(STATUS_WORD[status]) : statusLabel(status))}`;
 function renderSent() {
   const b = sentBooking;
   if (!b) return;
@@ -788,13 +803,13 @@ function renderSent() {
   const kg = b.quantity_kg != null ? ` · ${Number(b.quantity_kg).toLocaleString("en-PH")}&nbsp;kg` : "";
   $("bookSent").innerHTML = `
     <div class="rq-bcard rq-bcode">
-      <p class="rq-bcode-label">Booking code</p>
+      <p class="rq-bcode-label">${t("Booking code")}</p>
       <p class="rq-bcode-value">${esc(live.delivery_code || "")}</p>
       <button type="button" class="rq-copy" id="copyCode">
-        <span class="rq-copy-face"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></svg>Copy code</span>
-        <span class="rq-copy-face rq-copy-face--done" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.2 2.8 2.8 5.2-6"/></svg>Copied</span>
+        <span class="rq-copy-face"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></svg>${t("Copy code")}</span>
+        <span class="rq-copy-face rq-copy-face--done" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.2 2.8 2.8 5.2-6"/></svg>${t("Copied")}</span>
       </button>
-      <p class="rq-bcode-note">Share it with the recipient, or use it to track and contact support.</p>
+      <p class="rq-bcode-note">${t("Share it with the recipient, or use it to track and contact support.")}</p>
       <p class="rq-sr" role="status" id="copyStatus"></p>
       ${NOTCHES}
     </div>
@@ -805,9 +820,53 @@ function renderSent() {
       <p class="rq-ticket-value">${esc(b.recipient_name)} · ${esc(b.goods_description)}${kg}</p>
     </div>
     <p class="rq-bstatus" id="sentStatus" data-status="${esc(status)}" aria-live="polite">${sentStatus(status)}</p>
-    <button class="rq-btn rq-bbtn" type="button" id="sentTrack">Track this shipment</button>
-    <button class="rq-btn rq-bbtn rq-btn--ghost" type="button" id="sentDone">${isPhone() ? "Back to Home" : "Book another shipment"}</button>`;
+    <div id="alertsOffer"></div>
+    <button class="rq-btn rq-bbtn" type="button" id="sentTrack">${t("Track this shipment")}</button>
+    <button class="rq-btn rq-bbtn rq-btn--ghost" type="button" id="sentDone">${t(isPhone() ? "Back to Home" : "Book another shipment")}</button>`;
 }
+/**
+ * Offer phone alerts once, under "Waiting for a driver" (Figma 350:2792):
+ * the moment people want to know when it's accepted. "Not now" rests it two weeks.
+ */
+const BELL = `<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>`;
+async function offerAlerts() {
+  const box = $("alertsOffer");
+  if (!box || !(await shouldOffer())) return;
+  box.innerHTML = `
+    <div class="rq-offer">
+      <div class="rq-offer-top">${BELL}<p><strong>${t("Get a phone alert when a driver accepts")}</strong><span>${t("Also when it's picked up and delivered, even with Sakada closed.")}</span></p></div>
+      <div class="rq-offer-actions">
+        <button type="button" class="rq-offer-on" data-alerts-on>${t("Turn on alerts")}</button>
+        <button type="button" class="rq-offer-later" data-alerts-later>${t("Not now")}</button>
+      </div>
+    </div>`;
+  if (!reduceMotion()) box.firstElementChild.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: "cubic-bezier(0.23, 1, 0.32, 1)" });
+}
+function closeOffer(text) {
+  const box = $("alertsOffer");
+  if (!box) return;
+  if (text) {
+    box.innerHTML = `<p class="rq-offer-done" role="status">${text}</p>`;
+    return;
+  }
+  const card = box.firstElementChild;
+  const done = () => (box.innerHTML = "");
+  if (!card || reduceMotion()) return done();
+  card.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: "cubic-bezier(0.23, 1, 0.32, 1)" }).finished.then(done, done);
+}
+$("bookSent").addEventListener("click", async (e) => {
+  if (e.target.closest("[data-alerts-later]")) {
+    notNow();
+    closeOffer();
+  } else if (e.target.closest("[data-alerts-on]")) {
+    e.target.closest("[data-alerts-on]").disabled = true;
+    const state = await settingsPages.turnOnAlerts();
+    if (state === "on") closeOffer(t("Phone alerts are on. Change it any time in Profile."));
+    else if (state === "blocked") closeOffer(t("Alerts are blocked in this browser. See Profile → Phone alerts."));
+    else closeOffer();
+  }
+});
+
 /** A driver can accept while Request sent is still open: only the status line changes. */
 function refreshSent() {
   const el = $("sentStatus");
@@ -861,11 +920,11 @@ async function copyCode(btn) {
   const code = btn.closest(".rq-bcode").querySelector(".rq-bcode-value").textContent.trim();
   if (!code) return;
   if (!(await copyText(code))) {
-    toastError("Couldn't copy. Press and hold the code to copy it.");
+    toastError(t("Couldn't copy. Press and hold the code to copy it."));
     return;
   }
   btn.dataset.copied = "";
-  $("copyStatus").textContent = `Booking code ${code} copied`;
+  $("copyStatus").textContent = t("Booking code {code} copied", { code });
   clearTimeout(copiedTimer);
   copiedTimer = setTimeout(() => {
     delete btn.dataset.copied;
@@ -897,7 +956,7 @@ function dayOpen(value) {
 function renderCal() {
   const { first, last } = calBounds();
   const today = ymd(new Date());
-  $("calMonth").textContent = calMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  $("calMonth").textContent = calMonth.toLocaleDateString(dateLocale(), { month: "long", year: "numeric" });
   $("calPrev").disabled = calMonth <= first;
   $("calNext").disabled = calMonth >= last;
   $("calGrid").innerHTML = monthCells(calMonth.getFullYear(), calMonth.getMonth()).map((value) => {
@@ -944,7 +1003,7 @@ function renderWindows() {
   $("timeSheetValue").textContent = windowLabel(draftWindow);
   const note = $("timeSheetNote");
   note.hidden = open.length === PICKUP_WINDOWS.length;
-  note.textContent = "Earlier times today have passed.";
+  note.textContent = t("Earlier times today have passed.");
 }
 $("openTime").addEventListener("click", () => {
   draftWindow = pickup.window;
@@ -979,8 +1038,10 @@ const activeSubscriptions = new Map();
 
 
 const esc = (v) => sanitizeText(v == null ? "" : String(v));
+// Dates in Filipino read "Okt 22"; English and Taglish keep "Oct 22".
+const dayLocale = () => (currentLanguage() === "fil" ? "fil-PH" : "en-PH");
 const day = (iso) =>
-  new Date(iso).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+  new Date(iso).toLocaleDateString(dayLocale(), { month: "short", day: "numeric" });
 const time = (iso) =>
   new Date(iso).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
 
@@ -992,18 +1053,18 @@ function titleLine(d) {
 /** The fare, or a plain note when an old booking has none saved (never "₱0"). */
 function fareAmount(d) {
   return d.estimated_cost == null
-    ? `<span class="rq-fare-amount rq-fare-amount--none">Fare not set</span>`
+    ? `<span class="rq-fare-amount rq-fare-amount--none">${t("Fare not set")}</span>`
     : `<span class="rq-fare-amount">${formatPeso(d.estimated_cost)}</span>`;
 }
 function metaLine(d) {
   const bits = [esc(d.delivery_code)];
   if (d.status === "pending") {
-    if (d.scheduled_pickup_at) bits.push(`Pickup ${day(d.scheduled_pickup_at)}`);
-    bits.push(`Requested ${time(d.created_at)}`);
+    if (d.scheduled_pickup_at) bits.push(t("Pickup {day}", { day: day(d.scheduled_pickup_at) }));
+    bits.push(t("Requested {time}", { time: time(d.created_at) }));
   } else if (HISTORY_STATUSES.includes(d.status)) {
     bits.push(day(d.updated_at));
   } else if (d.scheduled_pickup_at) {
-    bits.push(`Pickup ${day(d.scheduled_pickup_at)}`);
+    bits.push(t("Pickup {day}", { day: day(d.scheduled_pickup_at) }));
   }
   return bits.join(" · ");
 }
@@ -1011,13 +1072,13 @@ const firstNameOf = (d, fallback) => driversById.get(d.id)?.driver_name?.split("
 function starPicker(d) {
   return `
     <div class="rq-rate" data-rate-for="${esc(d.id)}">
-      <p class="rq-rate-q">How was ${esc(firstNameOf(d, "your driver"))}?</p>
-      <div class="rq-stars" role="radiogroup" aria-label="Rating">
-        ${[1, 2, 3, 4, 5].map((n) => `<button type="button" role="radio" aria-checked="false" aria-label="${n} star${n > 1 ? "s" : ""}" data-star="${n}"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg></button>`).join("")}
+      <p class="rq-rate-q">${t("How was {name}?", { name: esc(firstNameOf(d, t("your driver"))) })}</p>
+      <div class="rq-stars" role="radiogroup" aria-label="${t("Rating")}">
+        ${[1, 2, 3, 4, 5].map((n) => `<button type="button" role="radio" aria-checked="false" aria-label="${t(n > 1 ? "{n} stars" : "{n} star", { n })}" data-star="${n}"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg></button>`).join("")}
       </div>
-      <label class="rq-sr" for="comment-${esc(d.id)}">Comment (optional)</label>
-      <textarea id="comment-${esc(d.id)}" rows="2" maxlength="500" placeholder="Add a comment (optional)"></textarea>
-      <button type="button" class="rq-btn" data-send-rating disabled>Send rating</button>
+      <label class="rq-sr" for="comment-${esc(d.id)}">${t("Comment (optional)")}</label>
+      <textarea id="comment-${esc(d.id)}" rows="2" maxlength="500" placeholder="${t("Add a comment (optional)")}"></textarea>
+      <button type="button" class="rq-btn" data-send-rating disabled>${t("Send rating")}</button>
     </div>`;
 }
 
@@ -1032,28 +1093,28 @@ const keep = (text) => text.replace(/ /g, "&nbsp;"); // "Next: Delivered", "Oct 
 /** The line under the bars on the Track page: when this stage started, and what's next. */
 function trackStatusLine(d) {
   const at = d.status_changed_at || d.updated_at;
-  const when = isToday(at) ? `today, ${time(at)}` : `${day(at)}, ${time(at)}`;
+  const when = isToday(at) ? t("today, {time}", { time: time(at) }) : `${day(at)}, ${time(at)}`;
   const since = isToday(at) ? time(at) : day(at);
   if (d.status === "pending") {
-    if (pickupPassed(d)) return `<span class="rq-chip">Pickup date passed · drivers can't see it</span>`;
-    return `Requested ${isToday(d.created_at) ? `today, ${time(d.created_at)}` : day(d.created_at)}`;
+    if (pickupPassed(d)) return `<span class="rq-chip">${t("Pickup date passed · drivers can't see it")}</span>`;
+    return isToday(d.created_at) ? t("Requested today, {time}", { time: time(d.created_at) }) : t("Requested {day}", { day: day(d.created_at) });
   }
-  if (d.status === "driver_assigned") return `Accepted ${since} · ${keep("Next: Picked up")}`;
-  if (d.status === "picked_up") return `Picked up ${isToday(at) ? "at" : "on"} ${since} · ${keep("Next: In transit")}`;
-  if (d.status === "in_transit") return `In transit since ${since} · ${keep("Next: Delivered")}`;
-  if (d.status === "delivered") return `Delivered ${when}`;
-  return `Cancelled ${day(at)}`;
+  if (d.status === "driver_assigned") return `${t("Accepted {when}", { when: since })} · ${keep(t("Next: Picked up"))}`;
+  if (d.status === "picked_up") return `${t(isToday(at) ? "Picked up at {when}" : "Picked up on {when}", { when: since })} · ${keep(t("Next: In transit"))}`;
+  if (d.status === "in_transit") return `${t("In transit since {when}", { when: since })} · ${keep(t("Next: Delivered"))}`;
+  if (d.status === "delivered") return t("Delivered {when}", { when });
+  return t("Cancelled {day}", { day: day(at) });
 }
 
 /** Bottom-left of a shipment card: a small label and the one fact that matters now. */
 function shipmentFact(d) {
   const at = d.status_changed_at || d.updated_at;
   const when = isToday(at) ? time(at) : day(at);
-  if (pickupPassed(d)) return ["Pickup date passed", "Book a new date"];
-  if (d.status === "in_transit") return ["In transit", `Since ${when}`];
-  if (d.status === "picked_up") return ["Picked up", isToday(at) ? `At ${when}` : `On ${when}`];
-  const label = d.status === "pending" ? "Waiting for a driver" : `${driversById.get(d.id)?.driver_name?.split(" ")[0] || "Driver"} picks up`;
-  return [label, d.scheduled_pickup_at ? `Pickup ${day(d.scheduled_pickup_at)}` : "Pickup date not set"];
+  if (pickupPassed(d)) return [t("Pickup date passed"), t("Book a new date")];
+  if (d.status === "in_transit") return [t("In transit"), t("Since {when}", { when })];
+  if (d.status === "picked_up") return [t("Picked up"), t(isToday(at) ? "At {when}" : "On {when}", { when })];
+  const label = d.status === "pending" ? t("Waiting for a driver") : t("{name} picks up", { name: driversById.get(d.id)?.driver_name?.split(" ")[0] || t("Driver") });
+  return [label, d.scheduled_pickup_at ? t("Pickup {day}", { day: day(d.scheduled_pickup_at) }) : t("Pickup date not set")];
 }
 
 const TRUCK = `<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h11v8H2z"/><path d="M13 10h4l3 3v2h-7"/><circle cx="6" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>`;
@@ -1075,7 +1136,7 @@ function renderTiles(active) {
       <span class="rq-tile-count" aria-hidden="true">${counts[key].toLocaleString("en-PH")}</span>
       <span class="rq-tile-label" aria-hidden="true">${label}</span>
     </button>`;
-  $("statusTiles").innerHTML = tile("waiting", "Waiting") + tile("road", "On the road") + tile("delivered", "Delivered");
+  $("statusTiles").innerHTML = tile("waiting", t("Waiting")) + tile("road", t("On the road")) + tile("delivered", t("Delivered"));
 }
 
 // ---------- Real maps on the shipment cards ----------
@@ -1176,22 +1237,23 @@ function shipmentCard(d, i, all) {
   const late = pickupPassed(d);
   const step = STAGES.indexOf(d.status);
   const map = hasCoords(d);
-  const where = `${esc(shortPlace(d.pickup_address))} to ${esc(shortPlace(d.dropoff_address))}`;
+  const where = t("{from} to {to}", { from: esc(shortPlace(d.pickup_address)), to: esc(shortPlace(d.dropoff_address)) });
+  const status = esc(STATUS_WORD[d.status] ? t(STATUS_WORD[d.status]) : statusLabel(d.status));
   return `
-    <article class="rq-card rq-ship${map ? " has-map" : ""}${late ? " is-late" : ""}${d.id === highlightId ? " rq-card--new" : ""}" data-delivery-id="${esc(d.id)}" tabindex="-1"${all.length > 1 ? ` aria-roledescription="slide" aria-label="${i + 1} of ${all.length}"` : ""}>
+    <article class="rq-card rq-ship${map ? " has-map" : ""}${late ? " is-late" : ""}${d.id === highlightId ? " rq-card--new" : ""}" data-delivery-id="${esc(d.id)}" tabindex="-1"${all.length > 1 ? ` aria-roledescription="slide" aria-label="${t("{n} of {total}", { n: i + 1, total: all.length })}"` : ""}>
       <p class="rq-ship-what">${esc(d.delivery_code)} · ${titleLine(d)}</p>
       <div class="rq-ship-ends">
-        <p><span class="rq-ship-label">From</span>${esc(shortPlace(d.pickup_address))}</p>
-        <p><span class="rq-ship-label">To</span>${esc(shortPlace(d.dropoff_address))}</p>
+        <p><span class="rq-ship-label">${t("From")}</span>${esc(shortPlace(d.pickup_address))}</p>
+        <p><span class="rq-ship-label">${t("To")}</span>${esc(shortPlace(d.dropoff_address))}</p>
       </div>
-      ${map ? `<figure class="rq-ship-map"><img id="shipmap-${esc(d.id)}" class="rq-ship-map-img is-loading" src="${shipMapUrl(d)}" alt="Map of the road from ${where}${truckAt(d) ? ", with the truck where it is now" : ""}. ${esc(STATUS_WORD[d.status])}." width="600" height="300" loading="lazy" decoding="async" /></figure>` : ""}
-      <div class="rq-ship-route" style="--p: ${p}" role="img" aria-label="Step ${step + 1} of 5, ${esc(STATUS_WORD[d.status])}">
+      ${map ? `<figure class="rq-ship-map"><img id="shipmap-${esc(d.id)}" class="rq-ship-map-img is-loading" src="${shipMapUrl(d)}" alt="${t(truckAt(d) ? "Map of the road from {where}, with the truck where it is now." : "Map of the road from {where}.", { where })} ${status}." width="600" height="300" loading="lazy" decoding="async" /></figure>` : ""}
+      <div class="rq-ship-route" style="--p: ${p}" role="img" aria-label="${t("Step {n} of 5, {status}", { n: step + 1, status })}">
         <span class="rq-ship-fill"></span>
         <span class="rq-ship-truck">${TRUCK}</span>
       </div>
       <div class="rq-ship-foot">
         <p><span class="rq-ship-label">${esc(label)}</span><strong class="rq-ship-value">${esc(value)}</strong></p>
-        <button type="button" class="rq-pill" data-details="${esc(d.id)}">View details</button>
+        <button type="button" class="rq-pill" data-details="${esc(d.id)}">${t("View details")}</button>
       </div>
     </article>`;
 }
@@ -1199,14 +1261,14 @@ function shipmentCard(d, i, all) {
 function firstVisit() {
   return `
     <div class="rq-card rq-empty">
-      <h2 class="rq-display">No deliveries yet</h2>
-      <p>Book your first truck. You see the fare before you confirm: ₱150 base + ₱15 per km + ₱2 per kg, tolls included.</p>
+      <h2 class="rq-display">${t("No deliveries yet")}</h2>
+      <p>${t("Book your first truck. You see the fare before you confirm: ₱150 base + ₱15 per km + ₱2 per kg, tolls included.")}</p>
       <ol class="rq-steps">
-        <li>A driver accepts your booking</li>
-        <li>They pick up your goods</li>
-        <li>You follow it to drop-off, where whoever receives the goods pays the driver in cash</li>
+        <li>${t("A driver accepts your booking")}</li>
+        <li>${t("They pick up your goods")}</li>
+        <li>${t("You follow it to drop-off, where whoever receives the goods pays the driver in cash")}</li>
       </ol>
-      <a class="rq-btn" href="#book">Book a truck</a>
+      <a class="rq-btn" href="#book">${t("Book a truck")}</a>
     </div>`;
 }
 
@@ -1225,17 +1287,17 @@ function renderHome() {
     : ordered.length
       ? `<section class="rq-section" aria-labelledby="shipTitle">
           <div class="rq-section-head">
-            <h2 class="rq-section-title" id="shipTitle">${many ? "Active shipments" : "Active shipment"}</h2>
-            ${many ? `<p class="rq-ship-pos" id="shipPos" aria-hidden="true">1 of ${ordered.length}</p>` : ""}
+            <h2 class="rq-section-title" id="shipTitle">${t(many ? "Active shipments" : "Active shipment")}</h2>
+            ${many ? `<p class="rq-ship-pos" id="shipPos" aria-hidden="true">${t("{n} of {total}", { n: 1, total: ordered.length })}</p>` : ""}
           </div>
-          <div class="rq-ships${many ? " is-many" : ""}" id="shipList"${many ? ` role="region" aria-roledescription="carousel" aria-label="Active shipments, swipe for more" tabindex="0"` : ""}>
+          <div class="rq-ships${many ? " is-many" : ""}" id="shipList"${many ? ` role="region" aria-roledescription="carousel" aria-label="${t("Active shipments, swipe for more")}" tabindex="0"` : ""}>
             ${ordered.map(shipmentCard).join("")}
           </div>
-          ${many ? `<div class="rq-dots" id="shipDots">${ordered.map((d, i) => `<button type="button" class="rq-dot" data-ship-dot="${i}" aria-label="Show ${esc(d.delivery_code)}"${i === 0 ? ` aria-current="true"` : ""}></button>`).join("")}</div>` : ""}
+          ${many ? `<div class="rq-dots" id="shipDots">${ordered.map((d, i) => `<button type="button" class="rq-dot" data-ship-dot="${i}" aria-label="${t("Show {code}", { code: esc(d.delivery_code) })}"${i === 0 ? ` aria-current="true"` : ""}></button>`).join("")}</div>` : ""}
         </section>`
       : `<section class="rq-section" aria-labelledby="shipTitle">
-          <h2 class="rq-section-title" id="shipTitle">Active shipment</h2>
-          <div class="rq-card rq-empty"><p><strong>Nothing on the road right now.</strong></p><p class="rq-muted">Your past deliveries are in History.</p><a class="rq-btn" href="#book">Book a truck</a></div>
+          <h2 class="rq-section-title" id="shipTitle">${t("Active shipment")}</h2>
+          <div class="rq-card rq-empty"><p><strong>${t("Nothing on the road right now.")}</strong></p><p class="rq-muted">${t("Your past deliveries are in History.")}</p><a class="rq-btn" href="#book">${t("Book a truck")}</a></div>
         </section>`;
   markAdvanced(active);
   if (keepId) goToShip(keepId, { instant: true });
@@ -1272,7 +1334,7 @@ function goToShip(id, { instant = false } = {}) {
 function markShip() {
   const i = shipIndex();
   const pos = $("shipPos");
-  if (pos) pos.textContent = `${i + 1} of ${shipCards().length}`;
+  if (pos) pos.textContent = t("{n} of {total}", { n: i + 1, total: shipCards().length });
   $("shipDots")?.querySelectorAll("[data-ship-dot]").forEach((dot) => {
     if (Number(dot.dataset.shipDot) === i) dot.setAttribute("aria-current", "true");
     else dot.removeAttribute("aria-current");
@@ -1332,60 +1394,64 @@ const activeOrdered = () => {
 function trackTop(title, back) {
   return `
     <div class="rq-track-top">
-      ${back ? `<button type="button" class="rq-back" data-track-back aria-label="Back">${BACK}</button>` : ""}
-      <p class="rq-track-where">${title}</p>
+      ${back ? `<button type="button" class="rq-back" data-track-back aria-label="${t("Back")}">${BACK}</button>` : ""}
+      <p class="rq-track-where">${t(title)}</p>
       <p class="rq-track-logo" aria-hidden="true">SAKA<span>DA</span></p>
     </div>`;
 }
-const trackHead = ([one, two]) => `<h1 id="trackTitle" class="rq-track-head" tabindex="-1">${esc(one)}<br /><span>${esc(two)}</span></h1>`;
+/** Two-line headline; the lines are translated together so word order can change. */
+function trackHead([one, two]) {
+  const [a, b = ""] = t(`${one}\n${two}`).split("\n");
+  return `<h1 id="trackTitle" class="rq-track-head" tabindex="-1">${esc(a)}<br /><span>${esc(b)}</span></h1>`;
+}
 
 function trackDriver(d) {
   const row = driversById.get(d.id);
   const truck = truckAt(d);
   const showMap = hasCoords(d) && !HISTORY_STATUSES.includes(d.status);
-  const first = firstNameOf(d, "the driver");
+  const first = firstNameOf(d, t("the driver"));
   let note = "";
-  if (d.status === "driver_assigned") note = `The truck shows on the map once ${esc(first)} picks up your goods.`;
-  else if (ON_ROAD(d) && !truck) note = "Location not shared yet. You'll see the truck once the driver starts sharing.";
+  if (d.status === "driver_assigned") note = t("The truck shows on the map once {name} picks up your goods.", { name: esc(first) });
+  else if (ON_ROAD(d) && !truck) note = t("Location not shared yet. You'll see the truck once the driver starts sharing.");
   if (!row?.driver_name && !showMap && !note) return "";
   let who = "";
   if (row?.driver_name) {
-    const vehicle = [row.vehicle_type, row.vehicle_plate && `Plate ${row.vehicle_plate}`].filter(Boolean).map(esc).join(" · ");
+    const vehicle = [row.vehicle_type, row.vehicle_plate && t("Plate {plate}", { plate: row.vehicle_plate })].filter(Boolean).map(esc).join(" · ");
     const rating = ratingSummary(row);
     who = `
       <div class="rq-tdriver">
         <span class="rq-avatar" aria-hidden="true">${esc(initialsFor(row.driver_name))}</span>
         <p class="rq-tdriver-who">
-          <span class="rq-tlabel">Driver</span>
+          <span class="rq-tlabel">${t("Driver")}</span>
           <span class="rq-tdriver-name">${esc(row.driver_name)}</span>
-          <span class="rq-tdriver-car">${vehicle || "Vehicle not added yet"}</span>
+          <span class="rq-tdriver-car">${vehicle || t("Vehicle not added yet")}</span>
         </p>
         ${rating ? `<p class="rq-trating">${rating.avg
-          ? `<span class="rq-trating-avg" aria-label="Rated ${rating.avg} out of 5">${STAR}${rating.avg}</span><span class="rq-trating-count">${rating.label}</span>`
-          : `<span class="rq-trating-avg">New driver</span><span class="rq-trating-count">${rating.label}</span>`}</p>` : ""}
+          ? `<span class="rq-trating-avg" aria-label="${t("Rated {avg} out of 5", { avg: rating.avg })}">${STAR}${rating.avg}</span><span class="rq-trating-count">${rating.label}</span>`
+          : `<span class="rq-trating-avg">${t("New driver")}</span><span class="rq-trating-count">${rating.label}</span>`}</p>` : ""}
       </div>`;
   }
-  const where = `${esc(shortPlace(d.pickup_address))} to ${esc(shortPlace(d.dropoff_address))}`;
+  const where = t("{from} to {to}", { from: esc(shortPlace(d.pickup_address)), to: esc(shortPlace(d.dropoff_address)) });
   // The caption says how old the truck's position is, on the map itself.
   const map = showMap ? `
     <figure class="rq-track-map">
-      <img id="trackmap-${esc(d.id)}" class="rq-ship-map-img is-loading" src="${shipMapUrl(d)}" alt="Map of the road from ${where}${truck ? ", with the truck where it is now" : ""}." width="600" height="300" decoding="async" />
-      <figcaption id="track-caption-${esc(d.id)}">${truck ? `Truck here ${timeAgo(d.updated_at)}` : "Route"}</figcaption>
+      <img id="trackmap-${esc(d.id)}" class="rq-ship-map-img is-loading" src="${shipMapUrl(d)}" alt="${t(truck ? "Map of the road from {where}, with the truck where it is now." : "Map of the road from {where}.", { where })}" width="600" height="300" decoding="async" />
+      <figcaption id="track-caption-${esc(d.id)}">${truck ? t("Truck here {ago}", { ago: timeAgo(d.updated_at) }) : t("Route")}</figcaption>
     </figure>` : "";
   return `<div class="rq-tcard rq-tcard--flush">${who}${map}${note ? `<p class="rq-track-note">${note}</p>` : ""}</div>`;
 }
 
 function trackRate(d) {
   if (d.status !== "delivered" || !d.driver_id) return "";
-  const first = firstNameOf(d, "the driver");
+  const first = firstNameOf(d, t("the driver"));
   const rated = ratingsMap.get(d.id);
-  if (rated) return `<div class="rq-tcard"><p class="rq-rated" tabindex="-1">You rated ${esc(first)} ${rated.rating} of 5.</p></div>`;
+  if (rated) return `<div class="rq-tcard"><p class="rq-rated" tabindex="-1">${t("You rated {name} {n} of 5.", { name: esc(first), n: rated.rating })}</p></div>`;
   // Only promise the average once the server really shows one (0023).
   const shown = ratingSummary(driversById.get(d.id));
   return `
     <div class="rq-tcard">
       ${starPicker(d)}
-      ${shown ? `<p class="rq-track-small">Your rating is added to ${esc(first)}'s average that other farmers and vendors see.</p>` : ""}
+      ${shown ? `<p class="rq-track-small">${t("Your rating is added to {name}'s average that other farmers and vendors see.", { name: esc(first) })}</p>` : ""}
     </div>`;
 }
 
@@ -1404,18 +1470,18 @@ function trackRoute(d) {
   const facts = [];
   if (d.scheduled_pickup_at) {
     const window = windowLabel(d.pickup_window);
-    facts.push(`Pickup ${keep(day(d.scheduled_pickup_at))}${window ? `, ${keep(window)}` : ""}`);
+    facts.push(`${t("Pickup {day}", { day: keep(day(d.scheduled_pickup_at)) })}${window ? `, ${keep(window)}` : ""}`);
   }
-  if (d.distance_km != null) facts.push(`${Math.round(Number(d.distance_km)).toLocaleString("en-PH")}&nbsp;km by road`);
+  if (d.distance_km != null) facts.push(t("{km}&nbsp;km by road", { km: Math.round(Number(d.distance_km)).toLocaleString("en-PH") }));
   return `
     <div class="rq-tcard">
       <div class="rq-track-route-head">
-        <h2>Route</h2>
-        <span class="rq-lock">${LOCK}Can't be changed</span>
+        <h2>${t("Route")}</h2>
+        <span class="rq-lock">${LOCK}${t("Can't be changed")}</span>
       </div>
       <div class="rq-route rq-route--stops">
-        <p class="rq-stop rq-stop--from"><span class="rq-muted">Pickup</span><br />${esc(d.pickup_address)}</p>
-        <p class="rq-stop rq-stop--to"><span class="rq-muted">Drop-off</span><br />${esc(d.dropoff_address)}</p>
+        <p class="rq-stop rq-stop--from"><span class="rq-muted">${t("Pickup")}</span><br />${esc(d.pickup_address)}</p>
+        <p class="rq-stop rq-stop--to"><span class="rq-muted">${t("Drop-off")}</span><br />${esc(d.dropoff_address)}</p>
       </div>
       ${facts.length || hasCoords(d) ? `<p class="rq-track-small">${facts.join(" · ")}${driveSpan(d, facts.length > 0)}</p>` : ""}
     </div>`;
@@ -1425,17 +1491,17 @@ function trackDetail(d, { back }) {
   const late = pickupPassed(d);
   let note = "";
   if (d.status === "pending") {
-    note = late
+    note = t(late
       ? "The pickup date has passed, so drivers can't see this request anymore. Book it again with a new date."
-      : "Drivers can see your request now. You can cancel until one accepts.";
+      : "Drivers can see your request now. You can cancel until one accepts.");
   }
   let actions = "";
   if (d.status === "pending") {
     actions = `
-      ${late ? `<button type="button" class="rq-btn" data-new-date="${esc(d.id)}">Book a new date</button>` : ""}
-      <button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">Cancel request</button>`;
+      ${late ? `<button type="button" class="rq-btn" data-new-date="${esc(d.id)}">${t("Book a new date")}</button>` : ""}
+      <button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">${t("Cancel request")}</button>`;
   } else if (HISTORY_STATUSES.includes(d.status)) {
-    actions = `<button type="button" class="rq-btn rq-btn--ghost" data-rebook-id="${esc(d.id)}">Book again</button>`;
+    actions = `<button type="button" class="rq-btn rq-btn--ghost" data-rebook-id="${esc(d.id)}">${t("Book again")}</button>`;
   }
   return `
     ${trackTop(back ? "Shipment details" : "Track", back)}
@@ -1451,27 +1517,31 @@ function trackDetail(d, { back }) {
     ${trackRoute(d)}
     <div class="rq-tcard rq-track-fare">
       ${fareAmount(d)}
-      <p class="rq-track-small">Fare for this trip · tolls included</p>
-      <p>${d.recipient_name ? esc(d.recipient_name) : "Whoever receives the goods"} pays the driver this amount in cash at drop-off.</p>
+      <p class="rq-track-small">${t("Fare for this trip · tolls included")}</p>
+      <p>${d.recipient_name
+        ? t("{name} pays the driver this amount in cash at drop-off.", { name: esc(d.recipient_name) })
+        : t("Whoever receives the goods pays the driver this amount in cash at drop-off.")}</p>
     </div>
     ${actions ? `<div class="rq-track-actions">${actions}</div>` : ""}
-    <button type="button" class="rq-track-help" data-open-contact="${esc(d.delivery_code)}" aria-haspopup="dialog">Something wrong? Contact Support about ${esc(d.delivery_code)}</button>`;
+    <button type="button" class="rq-track-help" data-open-contact="${esc(d.delivery_code)}" aria-haspopup="dialog">${t("Something wrong? Contact Support about {code}", { code: esc(d.delivery_code) })}</button>`;
 }
 
 function trackRowStatus(d) {
   const at = d.status_changed_at || d.updated_at;
   const since = isToday(at) ? time(at) : day(at);
-  if (d.status === "in_transit") return `On the road since ${since}`;
-  if (d.status === "picked_up") return `Picked up ${isToday(at) ? "at" : "on"} ${since}`;
-  if (pickupPassed(d)) return "Pickup date passed";
-  if (d.status === "driver_assigned") return d.scheduled_pickup_at ? `Driver assigned · ${keep(`pickup ${day(d.scheduled_pickup_at)}`)}` : "Driver assigned";
-  return "Waiting for a driver";
+  if (d.status === "in_transit") return t("On the road since {when}", { when: since });
+  if (d.status === "picked_up") return t(isToday(at) ? "Picked up at {when}" : "Picked up on {when}", { when: since });
+  if (pickupPassed(d)) return t("Pickup date passed");
+  if (d.status === "driver_assigned") {
+    return d.scheduled_pickup_at ? `${t("Driver assigned")} · ${keep(t("pickup {day}", { day: day(d.scheduled_pickup_at) }))}` : t("Driver assigned");
+  }
+  return t("Waiting for a driver");
 }
 function trackList(list) {
   return `
     ${trackTop("Track", false)}
     ${trackHead(["Your", "shipments."])}
-    <p class="rq-track-sub">Pick one to follow it. Trucks on the road come first.</p>
+    <p class="rq-track-sub">${t("Pick one to follow it. Trucks on the road come first.")}</p>
     <ul class="rq-track-list">
       ${list.map((d) => `
         <li><a class="rq-track-row" href="#track/${encodeURIComponent(d.delivery_code)}">
@@ -1489,31 +1559,32 @@ function trackEmpty() {
   return `
     ${trackTop("Track", false)}
     ${trackHead(["Nothing on", "the road."])}
-    <p class="rq-track-sub">When you book a truck, you can follow it here from pickup to drop-off.</p>
-    <a class="rq-btn" href="#book">Book a truck</a>
-    ${past ? `<a class="rq-track-help" href="#history">Past deliveries are in History</a>` : ""}`;
+    <p class="rq-track-sub">${t("When you book a truck, you can follow it here from pickup to drop-off.")}</p>
+    <a class="rq-btn" href="#book">${t("Book a truck")}</a>
+    ${past ? `<a class="rq-track-help" href="#history">${t("Past deliveries are in History")}</a>` : ""}`;
 }
 function trackMissing(code) {
   return `
     ${trackTop("Shipment details", true)}
     ${trackHead(["Not", "found."])}
-    <p class="rq-track-sub">We couldn't find ${esc(code)} on your account. Codes look like SK-00142.</p>
-    <a class="rq-btn rq-btn--ghost" href="#track">See your shipments</a>`;
+    <p class="rq-track-sub">${t("We couldn't find {code} on your account. Codes look like SK-00142.", { code: esc(code) })}</p>
+    <a class="rq-btn rq-btn--ghost" href="#track">${t("See your shipments")}</a>`;
 }
 
 // What the Track page last drew, so live updates only redraw on a real change
 // (a half-typed rating comment survives a notification arriving).
 let trackShown = null;
 // The parts a live truck update changes; those are swapped in place, not redrawn.
+const CAPTION = /(<figcaption id="track-caption-[^"]*">)([^<]*)/;
 const withoutLive = (html) => html
-  .replace(/Truck here [^<]*/, "")
+  .replace(CAPTION, "$1")
   .replace(/ src="https:\/\/api\.mapbox\.com[^"]*"/, "")
   .replace(/(<span data-drive="[^"]*"[^>]*>)[^<]*/, "$1"); // drive time arrives on its own
 function renderTrack({ animate = false } = {}) {
   if (document.body.dataset.view !== "track") return;
   const page = $("trackPage");
   if (!deliveriesLoaded) {
-    page.innerHTML = `${trackTop("Track", Boolean(trackCode))}<h1 id="trackTitle" class="rq-sr" tabindex="-1">Track</h1>${skeletons()}`;
+    page.innerHTML = `${trackTop("Track", Boolean(trackCode))}<h1 id="trackTitle" class="rq-sr" tabindex="-1">${t("Track")}</h1>${skeletons()}`;
     trackShown = null;
     return;
   }
@@ -1534,7 +1605,7 @@ function renderTrack({ animate = false } = {}) {
     const img = d && $(`trackmap-${d.id}`);
     if (img && img.getAttribute("src") !== shipMapUrl(d)) swapMap(img, shipMapUrl(d));
     const caption = d && $(`track-caption-${d.id}`);
-    const fresh = d && /Truck here [^<]*/.exec(html)?.[0];
+    const fresh = d && CAPTION.exec(html)?.[2];
     if (caption && fresh) caption.textContent = fresh;
     trackShown.html = html;
     return;
@@ -1544,7 +1615,7 @@ function renderTrack({ animate = false } = {}) {
   if (d) loadRouteLines([d]);
   if (before?.key === key && d && STAGES.indexOf(d.status) > STAGES.indexOf(before.status)) {
     // The booking moved on while you watched: say it, fill the new step, fade the headline in.
-    $("trackLive").textContent = `${d.delivery_code} is now ${statusLabel(d.status)}.`;
+    $("trackLive").textContent = t("{code} is now {status}.", { code: d.delivery_code, status: statusLabel(d.status) });
     page.querySelector(".rq-step--current")?.classList.add("is-advanced");
     if (!reduceMotion()) $("trackTitle").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "cubic-bezier(0.23, 1, 0.32, 1)" });
   } else if (animate && before && before.key !== key) {
@@ -1567,17 +1638,17 @@ function historyCard(d) {
   const driver = firstNameOf(d, "");
   const rateBtn =
     d.status === "delivered" && d.driver_id && !rated
-      ? `<button type="button" class="rq-btn rq-btn--ghost" data-track-rate="${esc(d.id)}">Rate ${esc(driver || "driver")}</button>`
+      ? `<button type="button" class="rq-btn rq-btn--ghost" data-track-rate="${esc(d.id)}">${driver ? t("Rate {name}", { name: esc(driver) }) : t("Rate driver")}</button>`
       : "";
   return `
     <article class="rq-card rq-history-card" data-delivery-id="${esc(d.id)}" tabindex="-1">
       <h3 class="rq-card-title">${titleLine(d)}</h3>
       <p class="rq-muted"><span class="status-pill" data-status="${esc(d.status)}">${statusLabel(d.status)}</span> ${metaLine(d)}</p>
       <p>${esc(d.pickup_address)} → ${esc(d.dropoff_address)}</p>
-      ${d.status === "delivered" ? `<div class="rq-fare">${fareAmount(d)}${rated ? `<span class="rq-muted">You rated ${esc(driver || "the driver")} ${rated.rating} of 5</span>` : ""}</div>` : ""}
+      ${d.status === "delivered" ? `<div class="rq-fare">${fareAmount(d)}${rated ? `<span class="rq-muted">${t("You rated {name} {n} of 5", { name: esc(driver || t("the driver")), n: rated.rating })}</span>` : ""}</div>` : ""}
       <div class="rq-card-actions">
         ${rateBtn}
-        <button type="button" class="rq-btn rq-btn--ghost" data-rebook-id="${esc(d.id)}">Book again</button>
+        <button type="button" class="rq-btn rq-btn--ghost" data-rebook-id="${esc(d.id)}">${t("Book again")}</button>
       </div>
     </article>`;
 }
@@ -1591,7 +1662,7 @@ function renderHistory() {
   };
   document.querySelectorAll("[data-filter]").forEach((b) => {
     const f = b.dataset.filter;
-    b.textContent = `${f[0].toUpperCase()}${f.slice(1)} (${counts[f]})`;
+    b.textContent = `${t({ all: "All", delivered: "Delivered", cancelled: "Cancelled" }[f])} (${counts[f]})`;
     b.setAttribute("aria-pressed", String(f === historyFilter));
   });
   const shown = historyFilter === "all" ? history : history.filter((d) => d.status === historyFilter);
@@ -1601,19 +1672,19 @@ function renderHistory() {
   $("historyList").innerHTML = shown.length
     ? pageState.rows.map(historyCard).join("") + historyPager(pageState)
     : history.length
-      ? `<div class="rq-card rq-empty"><p><strong>No ${historyFilter} deliveries</strong></p><button type="button" class="rq-btn rq-btn--ghost" data-filter-reset>Show all</button></div>`
-      : `<div class="rq-card rq-empty"><p><strong>No past deliveries yet</strong></p><p class="rq-muted">Delivered and cancelled bookings show up here.</p></div>`;
+      ? `<div class="rq-card rq-empty"><p><strong>${t(historyFilter === "delivered" ? "No delivered deliveries" : "No cancelled deliveries")}</strong></p><button type="button" class="rq-btn rq-btn--ghost" data-filter-reset>${t("Show all")}</button></div>`
+      : `<div class="rq-card rq-empty"><p><strong>${t("No past deliveries yet")}</strong></p><p class="rq-muted">${t("Delivered and cancelled bookings show up here.")}</p></div>`;
 }
 
 function historyPager(state) {
   if (state.totalPages < 2) return "";
   return `
-    <nav class="rq-pager" aria-label="History pages">
-      <p class="rq-muted">Showing ${state.from}–${state.to} of ${state.total}</p>
+    <nav class="rq-pager" aria-label="${t("History pages")}">
+      <p class="rq-muted">${t("Showing {from}–{to} of {total}", { from: state.from, to: state.to, total: state.total })}</p>
       <div class="rq-pager-controls">
-        <button type="button" class="rq-btn rq-btn--ghost" data-history-page="${state.page - 1}"${state.page === 1 ? " disabled" : ""}>Previous</button>
-        <span class="rq-pager-status">Page ${state.page} of ${state.totalPages}</span>
-        <button type="button" class="rq-btn rq-btn--ghost" data-history-page="${state.page + 1}"${state.page === state.totalPages ? " disabled" : ""}>Next</button>
+        <button type="button" class="rq-btn rq-btn--ghost" data-history-page="${state.page - 1}"${state.page === 1 ? " disabled" : ""}>${t("Previous")}</button>
+        <span class="rq-pager-status">${t("Page {n} of {total}", { n: state.page, total: state.totalPages })}</span>
+        <button type="button" class="rq-btn rq-btn--ghost" data-history-page="${state.page + 1}"${state.page === state.totalPages ? " disabled" : ""}>${t("Next")}</button>
       </div>
     </nav>`;
 }
@@ -1628,7 +1699,7 @@ function renderRecentRoute() {
   const load = [last.goods_description, last.quantity_kg != null ? `${Number(last.quantity_kg).toLocaleString("en-PH")} kg` : ""].filter(Boolean).join(" · ");
   $("recentRouteText").textContent = route;
   $("recentRouteLoad").textContent = load;
-  btn.setAttribute("aria-label", `Use recent route: ${route}, ${load}`);
+  btn.setAttribute("aria-label", t("Use recent route: {route}, {load}", { route, load }));
 }
 
 function renderAll() {
@@ -1657,13 +1728,13 @@ async function loadDeliveries() {
   if (error) {
     const failed = `
       <div class="rq-card rq-empty">
-        <p><strong>We couldn't load your deliveries.</strong></p>
-        <p class="rq-muted">Check your signal, then try again.</p>
-        <button type="button" class="rq-btn rq-btn--ghost" data-reload>Try again</button>
+        <p><strong>${t("We couldn't load your deliveries.")}</strong></p>
+        <p class="rq-muted">${t("Check your signal, then try again.")}</p>
+        <button type="button" class="rq-btn rq-btn--ghost" data-reload>${t("Try again")}</button>
       </div>`;
     $("homeLists").innerHTML = failed;
     if (!deliveriesLoaded) {
-      $("trackPage").innerHTML = `${trackTop("Track", Boolean(trackCode))}<h1 id="trackTitle" class="rq-sr" tabindex="-1">Track</h1>${failed}`;
+      $("trackPage").innerHTML = `${trackTop("Track", Boolean(trackCode))}<h1 id="trackTitle" class="rq-sr" tabindex="-1">${t("Track")}</h1>${failed}`;
       trackShown = null;
     }
     return;
@@ -1754,8 +1825,8 @@ function openNewDate(id) {
   const price = formatPeso(estimateCost(Number(d.distance_km), Number(d.quantity_kg)));
   $("newDateWhat").innerHTML = `<strong>${titleLine(d)}</strong><br />${esc(d.pickup_address)} → ${esc(d.dropoff_address)}`;
   $("newDateFare").textContent = price;
-  $("newDateOld").textContent = `Your old request ${d.delivery_code} will be cancelled.`;
-  $("newDateConfirm").textContent = `Confirm booking · ${price}`;
+  $("newDateOld").textContent = t("Your old request {code} will be cancelled.", { code: d.delivery_code });
+  $("newDateConfirm").textContent = `${t("Confirm booking")} · ${price}`;
   $("newDateConfirm").disabled = false;
   const input = $("newDateInput");
   input.value = "";
@@ -1782,10 +1853,10 @@ $("newDateConfirm").addEventListener("click", async () => {
     input.focus();
     return;
   }
-  if (getIsOffline()) return newDateProblem("No connection. Check your signal and try again.");
+  if (getIsOffline()) return newDateProblem(t("No connection. Check your signal and try again."));
   const btn = $("newDateConfirm");
   const label = btn.textContent;
-  setBusy(btn, true, "Booking…");
+  setBusy(btn, true, t("Booking…"));
   let result;
   try {
     result = await createDelivery({
@@ -1827,62 +1898,62 @@ $("newDateConfirm").addEventListener("click", async () => {
     showView(location.hash.slice(1));
     $("trackTitle")?.focus({ preventScroll: true });
   }
-  if (cancelError) toastError(`Your new booking is in, but ${d.delivery_code} couldn't be cancelled. Cancel it from Home.`);
-  else toastSuccess(`Booked for ${day(new Date(input.value).toISOString())}. Drivers can see it now.`);
+  if (cancelError) toastError(t("Your new booking is in, but {code} couldn't be cancelled. Cancel it from Home.", { code: d.delivery_code }));
+  else toastSuccess(t("Booked for {day}. Drivers can see it now.", { day: day(new Date(input.value).toISOString()) }));
 });
 
 // ---------- Card actions (one listener for every list) ----------
 let cancelTarget = null;
 document.addEventListener("click", async (e) => {
-  const t = e.target.closest("button, a");
-  if (!t) {
+  const el = e.target.closest("button, a");
+  if (!el) {
     // The whole card opens its Track page, not just the pill (Home and History).
     const card = e.target.closest("#homeLists .rq-ship, #historyList .rq-history-card");
     if (card && !e.target.closest("textarea, input")) openTrack(card.dataset.deliveryId);
     return;
   }
-  if (t.dataset.shipDot) return goToShip(shipCards()[Number(t.dataset.shipDot)]?.dataset.deliveryId);
+  if (el.dataset.shipDot) return goToShip(shipCards()[Number(el.dataset.shipDot)]?.dataset.deliveryId);
 
-  if (t.matches("[data-reload]")) return loadDeliveries();
-  if (t.dataset.details) return openTrack(t.dataset.details);
-  if (t.dataset.trackRate) return openTrack(t.dataset.trackRate, { rate: true });
-  if (t.matches("[data-track-back]")) {
+  if (el.matches("[data-reload]")) return loadDeliveries();
+  if (el.dataset.details) return openTrack(el.dataset.details);
+  if (el.dataset.trackRate) return openTrack(el.dataset.trackRate, { rate: true });
+  if (el.matches("[data-track-back]")) {
     // Back to where you came from (Home, History, a notification); the Track tab otherwise.
     if (history.state?.back) history.back();
     else goTo("track");
     return;
   }
-  if (t.dataset.tile) return openTile(t.dataset.tile);
+  if (el.dataset.tile) return openTile(el.dataset.tile);
 
   // Book a new date / Cancel can be tapped inside another sheet (details,
   // notifications); that one steps aside first so only one sheet is up.
-  if (t.dataset.newDate || t.dataset.cancelId) {
-    const host = t.closest("dialog");
+  if (el.dataset.newDate || el.dataset.cancelId) {
+    const host = el.closest("dialog");
     if (host?.open) {
       host._returnFocus = null;
       await closeSheet(host);
     }
   }
-  if (t.dataset.newDate) return openNewDate(t.dataset.newDate);
+  if (el.dataset.newDate) return openNewDate(el.dataset.newDate);
 
-  if (t.dataset.cancelId) {
-    cancelTarget = deliveries.find((d) => d.id === t.dataset.cancelId);
+  if (el.dataset.cancelId) {
+    cancelTarget = deliveries.find((d) => d.id === el.dataset.cancelId);
     if (!cancelTarget) return;
-    $("cancelWhat").textContent = `${cancelTarget.delivery_code} · ${cancelTarget.goods_description}, ${cancelTarget.pickup_address.split(",")[0]} → ${cancelTarget.dropoff_address.split(",")[0]}. No driver has accepted yet.`;
+    $("cancelWhat").textContent = `${cancelTarget.delivery_code} · ${cancelTarget.goods_description}, ${cancelTarget.pickup_address.split(",")[0]} → ${cancelTarget.dropoff_address.split(",")[0]}. ${t("No driver has accepted yet.")}`;
     openSheet($("cancelSheet"));
     return;
   }
 
-  if (t.dataset.rebookId) {
-    const d = deliveries.find((x) => x.id === t.dataset.rebookId);
+  if (el.dataset.rebookId) {
+    const d = deliveries.find((x) => x.id === el.dataset.rebookId);
     if (d) rebookIntoForm(d);
     return;
   }
 
 
-  if (t.dataset.star) {
-    const box = t.closest("[data-rate-for]");
-    const value = Number(t.dataset.star);
+  if (el.dataset.star) {
+    const box = el.closest("[data-rate-for]");
+    const value = Number(el.dataset.star);
     box.dataset.value = value;
     box.querySelectorAll("[data-star]").forEach((s) => {
       const n = Number(s.dataset.star);
@@ -1893,39 +1964,39 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  if (t.matches("[data-send-rating]")) {
-    const box = t.closest("[data-rate-for]");
+  if (el.matches("[data-send-rating]")) {
+    const box = el.closest("[data-rate-for]");
     const id = box.dataset.rateFor;
     const d = deliveries.find((x) => x.id === id);
-    t.disabled = true;
-    t.textContent = "Sending…";
+    el.disabled = true;
+    el.textContent = t("Sending…");
     const { error } = await submitRating(id, profile.id, d.driver_id, Number(box.dataset.value), box.querySelector("textarea").value.trim());
     if (error) {
-      t.disabled = false;
-      t.textContent = "Send rating";
-      toastError("Your rating didn't save. Check your signal and send it again.");
+      el.disabled = false;
+      el.textContent = t("Send rating");
+      toastError(t("Your rating didn't save. Check your signal and send it again."));
       return;
     }
-    toastSuccess("Thanks. Your rating was saved.");
+    toastSuccess(t("Thanks. Your rating was saved."));
     await loadDeliveries();
     $("trackPage").querySelector(".rq-rated")?.focus({ preventScroll: true }); // the stars are gone; land on the result
     return;
   }
 
-  if (t.dataset.filter) {
-    historyFilter = t.dataset.filter;
+  if (el.dataset.filter) {
+    historyFilter = el.dataset.filter;
     historyPage = 1;
     renderHistory();
     return;
   }
-  if (t.matches("[data-filter-reset]")) {
+  if (el.matches("[data-filter-reset]")) {
     historyFilter = "all";
     historyPage = 1;
     renderHistory();
     return;
   }
-  if (t.dataset.historyPage) {
-    historyPage = Number(t.dataset.historyPage);
+  if (el.dataset.historyPage) {
+    historyPage = Number(el.dataset.historyPage);
     renderHistory();
     // Back to the top of the list, with focus where a keyboard user expects it.
     $("historyTitle").scrollIntoView({ block: "start" });
@@ -1939,14 +2010,14 @@ $("cancelConfirm").addEventListener("click", async () => {
   const btn = $("cancelConfirm");
   if (!d) return;
   if (getIsOffline()) {
-    toastError("No connection. Check your signal and try again.");
+    toastError(t("No connection. Check your signal and try again."));
     return;
   }
-  setBusy(btn, true, "Cancelling…");
+  setBusy(btn, true, t("Cancelling…"));
   const { error } = await cancelMyDelivery(d.id, profile.id);
   btn.disabled = false;
   btn.removeAttribute("aria-busy");
-  btn.textContent = "Cancel request";
+  btn.textContent = t("Cancel request");
   const sheetClosed = closeSheet($("cancelSheet"));
   if (error) {
     // No row matched: a driver accepted it in the meantime.
@@ -1957,15 +2028,15 @@ $("cancelConfirm").addEventListener("click", async () => {
         || document.querySelector(`[data-delivery-id="${CSS.escape(d.id)}"]`);
       card?.insertAdjacentHTML(
         "afterbegin",
-        `<div class="rq-banner rq-banner--warn" role="alert"><p><strong>A driver accepted first.</strong> Your cancel didn't go through. Only Sakada can cancel now. <button type="button" class="rq-link" data-open-contact="${esc(d.delivery_code)}" aria-haspopup="dialog">Contact Support about ${esc(d.delivery_code)}</button></p></div>`,
+        `<div class="rq-banner rq-banner--warn" role="alert"><p><strong>${t("A driver accepted first.")}</strong> ${t("Your cancel didn't go through. Only Sakada can cancel now.")} <button type="button" class="rq-link" data-open-contact="${esc(d.delivery_code)}" aria-haspopup="dialog">${t("Contact Support about {code}", { code: esc(d.delivery_code) })}</button></p></div>`,
       );
       card?.focus();
     } else {
-      toastError("We couldn't cancel this. Check your signal and try again.");
+      toastError(t("We couldn't cancel this. Check your signal and try again."));
     }
     return;
   }
-  toastSuccess("Request cancelled");
+  toastSuccess(t("Request cancelled"));
   await leaveHome(d.id);
   loadDeliveries();
 });
@@ -2014,13 +2085,13 @@ $("trackForm").addEventListener("submit", (e) => {
   const input = $("trackInput");
   const problem = checkTrackQuery(input.value);
   if (problem) {
-    showFieldError(input, problem);
+    showFieldError(input, t(problem));
     input.focus();
     return;
   }
   const d = findDelivery(deliveries, input.value);
   if (!d) {
-    showFieldError(input, `Nothing on your account matches "${input.value.trim()}". Codes look like SK-00142.`);
+    showFieldError(input, t("Nothing on your account matches \"{text}\". Codes look like SK-00142.", { text: input.value.trim() }));
     input.focus();
     return;
   }
@@ -2030,6 +2101,22 @@ $("trackForm").addEventListener("submit", (e) => {
 });
 
 // ---------- Notifications ----------
+// The database writes these in English (0008); each known one is shown in
+// the chosen language, anything else as written.
+const NOTICES = [
+  [/^A driver accepted your delivery (\S+)\.$/, "A driver accepted your delivery {code}."],
+  [/^Your delivery (\S+) has been picked up\.$/, "Your delivery {code} has been picked up."],
+  [/^Your delivery (\S+) is in transit\.$/, "Your delivery {code} is in transit."],
+  [/^Your delivery (\S+) has been delivered\.$/, "Your delivery {code} has been delivered."],
+  [/^Your delivery (\S+) was cancelled\.$/, "Your delivery {code} was cancelled."],
+];
+function noticeText(message) {
+  for (const [pattern, english] of NOTICES) {
+    const m = pattern.exec(message || "");
+    if (m) return t(english, { code: m[1] });
+  }
+  return message;
+}
 let notifications = [];
 let lastUnread = null; // null until the first count, so page load never pops
 function renderUnread() {
@@ -2047,9 +2134,9 @@ function renderUnread() {
     }
   });
   document.querySelectorAll("[data-open-notifs]").forEach((b) =>
-    b.setAttribute("aria-label", unread ? `Notifications, ${unread} unread` : "Notifications"),
+    b.setAttribute("aria-label", unread ? t("Notifications, {n} unread", { n: unread }) : t("Notifications")),
   );
-  const words = [unread - late && `${unread - late} unread`, late && `${late} need${late > 1 ? "" : "s"} you`].filter(Boolean);
+  const words = [unread - late && t("{n} unread", { n: unread - late }), late && t(late > 1 ? "{n} need you" : "{n} needs you", { n: late })].filter(Boolean);
   document.querySelectorAll("[data-unread-text]").forEach((el) => (el.textContent = words.join(" · ")));
   renderNeeds();
 }
@@ -2059,14 +2146,14 @@ function renderNeeds() {
   const late = lateList();
   $("notifNeeds").hidden = !late.length;
   $("notifNeeds").innerHTML = late.length ? `
-    <h3 class="rq-needs-title">Needs you</h3>
+    <h3 class="rq-needs-title">${t("Needs you")}</h3>
     ${late.map((d) => `
       <div class="rq-need" data-need="${esc(d.id)}">
         <p><strong>${esc(d.delivery_code)} · ${titleLine(d)}</strong><br /><span class="rq-muted">${shortRoute(d)}</span></p>
-        <p>The pickup date (${day(d.scheduled_pickup_at)}) passed before a driver accepted, so drivers can't see it anymore.</p>
+        <p>${t("The pickup date ({day}) passed before a driver accepted, so drivers can't see it anymore.", { day: day(d.scheduled_pickup_at) })}</p>
         <div class="rq-need-actions">
-          <button type="button" class="rq-btn" data-new-date="${esc(d.id)}">Book a new date</button>
-          <button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">Cancel request</button>
+          <button type="button" class="rq-btn" data-new-date="${esc(d.id)}">${t("Book a new date")}</button>
+          <button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">${t("Cancel request")}</button>
         </div>
       </div>`).join("")}` : "";
 }
@@ -2078,11 +2165,11 @@ function renderNotifs() {
           (n) => `
         <li><button type="button" class="rq-notif${n.is_read ? "" : " is-unread"}" data-notif-id="${esc(n.id)}" data-delivery="${esc(n.delivery_id || "")}">
           <span class="rq-notif-dot" aria-hidden="true"></span>
-          <span><span class="rq-sr">${n.is_read ? "" : "Unread. "}</span>${esc(n.message)}<br /><span class="rq-muted">${timeAgo(n.created_at)}</span></span>
+          <span><span class="rq-sr">${n.is_read ? "" : t("Unread. ")}</span>${esc(noticeText(n.message))}<br /><span class="rq-muted">${timeAgo(n.created_at)}</span></span>
         </button></li>`,
         )
         .join("")
-    : `<li class="rq-empty"><p><strong>No notifications yet</strong></p><p class="rq-muted">Updates show here when a driver accepts, picks up and delivers.</p></li>`;
+    : `<li class="rq-empty"><p><strong>${t("No notifications yet")}</strong></p><p class="rq-muted">${t("Updates show here when a driver accepts, picks up and delivers.")}</p></li>`;
   renderUnread();
 }
 async function loadNotifications() {

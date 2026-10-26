@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="../../css/fonts.css" />
     <link rel="stylesheet" href="../../css/style.css" />
     <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="../../manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="../../assets/icons/app/app-180.png" />
+    <meta name="theme-color" content="#0b0c09" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.15/purify.min.js" integrity="sha384-uUMu9JDY09vBzRf9SPcK2VgUj+W/70J6Soc+Dded5P474ElQ63iv9j5N3DE7Kp3N" crossorigin="anonymous"></script>
   </head>
   <body class="rq" data-role="vendor" data-view="home">
@@ -125,6 +128,11 @@
             <button type="button" class="rq-row" data-open-contact aria-haspopup="dialog"><span>Contact Support</span><svg class="rq-row-chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6.5 5.5 5.5-5.5 5.5"/></svg></button>
             <button type="button" class="rq-row" id="openHow" aria-haspopup="dialog"><span>How it works</span><svg class="rq-row-chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6.5 5.5 5.5-5.5 5.5"/></svg></button>
           </div>
+          <!-- Language + Phone alerts (Figma 349:2539) -->
+          <div class="rq-list">
+            <a class="rq-row" href="#profile/language"><span>Language</span><span class="rq-row-meta rq-row-meta--count" id="langValue" data-i18n-skip></span><svg class="rq-row-chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6.5 5.5 5.5-5.5 5.5"/></svg></a>
+            <a class="rq-row" href="#profile/alerts"><span>Phone alerts</span><span class="rq-row-meta rq-row-meta--count" id="alertsValue"></span><svg class="rq-row-chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6.5 5.5 5.5-5.5 5.5"/></svg></a>
+          </div>
           <div class="rq-note">
             <p><strong>Your role: Vendor</strong></p>
             <p class="rq-muted">Roles can't be changed. Farmers and vendors get the same booking tools.</p>
@@ -204,6 +212,36 @@
             </div>
             <p class="rq-psub" id="savedIntro">They show first when you type an address on Book.</p>
             <div id="savedBox" aria-live="polite"></div>
+          </div>
+
+          <!-- Language (Figma 349:2721): changes right away -->
+          <div class="rq-ppage" data-profile-page="language" hidden>
+            <div class="rq-track-top rq-book-top">
+              <button class="rq-back" type="button" data-profile-back aria-label="Back to Profile"><img src="../../assets/icons/book/back.svg" width="20" height="20" alt="" /></button>
+              <h1 class="rq-track-where">Language</h1>
+              <p class="rq-track-logo" aria-hidden="true">SAKA<span>DA</span></p>
+            </div>
+            <p class="rq-psub">Choose the words the app uses. Saved to your account, so phone alerts use it too.</p>
+            <div class="rq-list rq-langs" id="langList" role="radiogroup" aria-label="Language" data-i18n-skip></div>
+            <p class="rq-saved-note">Changes right away. No need to save.</p>
+          </div>
+
+          <!-- Phone alerts (Figma 350:2896 on, 350:3009 blocked, 350:3087 iPhone) -->
+          <div class="rq-ppage" data-profile-page="alerts" hidden>
+            <div class="rq-track-top rq-book-top">
+              <button class="rq-back" type="button" data-profile-back aria-label="Back to Profile"><img src="../../assets/icons/book/back.svg" width="20" height="20" alt="" /></button>
+              <h1 class="rq-track-where">Phone alerts</h1>
+              <p class="rq-track-logo" aria-hidden="true">SAKA<span>DA</span></p>
+            </div>
+            <p class="rq-psub">An alert on this phone when your shipment moves, even with Sakada closed.</p>
+            <div class="rq-list rq-alerts">
+              <button type="button" class="rq-alerts-row" id="alertsSwitch" role="switch" aria-checked="false" aria-describedby="alertsStatus">
+                <span class="rq-alerts-words"><strong>Alerts on this phone</strong><span id="alertsStatus"></span></span>
+                <span class="rq-switch" aria-hidden="true"></span>
+              </button>
+            </div>
+            <p class="rq-banner rq-banner--bad" id="alertsError" role="alert" hidden></p>
+            <div id="alertsInfo"></div>
           </div>
         </section>
       </main>

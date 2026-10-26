@@ -8,6 +8,11 @@ import { checkNewPassword, checkEmail, emailChecker } from "./validators.js";
 import { validateFields, clearWhenFixed } from "./field-errors.js";
 import { resetErrorCopy } from "./signup-result.js";
 import { wirePasswordToggle } from "./password-toggle.js";
+import { t, useLanguage, translatePage } from "./i18n.js";
+
+// The reset page follows the language last chosen on this phone (Profile → Language).
+useLanguage();
+translatePage();
 
 const DASHBOARD_PATHS = {
   farmer: "../dashboard/farmer/index.html",
@@ -53,7 +58,7 @@ async function start() {
   }
   if (fromLink && session) {
     email = session.user?.email || "";
-    $("setFor").textContent = email ? `For ${email}` : "";
+    $("setFor").textContent = email ? t("For {email}", { email }) : "";
     show("setStep", "setTitle");
     return;
   }
@@ -68,14 +73,14 @@ $("setForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   say($("setMessage"), "");
   if (!validateFields([[password, checkNewPassword]])) return;
-  setBusy($("setBtn"), true, "Saving…");
+  setBusy($("setBtn"), true, t("Saving…"));
   let error;
   try {
     ({ error } = await supabase.auth.updateUser({ password: password.value }));
   } catch (err) {
     error = err;
   }
-  setBusy($("setBtn"), false, "Save new password");
+  setBusy($("setBtn"), false, t("Save new password"));
   if (error) {
     if (error.status === 401 || /session/i.test(error.message || "")) return show("expiredStep", "expiredTitle");
     return say($("setMessage"), resetErrorCopy(error));
@@ -93,14 +98,14 @@ $("againForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   say($("againMessage"), "");
   if (!validateFields([[again, emailChecker()]])) return;
-  setBusy($("againBtn"), true, "Sending…");
+  setBusy($("againBtn"), true, t("Sending…"));
   let error;
   try {
     ({ error } = await sendPasswordReset(again.value.trim()));
   } catch (err) {
     error = err;
   }
-  setBusy($("againBtn"), false, "Send a new link");
+  setBusy($("againBtn"), false, t("Send a new link"));
   if (error) return say($("againMessage"), resetErrorCopy(error));
-  say($("againMessage"), `We sent a new link to ${again.value.trim()}. Open it on this phone.`, "success");
+  say($("againMessage"), t("We sent a new link to {email}. Open it on this phone.", { email: again.value.trim() }), "success");
 });

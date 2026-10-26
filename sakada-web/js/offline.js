@@ -1,3 +1,4 @@
+import { t } from "./i18n.js";
 import { toastSuccess, toastWarning } from "./toast.js";
 
 const SUBMIT_SELECTORS =
@@ -36,14 +37,14 @@ function handleOffline() {
   isOffline = true;
   showBanner();
   disableSubmits();
-  toastWarning("You're offline — changes won't be saved until you reconnect");
+  toastWarning(t("You're offline — changes won't be saved until you reconnect"));
 }
 
 function handleOnline() {
   isOffline = false;
   hideBanner();
   enableSubmits();
-  toastSuccess("You're back online");
+  toastSuccess(t("You're back online"));
 }
 
 export function initOfflineDetection() {

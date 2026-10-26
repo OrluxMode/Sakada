@@ -5,6 +5,9 @@ Database schema and security policies for Sakada, built on Supabase (Postgres + 
 What's here
 sakada-backend/
 ├── supabase/
+│   ├── functions/
+│   │   └── send-push/                         ← authenticated webhook + localized VAPID web push
+│   ├── config.toml                           ← send-push webhook authentication configuration
 │   └── migrations/
 │       ├── 0001_core_schema.sql              ← profiles, role tables, deliveries
 │       ├── 0002_status_history.sql           ← auto-logged status audit trail
@@ -31,15 +34,18 @@ sakada-backend/
 │       ├── 0023_driver_rating_average.sql  ← real driver rating averages and counts in requester RPC
 │       ├── 0024_recipient_and_pickup_window.sql ← recipient name and Philippine-time pickup window
 │       ├── 0025_avatars.sql                 ← public avatar bucket and own-path URL rule
-│       └── 0026_saved_addresses.sql         ← private saved addresses, ten per user
+│       ├── 0026_saved_addresses.sql         ← private saved addresses, ten per user
+│       ├── 0027_profile_language.sql        ← saved English / Filipino / Taglish preference
+│       └── 0028_push_subscriptions.sql      ← private phones + save/delete RPCs, ten per user
 ├── docs/
 │   ├── SCHEMA.md                            ← every table explained
-│   └── SETUP.md                             ← step-by-step setup guide
+│   ├── SETUP.md                             ← step-by-step setup guide
+│   └── PUSH-SETUP.md                        ← migrations, VAPID, function/webhook setup and phone tests
 └── .env.example
 
 Status
 
-Migrations 0001–0026 are written. Apply pending migrations in order; this list
+Migrations 0001–0028 and the send-push Edge Function are written. Apply pending migrations in order; this list
 does not confirm their deployment status. The frontend (sakada-web/) is fully wired to this backend with:
 - Real authentication (email/password + Google OAuth)
 - Role-based dashboards (farmer, vendor, driver, admin)
@@ -72,3 +78,17 @@ with the browser's Supabase client; SQL Editor bypasses the policies):
 Automated database checks (Storage is a DDL stub, not a Storage integration test):
 `npm install --prefix /tmp/sakada-text-limits-test @electric-sql/pglite`
 `NODE_PATH=/tmp/sakada-text-limits-test/node_modules node sakada-backend/tests/saved-addresses.cjs`
+
+Saved language and phone alerts (0027–0028)
+
+Follow [docs/PUSH-SETUP.md](docs/PUSH-SETUP.md) to apply migrations in SQL Editor,
+add VAPID/webhook secrets, deploy `supabase/functions/send-push/index.ts`, create
+the asynchronous notifications INSERT webhook, and test an actual phone.
+The frontend reads the public VAPID key as `vapidPublicKey` in its config;
+private keys stay in Supabase. Changing a profile's `language` affects future
+requester push alerts; stored in-app notification messages keep their existing text.
+
+Automated checks:
+`NODE_PATH=/tmp/sakada-text-limits-test/node_modules node sakada-backend/tests/language-and-push.cjs`
+`npx --yes --package=deno deno check sakada-backend/supabase/functions/send-push/index.ts`
+`npx --yes --package=deno deno test --allow-env sakada-backend/supabase/functions/send-push/send-push_test.ts`

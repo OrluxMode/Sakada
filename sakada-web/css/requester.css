@@ -298,6 +298,90 @@
 .rq-list--account { margin-bottom: 0; }
 .rq-list--account + .rq-list { margin-top: 16px; }
 .rq .rq-row-meta--count { color: var(--rq-meta); font-weight: 500; }
+.rq-list + .rq-list { margin-top: 16px; }
+
+/* Language (Figma 349:2721): three options, each with the same sentence in its own words */
+.rq-langs { margin-top: 0; }
+.rq-lang {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 68px; padding: 12px 16px;
+  border: 0; border-top: 1px solid rgb(var(--cream-rgb) / 0.12); background: var(--panel-dark);
+  color: var(--text-cream); font: inherit; text-align: left; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: background-color 150ms var(--rq-ease-out);
+}
+.rq-lang:first-child { border-top: 0; }
+.rq-lang-words { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.rq-lang-words strong { font-size: 16px; font-weight: 600; line-height: 22px; }
+.rq-lang-words span { color: var(--rq-meta); font-size: 14px; line-height: 20px; }
+.rq-lang-check { flex: none; display: grid; color: #f0b25a; opacity: 0; transform: scale(0.8); transition: opacity 150ms var(--rq-ease-out), transform 150ms var(--rq-ease-out); }
+.rq-lang[aria-checked="true"] .rq-lang-check { opacity: 1; transform: none; }
+.rq-lang:active { background: #1b1c15; }
+.rq-lang:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: -2px; }
+
+/* Phone alerts (Figma 350:2896): one switch, then what it sends or why it can't */
+.rq-alerts { margin-top: 0; }
+.rq-alerts-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 12px 16px;
+  border: 0; background: var(--panel-dark); color: var(--text-cream); font: inherit; text-align: left; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.rq-alerts-row:disabled { cursor: default; }
+.rq-alerts-row:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: -2px; }
+.rq-alerts-words { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.rq-alerts-words strong { font-size: 16px; font-weight: 600; line-height: 22px; }
+.rq-alerts-words span { color: var(--rq-meta); font-size: 14px; line-height: 20px; }
+.rq-alerts-words span.is-on { color: #f0b25a; }
+.rq-switch {
+  position: relative; flex: none; width: 51px; height: 31px; border-radius: 999px; background: rgb(var(--cream-rgb) / 0.18);
+  transition: background-color 200ms var(--rq-ease-out);
+}
+.rq-switch::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+  background: var(--text-cream); box-shadow: 0 2px 4px rgb(0 0 0 / 0.3);
+  transition: transform 200ms var(--rq-ease-out);
+}
+.rq-alerts-row[aria-checked="true"] .rq-switch { background: var(--accent-amber); }
+.rq-alerts-row[aria-checked="true"] .rq-switch::after { transform: translateX(20px); }
+.rq-alerts-row:disabled .rq-switch { opacity: 0.4; }
+.rq-alerts-row[aria-busy="true"] .rq-switch { opacity: 0.6; }
+.rq-alerts-list { margin-top: 16px; padding: 16px; background: var(--panel-dark); }
+.rq .rq-alerts-list p { color: var(--rq-meta); font-size: 14px; font-weight: 600; line-height: 20px; margin-bottom: 10px; }
+.rq-alerts-list ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.rq-alerts-list li { display: flex; align-items: center; gap: 10px; font-size: 15px; line-height: 20px; }
+.rq-alerts-list svg { flex: none; color: #f0b25a; }
+.rq .rq-saved-note--left { text-align: left; }
+.rq-alerts-note {
+  display: grid; gap: 8px; margin-top: 16px; padding: 14px 16px; border-radius: 14px;
+  border: 1px solid rgb(224 151 47 / 0.5); background: rgb(224 151 47 / 0.1); font-size: 15px; line-height: 22px;
+}
+.rq-alerts-note span, .rq-alerts-note ol { color: var(--rq-meta); }
+.rq-alerts-note ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+
+/* Offer on Request sent (Figma 350:2792): outline button, so Track this shipment stays the main one */
+.rq-offer { display: grid; gap: 12px; padding: 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--panel-dark); }
+.rq-offer-top { display: flex; gap: 12px; align-items: flex-start; }
+.rq-offer-top svg { flex: none; color: #f0b25a; margin-top: 1px; }
+.rq-offer-top p { display: grid; gap: 2px; }
+.rq-offer-top strong { font-size: 16px; font-weight: 600; line-height: 22px; }
+.rq-offer-top span { color: var(--rq-meta); font-size: 14px; line-height: 20px; }
+.rq-offer-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-left: 34px; }
+.rq-offer-on, .rq-offer-later {
+  min-height: 44px; padding: 0 18px; border-radius: 999px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: transform 100ms var(--rq-ease-out);
+}
+.rq-offer-on { border: 1px solid var(--accent-amber); background: none; color: #f0b25a; }
+.rq-offer-later { border: 0; background: none; color: var(--rq-meta); }
+.rq-offer-on:active, .rq-offer-later:active { transform: scale(0.97); }
+.rq-offer-on:disabled { opacity: 0.6; }
+.rq-offer-on:focus-visible, .rq-offer-later:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
+.rq .rq-offer-done { color: var(--rq-meta); font-size: 14px; line-height: 20px; }
+@media (hover: hover) and (pointer: fine) {
+  .rq-lang:hover, .rq-alerts-row:not(:disabled):hover { background: #1b1c15; }
+  .rq-offer-on:hover { background: rgb(224 151 47 / 0.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rq-switch, .rq-switch::after, .rq-lang-check { transition-duration: 0ms; }
+}
 
 /* Profile photo where the initials were (js/avatar.js) */
 .rq-avatar.has-photo { overflow: hidden; background: var(--panel-dark); border-color: rgb(var(--cream-rgb) / 0.16); }

@@ -4,6 +4,8 @@
 // reused) and is linked with aria-describedby, so screen readers read it
 // together with the field.
 
+import { t } from "./i18n.js";
+
 export function showFieldError(input, message, fix = "") {
   const id = `${input.id}Error`;
   let el = document.getElementById(id);
@@ -22,7 +24,7 @@ export function showFieldError(input, message, fix = "") {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "field-error-fix";
-    btn.textContent = `Use ${fix}`;
+    btn.textContent = t("Use {fix}", { fix });
     btn.addEventListener("click", () => {
       input.value = fix;
       showFieldError(input, "");

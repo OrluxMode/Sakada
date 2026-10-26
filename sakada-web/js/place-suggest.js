@@ -13,6 +13,8 @@
 // Book's produce rows use the same list for produce names (js/produce-rows.js):
 // a local search, from the first letter, with a "Use … as typed" option last.
 
+import { t } from "./i18n.js";
+
 const MIN_CHARS = 3;
 const PAUSE_MS = 250; // wait for a pause in typing before asking the map service
 
@@ -36,16 +38,16 @@ const PAUSE_MS = 250; // wait for a pause in typing before asking the map servic
  */
 export function attachPlaceSuggest({
   input, row, host, search, canSearch = () => true, onPick, emptyAction, saved = () => [],
-  minChars = MIN_CHARS, pauseMs = PAUSE_MS, label = "Suggested places", noun = ["place", "places"],
+  minChars = MIN_CHARS, pauseMs = PAUSE_MS, label = t("Suggested places"), noun = [t("place"), t("places")],
 }) {
   const id = `${input.id}Places`;
   const box = document.createElement("div");
   box.className = "rq-places";
   box.innerHTML = `
-    <p class="rq-places-head" id="${id}Head" hidden>Saved addresses</p>
+    <p class="rq-places-head" id="${id}Head" hidden>${t("Saved addresses")}</p>
     <ul class="rq-places-list" role="listbox" id="${id}" aria-label="${label}"></ul>
     <div class="rq-places-empty" hidden>
-      <p><strong></strong><span>Check the spelling, or add the town and province.</span></p>
+      <p><strong></strong><span>${t("Check the spelling, or add the town and province.")}</span></p>
       <button type="button" class="rq-places-action" hidden></button>
     </div>`;
   const status = document.createElement("p");
@@ -106,7 +108,7 @@ export function attachPlaceSuggest({
   function show(text, results, { savedOnly = false } = {}) {
     places = results;
     head.hidden = !savedOnly;
-    list.setAttribute("aria-label", savedOnly ? "Saved addresses" : label);
+    list.setAttribute("aria-label", savedOnly ? t("Saved addresses") : label);
     active = -1;
     input.removeAttribute("aria-activedescendant");
     list.replaceChildren(...results.map((p, i) => {
@@ -138,11 +140,11 @@ export function attachPlaceSuggest({
     }));
     list.hidden = !results.length;
     empty.hidden = results.length > 0;
-    empty.querySelector("strong").textContent = `No places match “${text}”`;
+    empty.querySelector("strong").textContent = t("No places match “{text}”", { text });
     const found = results.filter((p) => !p.typed).length;
     status.textContent = found
-      ? `${found} ${savedOnly ? (found === 1 ? "saved address" : "saved addresses") : noun[found === 1 ? 0 : 1]} found`
-      : `No ${noun[1]} match ${text}`;
+      ? t("{n} {what} found", { n: found, what: savedOnly ? t(found === 1 ? "saved address" : "saved addresses") : noun[found === 1 ? 0 : 1] })
+      : t("No {what} match {text}", { what: noun[1], text });
     open();
   }
 

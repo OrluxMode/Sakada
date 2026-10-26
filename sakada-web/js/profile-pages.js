@@ -3,6 +3,7 @@
 // 335:1698–335:1957. The dashboard owns routing, sheets and the pin map;
 // this module owns what's on these pages.
 
+import { t } from "./i18n.js";
 import { supabase } from "./supabase-client.js";
 import { checkName, checkPassword, checkNewPassword, checkAddress } from "./validators.js";
 import { validateFields, clearWhenFixed, clearFieldErrors, showFieldError } from "./field-errors.js";
@@ -77,20 +78,20 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     e.target.value = ""; // picking the same photo again still counts
     if (!file) return;
     photoNote.classList.remove("is-bad");
-    photoNote.textContent = "Getting your photo ready…";
+    photoNote.textContent = t("Getting your photo ready…");
     try {
       const blob = await squarePhoto(file);
       forgetPreview();
       pendingPhoto = blob;
       previewUrl = URL.createObjectURL(blob);
       dropPhoto = false;
-      photoNote.textContent = "New photo. Save changes to use it.";
+      photoNote.textContent = t("New photo. Save changes to use it.");
       paintEditor({ fade: true });
     } catch (err) {
       photoNote.classList.add("is-bad");
       photoNote.textContent = err.message === "not-image"
-        ? "That file isn't a photo. Pick a JPG or PNG."
-        : "Couldn't open that photo. Try another one.";
+        ? t("That file isn't a photo. Pick a JPG or PNG.")
+        : t("Couldn't open that photo. Try another one.");
     }
     syncSave();
   });
@@ -99,7 +100,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     forgetPreview();
     dropPhoto = Boolean(profile.avatar_url);
     photoNote.classList.remove("is-bad");
-    photoNote.textContent = had && dropPhoto ? "Photo removed. Save changes to confirm." : "";
+    photoNote.textContent = had && dropPhoto ? t("Photo removed. Save changes to confirm.") : "";
     paintEditor({ fade: true });
     syncSave();
     $("changePhoto").focus();
@@ -114,7 +115,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     const oldUrl = profile.avatar_url || null;
     saveBtn.setAttribute("aria-busy", "true");
     saveBtn.disabled = true;
-    saveBtn.querySelector(".rq-save-face").textContent = "Saving…";
+    saveBtn.querySelector(".rq-save-face").textContent = t("Saving…");
     let newUrl = oldUrl;
     let error = null;
     try {
@@ -135,8 +136,8 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     if (error) {
       const notReady = /bucket/i.test(String(error.err?.message || ""));
       $("profileSaveError").textContent = error.photo
-        ? notReady ? "Photos can't be saved yet. Save your name for now, or try again later." : "The photo didn't upload. Check your signal and try again."
-        : "It didn't save. Check your signal and try again.";
+        ? t(notReady ? "Photos can't be saved yet. Save your name for now, or try again later." : "The photo didn't upload. Check your signal and try again.")
+        : t("It didn't save. Check your signal and try again.");
       $("profileSaveError").hidden = false;
       syncSave();
       return;
@@ -151,7 +152,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     onProfileChange();
     // "Saved" for 2 seconds, then back to Save changes (off until the next change).
     saveBtn.setAttribute("data-saved", "");
-    $("saveStatus").textContent = "Profile saved";
+    $("saveStatus").textContent = t("Profile saved");
     savedTimer = setTimeout(clearSaved, 2000);
     syncSave();
   });
@@ -161,7 +162,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
   const pwToggle = $("passwordToggle");
   const current = $("currentPassword");
   const fresh = $("newPassword");
-  const differs = (v) => checkNewPassword(v) || (v && v === current.value ? "Use a password that's different from your current one." : "");
+  const differs = (v) => checkNewPassword(v) || (v && v === current.value ? t("Use a password that's different from your current one.") : "");
   clearWhenFixed([[current, checkPassword], [fresh, differs]]);
 
   /** Open or close the password form in place: height and fade, 200ms in, 150ms out. */
@@ -170,7 +171,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     pwToggle.setAttribute("aria-expanded", String(open));
     pwClosing?.cancel();
     pwClosing = null;
-    $("passwordHeading").textContent = open ? "Change password" : "Password";
+    $("passwordHeading").textContent = t(open ? "Change password" : "Password");
     $("passwordSub").hidden = open;
     if (open) {
       pwForm.hidden = false;
@@ -202,7 +203,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
   function setShown(btn, on) {
     $(btn.dataset.showFor).type = on ? "text" : "password";
     btn.setAttribute("aria-pressed", String(on));
-    btn.textContent = on ? "Hide" : "Show";
+    btn.textContent = t(on ? "Hide" : "Show");
   }
   pwForm.querySelectorAll("[data-show-for]").forEach((b) => {
     b.addEventListener("click", () => setShown(b, b.getAttribute("aria-pressed") !== "true"));
@@ -212,7 +213,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     const btn = $("forgotCurrent");
     if (btn.disabled || !user?.email) return;
     btn.disabled = true;
-    btn.textContent = "Sending a reset link…";
+    btn.textContent = t("Sending a reset link…");
     $("passwordError").hidden = true;
     let error;
     try {
@@ -221,7 +222,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
       error = err;
     }
     btn.disabled = false;
-    btn.textContent = "Forgot your current password?";
+    btn.textContent = t("Forgot your current password?");
     if (error) {
       $("passwordError").textContent = resetErrorCopy(error);
       $("passwordError").hidden = false;
@@ -239,10 +240,10 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     $("passwordError").hidden = true;
     if (!validateFields([[current, checkPassword], [fresh, differs]])) return;
     btn.disabled = true;
-    btn.textContent = "Checking…";
+    btn.textContent = t("Checking…");
     const fail = (msg) => {
       btn.disabled = false;
-      btn.textContent = "Update password";
+      btn.textContent = t("Update password");
       if (msg) {
         $("passwordError").textContent = msg;
         $("passwordError").hidden = false;
@@ -254,35 +255,35 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
       if (wrong) {
         fail("");
         if (wrong.status === 400 || /invalid/i.test(wrong.message || "")) {
-          showFieldError(current, "That's not your current password.");
+          showFieldError(current, t("That's not your current password."));
           current.focus();
           return;
         }
-        return fail("Couldn't check your password. Check your signal and try again.");
+        return fail(t("Couldn't check your password. Check your signal and try again."));
       }
-      btn.textContent = "Updating…";
+      btn.textContent = t("Updating…");
       const { error } = await supabase.auth.updateUser({ password: fresh.value });
       if (error) {
         if (error.code === "same_password") {
           fail("");
-          showFieldError(fresh, "That's your current password. Pick a new one.");
+          showFieldError(fresh, t("That's your current password. Pick a new one."));
           return fresh.focus();
         }
         if (error.code === "weak_password") {
           fail("");
-          showFieldError(fresh, "Pick a stronger password: longer, with numbers or symbols.");
+          showFieldError(fresh, t("Pick a stronger password: longer, with numbers or symbols."));
           return fresh.focus();
         }
-        if (error.code === "reauthentication_needed") return fail("For your safety, log out and log back in, then change your password.");
-        return fail("Your password didn't change. Check your signal and try again.");
+        if (error.code === "reauthentication_needed") return fail(t("For your safety, log out and log back in, then change your password."));
+        return fail(t("Your password didn't change. Check your signal and try again."));
       }
     } catch {
-      return fail("Your password didn't change. Check your signal and try again.");
+      return fail(t("Your password didn't change. Check your signal and try again."));
     }
     fail("");
     setPasswordOpen(false);
     pwToggle.focus();
-    toastSuccess("Password changed.");
+    toastSuccess(t("Password changed."));
   });
 
   // ---------- Saved addresses ----------
@@ -315,7 +316,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
       return;
     }
     if (state === "error") {
-      box.innerHTML = `<div class="rq-banner rq-banner--bad" role="alert"><p>Couldn't load your saved addresses. Check your signal and try again. <button type="button" class="rq-link" data-saved-reload>Try again</button></p></div>`;
+      box.innerHTML = `<div class="rq-banner rq-banner--bad" role="alert"><p>${t("Couldn't load your saved addresses. Check your signal and try again.")} <button type="button" class="rq-link" data-saved-reload>${t("Try again")}</button></p></div>`;
       return;
     }
     if (!rows.length) {
@@ -340,8 +341,8 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
             </button>
           </li>`).join("")}
       </ul>
-      ${full ? "" : `<button type="button" class="rq-btn rq-bbtn rq-btn--ghost rq-saved-add" data-saved-add>${PLUS}Add an address</button>`}
-      <p class="rq-saved-note">${full ? `That's ${SAVED_LIMIT}, the most you can save. Delete one to add another.` : `You can save up to ${SAVED_LIMIT}.`}</p>`;
+      ${full ? "" : `<button type="button" class="rq-btn rq-bbtn rq-btn--ghost rq-saved-add" data-saved-add>${PLUS}${t("Add an address")}</button>`}
+      <p class="rq-saved-note">${full ? t("That's {n}, the most you can save. Delete one to add another.", { n: SAVED_LIMIT }) : t("You can save up to {n}.", { n: SAVED_LIMIT })}</p>`;
   }
 
   box.addEventListener("click", (e) => {
@@ -362,7 +363,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
   let armTimer = 0;
 
   const labelCheck = (v) => checkSavedLabel(v, rows, editing?.id ?? null);
-  const addressCheck = (v) => (v.trim() ? checkAddress(v, "") : "Enter the address.");
+  const addressCheck = (v) => (v.trim() ? checkAddress(v, "") : t("Enter the address."));
   clearWhenFixed([[label, labelCheck], [address, addressCheck]]);
 
   function syncQuick() {
@@ -393,20 +394,20 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     search: suggestPlaces,
     canSearch: () => !isOffline(),
     onPick: setPicked,
-    emptyAction: { label: "Pin it on the map instead", run: () => pinOnMap("saved") },
+    emptyAction: { label: t("Pin it on the map instead"), run: () => pinOnMap("saved") },
   });
   sheet.querySelector("[data-pin-saved]").addEventListener("click", () => pinOnMap("saved"));
 
   function disarmDelete() {
     clearTimeout(armTimer);
     delete delBtn.dataset.armed;
-    delBtn.textContent = "Delete address";
+    delBtn.textContent = t("Delete address");
   }
 
   /** Add (empty, or filled from a place picked on Book) or edit a saved address. */
   function openSavedSheet({ row = null, prefill = null } = {}) {
     if (!row && rows.length >= SAVED_LIMIT) {
-      toastSuccess(`You can save up to ${SAVED_LIMIT} addresses. Delete one to add another.`);
+      toastSuccess(t("You can save up to {n} addresses. Delete one to add another.", { n: SAVED_LIMIT }));
       return;
     }
     editing = row;
@@ -414,7 +415,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     clearFieldErrors([label, address]);
     $("savedError").hidden = true;
     disarmDelete();
-    $("savedTitle").textContent = row ? "Edit address" : "Add an address";
+    $("savedTitle").textContent = t(row ? "Edit address" : "Add an address");
     delBtn.hidden = !row;
     const start = row
       ? { address: row.address, geo: { lat: Number(row.lat), lng: Number(row.lng), placeName: row.address, city: row.city || "" } }
@@ -433,10 +434,10 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     $("savedError").hidden = true;
     if (!validateFields([[label, labelCheck], [address, addressCheck]])) return;
     btn.disabled = true;
-    btn.textContent = "Saving…";
+    btn.textContent = t("Saving…");
     const done = () => {
       btn.disabled = false;
-      btn.textContent = "Save address";
+      btn.textContent = t("Save address");
     };
     const text = address.value.trim();
     let geo = picked?.address === text ? picked.geo : null;
@@ -445,7 +446,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
         geo = await geocodeAddress(text);
       } catch {
         done();
-        showFieldError(address, "Couldn't find that address. Pick one from the list or pin it on the map.");
+        showFieldError(address, t("Couldn't find that address. Pick one from the list or pin it on the map."));
         return address.focus();
       }
     }
@@ -465,7 +466,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     await closeSheet(sheet);
     renderSaved({ arrived: editing ? null : saved.id });
     onSavedChange();
-    toastSuccess(editing ? `Saved changes to “${saved.label}”.` : `Saved “${saved.label}”.`);
+    toastSuccess(t(editing ? "Saved changes to “{name}”." : "Saved “{name}”.", { name: saved.label }));
   });
 
   // Delete asks for a second tap within 4 seconds, so a slip doesn't lose it.
@@ -473,7 +474,7 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
     if (!editing) return;
     if (!("armed" in delBtn.dataset)) {
       delBtn.dataset.armed = "";
-      delBtn.textContent = `Tap again to delete “${editing.label}”`;
+      delBtn.textContent = t("Tap again to delete “{name}”", { name: editing.label });
       armTimer = setTimeout(disarmDelete, 4000);
       return;
     }

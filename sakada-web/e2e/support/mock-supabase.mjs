@@ -80,7 +80,7 @@ export function fixtures(overrides = {}) {
         id: "00000000-0000-4000-8000-0000000c0001",
         user_id: IDS.farmer,
         delivery_id: deliveries[2].id,
-        message: "Your delivery SK-00003 is now In Transit.",
+        message: "Your delivery SK-00003 is in transit.", // as the 0008 trigger writes it
         is_read: false,
         created_at: NOW,
       },
@@ -91,6 +91,7 @@ export function fixtures(overrides = {}) {
     storage: [], // avatar files uploaded ("<user id>/<name>")
     passwordChanges: [],
     resetEmails: [], // "send me a reset link" requests
+    pushSubscriptions: [], // phones with alerts on (save_push_subscription)
     ...overrides,
   };
 }
@@ -113,7 +114,17 @@ function matches(row, params) {
   return true;
 }
 
-function rpcResult(name, db, userId) {
+function rpcResult(name, db, userId, body = {}) {
+  // 0028: one row per phone; saving moves the phone to this account.
+  if (name === "save_push_subscription") {
+    db.pushSubscriptions = db.pushSubscriptions.filter((p) => p.endpoint !== body.p_endpoint);
+    db.pushSubscriptions.push({ user_id: userId, endpoint: body.p_endpoint, p256dh: body.p_p256dh, auth: body.p_auth });
+    return null;
+  }
+  if (name === "delete_push_subscription") {
+    db.pushSubscriptions = db.pushSubscriptions.filter((p) => !(p.endpoint === body.p_endpoint && p.user_id === userId));
+    return null;
+  }
   if (name === "get_my_delivery_drivers") {
     return db.deliveries
       .filter((d) => d.requester_id === userId && d.driver_id)
@@ -258,7 +269,7 @@ export async function mockSupabase(page, role, overrides = {}) {
     const wantsOne = (req.headers()["accept"] || "").includes("vnd.pgrst.object");
 
     if (path.startsWith("rpc/")) {
-      const result = rpcResult(path.slice(4), db, userId);
+      const result = rpcResult(path.slice(4), db, userId, req.method() === "POST" ? req.postDataJSON() || {} : {});
       return result === null ? route.fulfill({ status: 204, body: "" }) : route.fulfill({ json: result });
     }
 

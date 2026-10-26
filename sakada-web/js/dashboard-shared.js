@@ -1,4 +1,5 @@
 import { sanitizeText } from "./sanitize.js";
+import { t, dateLocale } from "./i18n.js";
 import { toastError } from "./toast.js";
 import {
   getMyNotifications,
@@ -9,7 +10,7 @@ import {
 export const HISTORY_STATUSES = ["delivered", "cancelled"];
 
 export function statusLabel(status) {
-  return (
+  return t(
     {
       pending: "Pending",
       driver_assigned: "Driver Assigned",
@@ -23,12 +24,12 @@ export function statusLabel(status) {
 
 export function timeAgo(dateString) {
   const seconds = Math.floor((Date.now() - new Date(dateString)) / 1000);
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return t("just now");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t("{n}m ago", { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return t("{n}h ago", { n: hours });
+  return t("{n}d ago", { n: Math.floor(hours / 24) });
 }
 
 // Keep delivery codes like "SK-00142" on one line. Runs on text that
@@ -264,8 +265,8 @@ export function dayChoices(now = new Date(), count = 5) {
 export function bookDateLabel(value) {
   if (!value) return "";
   const d = parseYmd(value);
-  const weekday = d.toLocaleDateString("en-GB", { weekday: "short" });
-  const month = d.toLocaleDateString("en-GB", { month: "short" });
+  const weekday = d.toLocaleDateString(dateLocale(), { weekday: "short" });
+  const month = d.toLocaleDateString(dateLocale(), { month: "short" });
   return `${weekday}, ${d.getDate()} ${month}`;
 }
 
@@ -299,15 +300,15 @@ export function renderStageStepper(status) {
     return `<span class="rq-step rq-step--${state}${status === "pending" && i === 0 ? " rq-step--waiting" : ""}"></span>`;
   }).join("");
   const labels = STAGE_LABELS.map(
-    (l, i) => `<span class="rq-step-label${i === current ? " is-current" : ""}">${l}</span>`,
+    (l, i) => `<span class="rq-step-label${i === current ? " is-current" : ""}">${t(l)}</span>`,
   ).join("");
   const next = STAGE_LABELS[current + 1];
-  const now = status === "pending" ? "Waiting for a driver" : STAGE_LABELS[current];
+  const now = t(status === "pending" ? "Waiting for a driver" : STAGE_LABELS[current]);
   return `
-    <div class="rq-stepper" role="img" aria-label="Step ${current + 1} of 5, ${now}">
+    <div class="rq-stepper" role="img" aria-label="${t("Step {n} of 5, {status}", { n: current + 1, status: now })}">
       <div class="rq-stepper-bars" aria-hidden="true">${bars}</div>
       <div class="rq-stepper-labels" aria-hidden="true">${labels}</div>
-      <p class="rq-stepper-line" aria-hidden="true"><strong>${now}</strong>${next ? ` · Next: ${next}` : ""}</p>
+      <p class="rq-stepper-line" aria-hidden="true"><strong>${now}</strong>${next ? ` · ${t("Next: {stage}", { stage: t(next) })}` : ""}</p>
     </div>`;
 }
 
@@ -356,7 +357,7 @@ export function formatPeso(amount) {
 
 /** The fare formula with this booking's numbers, as shown on the quote. */
 export function fareBreakdown(distanceKm, quantityKg) {
-  return `₱150 base + ${Number(distanceKm).toFixed(1)} km × ₱15 + ${quantityKg} kg × ₱2, rounded. Tolls included.`;
+  return t("₱150 base + {km} km × ₱15 + {kg} kg × ₱2, rounded. Tolls included.", { km: Number(distanceKm).toFixed(1), kg: quantityKg });
 }
 
 /**
@@ -372,8 +373,8 @@ export function driveTimeLabel(minutes) {
   const total = Math.max(5, Math.round(m / step) * step);
   const h = Math.floor(total / 60);
   const min = total % 60;
-  if (!h) return `About ${min} min drive`;
-  return `About ${h} h${min ? ` ${min} min` : ""} drive`;
+  if (!h) return t("About {min} min drive", { min });
+  return min ? t("About {h} h {min} min drive", { h, min }) : t("About {h} h drive", { h });
 }
 
 /** True when a delivery is still waiting but its pickup date is before today. */
@@ -392,22 +393,22 @@ export function pickupPassed(d, today = new Date()) {
 export function bookingErrorCopy(error) {
   const message = String(error?.message || "");
   if (error?.name === "AuthRetryableFetchError" || /failed to fetch|networkerror|load failed|reach the map/i.test(message)) {
-    return { kind: "offline", field: null, message: "No connection. Check your signal and try again. Your details are still here." };
+    return { kind: "offline", field: null, message: t("No connection. Check your signal and try again. Your details are still here.") };
   }
   const notFound = message.match(/Couldn't find "(.*)"/);
   if (notFound) {
-    return { kind: "not-found", field: error?.which || "pickup", message: "We couldn't find this address. Add the town and province." };
+    return { kind: "not-found", field: error?.which || "pickup", message: t("We couldn't find this address. Add the town and province.") };
   }
   if (/no driving route|calculate a route/i.test(message)) {
-    return { kind: "no-route", field: "dropoff", message: "No road route from your pickup. Check both addresses." };
+    return { kind: "no-route", field: "dropoff", message: t("No road route from your pickup. Check both addresses.") };
   }
   if (/too many requests/i.test(message) || error?.status === 429) {
-    return { kind: "rate", field: null, message: "Too many bookings in a minute. Wait a minute, then confirm again. Your details are still here." };
+    return { kind: "rate", field: null, message: t("Too many bookings in a minute. Wait a minute, then confirm again. Your details are still here.") };
   }
   if (/route distance does not match/i.test(message)) {
-    return { kind: "mismatch", field: null, message: "We couldn't confirm the route. Get the fare again, then confirm." };
+    return { kind: "mismatch", field: null, message: t("We couldn't confirm the route. Get the fare again, then confirm.") };
   }
-  return { kind: "unknown", field: null, message: "We couldn't book this. Your details are still here. Try again." };
+  return { kind: "unknown", field: null, message: t("We couldn't book this. Your details are still here. Try again.") };
 }
 
 /** Link to the contact form with the booking code filled in. */
@@ -449,10 +450,10 @@ export function trackHeadline(status, late = false) {
 export function ratingSummary(row) {
   if (!row || row.rating_count == null) return null;
   const count = Number(row.rating_count);
-  if (!count || row.rating_avg == null) return { avg: null, label: "No ratings yet" };
+  if (!count || row.rating_avg == null) return { avg: null, label: t("No ratings yet") };
   return {
     avg: Number(row.rating_avg).toFixed(1),
-    label: `${count.toLocaleString("en-PH")} rating${count === 1 ? "" : "s"}`,
+    label: t(count === 1 ? "{n} rating" : "{n} ratings", { n: count.toLocaleString("en-PH") }),
   };
 }
 

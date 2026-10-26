@@ -6,6 +6,7 @@
 // there is exactly one place to change it; this file used to hardcode a
 // second copy.
 
+import { t } from "./i18n.js";
 import { config } from "./config.js";
 
 const MAPBOX_TOKEN = config.mapboxToken;
@@ -86,8 +87,8 @@ export function toSuggestion(feature) {
   const type = feature.place_type?.[0];
   const category = String(feature.properties?.category || "").split(",")[0].trim();
   const kind = type === "poi"
-    ? (category ? category[0].toUpperCase() + category.slice(1) : "Place")
-    : (KIND[type] || "Place");
+    ? (category ? category[0].toUpperCase() + category.slice(1) : t("Place"))
+    : t(KIND[type] || "Place");
   const where = (feature.context || [])
     .filter((c) => /^(place|region)\./.test(String(c.id)))
     .map((c) => c.text)

@@ -6,6 +6,8 @@
 // read back the same way for Book again. A single produce stays just its
 // name ("Tomatoes"), like every booking made before rows existed.
 
+import { t } from "./i18n.js";
+
 export const MAX_PRODUCE = 5;
 export const GOODS_LIMIT = 120; // deliveries.goods_description, migration 0021
 export const KG_MAX = 100000;
@@ -44,7 +46,7 @@ export function fold(text) {
   return String(text).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-const detailOf = (p) => (fold(p.tl) === fold(p.en) ? p.kind : `${p.tl} · ${p.kind}`);
+const detailOf = (p) => (fold(p.tl) === fold(p.en) ? t(p.kind) : `${p.tl} · ${t(p.kind)}`);
 
 /**
  * Produce matching what's typed, in English or Tagalog, best first:
@@ -138,14 +140,14 @@ export function checkProduce(rows) {
     const name = String(rows[i].name || "").trim();
     const kg = rows[i].kg;
     if (!name && !kg) continue;
-    if (!name) return at(i, `Add the produce for the ${kgLabel(kg)}.`);
-    if (name.length < 2) return at(i, "Write the produce name, like tomatoes or mangoes.");
-    if (!kg) return at(i, `Set the kg for ${name}.`);
+    if (!name) return at(i, t("Add the produce for the {kg}.", { kg: kgLabel(kg) }));
+    if (name.length < 2) return at(i, t("Write the produce name, like tomatoes or mangoes."));
+    if (!kg) return at(i, t("Set the kg for {name}.", { name }));
     named++;
   }
-  if (!named) return at(0, "Add what you're shipping, like tomatoes or mangoes.");
+  if (!named) return at(0, t("Add what you're shipping, like tomatoes or mangoes."));
   const items = namedItems(rows);
-  if (totalKg(items) > KG_MAX) return at(-1, "That's over 100 tonnes in total. Check the kg.");
-  if (formatGoods(items).length > GOODS_LIMIT) return at(-1, "That list is too long to send. Use shorter names or fewer produce.");
+  if (totalKg(items) > KG_MAX) return at(-1, t("That's over 100 tonnes in total. Check the kg."));
+  if (formatGoods(items).length > GOODS_LIMIT) return at(-1, t("That list is too long to send. Use shorter names or fewer produce."));
   return null;
 }

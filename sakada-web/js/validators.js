@@ -3,6 +3,8 @@
 // value and returns an error message ("" when the value is fine), so every
 // page words its errors the same way. Pure functions: no DOM, easy to test.
 
+import { t } from "./i18n.js";
+
 // ---------- Email ----------
 
 // One "@", a domain made of dot-separated labels, and an ending of 2+ letters.
@@ -92,16 +94,16 @@ export function emailTypo(email) {
  */
 export function checkEmail(value, allowed = "") {
   const v = value.trim();
-  if (!v) return { message: "Enter your email.", fix: "" };
+  if (!v) return { message: t("Enter your email."), fix: "" };
   if (v.length > 254 || !EMAIL_FORMAT.test(v)) {
-    return { message: "That email doesn't look right. Check it, like name@email.com.", fix: "" };
+    return { message: t("That email doesn't look right. Check it, like name@email.com."), fix: "" };
   }
   const typo = emailTypo(v);
   if (!typo || (!typo.sure && v === allowed)) return { message: "", fix: "" };
   return {
     message: typo.sure
-      ? `Did you mean ${typo.fix}?`
-      : `Did you mean ${typo.fix}? If ${v} is correct, just submit again.`,
+      ? t("Did you mean {fix}?", { fix: typo.fix })
+      : t("Did you mean {fix}? If {email} is correct, just submit again.", { fix: typo.fix, email: v }),
     fix: typo.fix,
   };
 }
@@ -124,60 +126,60 @@ export function emailChecker() {
 
 export function checkName(value) {
   const v = value.trim();
-  if (!v) return "Enter your name.";
-  if (v.length < 2) return "Enter your full name.";
-  if (v.length > 120) return "Keep your name under 120 characters.";
-  if (!/\p{L}/u.test(v)) return "Your name needs at least one letter.";
-  if (/[<>{}[\]\\/@#$%^*=+|~_]/.test(v)) return "Use letters, spaces, dots, dashes, or apostrophes only.";
+  if (!v) return t("Enter your name.");
+  if (v.length < 2) return t("Enter your full name.");
+  if (v.length > 120) return t("Keep your name under 120 characters.");
+  if (!/\p{L}/u.test(v)) return t("Your name needs at least one letter.");
+  if (/[<>{}[\]\\/@#$%^*=+|~_]/.test(v)) return t("Use letters, spaces, dots, dashes, or apostrophes only.");
   return "";
 }
 
 export function checkNewPassword(value) {
-  if (!value) return "Create a password.";
-  if (value.length < 8) return "Use at least 8 characters.";
-  if (value.length > 72) return "Keep your password under 72 characters.";
-  if (!value.trim()) return "Your password can't be only spaces.";
+  if (!value) return t("Create a password.");
+  if (value.length < 8) return t("Use at least 8 characters.");
+  if (value.length > 72) return t("Keep your password under 72 characters.");
+  if (!value.trim()) return t("Your password can't be only spaces.");
   return "";
 }
 
 export function checkPassword(value) {
-  return value ? "" : "Enter your password.";
+  return value ? "" : t("Enter your password.");
 }
 
 // ---------- Bookings ----------
 
 export function checkAddress(value, which) {
   const v = value.trim();
-  if (!v) return `Enter the ${which} address.`;
-  if (v.length < 5) return "Add more detail, like the barangay and town or city.";
-  if (v.length > 200) return "Keep the address under 200 characters.";
-  if (!/\p{L}/u.test(v)) return "Write the address with the place name, not only numbers.";
+  if (!v) return t(which === "pickup" ? "Enter the pickup address." : "Enter the drop-off address.");
+  if (v.length < 5) return t("Add more detail, like the barangay and town or city.");
+  if (v.length > 200) return t("Keep the address under 200 characters.");
+  if (!/\p{L}/u.test(v)) return t("Write the address with the place name, not only numbers.");
   return "";
 }
 
 export function checkGoods(value) {
   const v = value.trim();
-  if (!v) return "Say what you're sending, like tomatoes or mangoes.";
-  if (v.length < 2) return "Say what you're sending, like tomatoes or mangoes.";
-  if (v.length > 120) return "Keep this under 120 characters.";
+  if (!v) return t("Say what you're sending, like tomatoes or mangoes.");
+  if (v.length < 2) return t("Say what you're sending, like tomatoes or mangoes.");
+  if (v.length > 120) return t("Keep this under 120 characters.");
   return "";
 }
 
 export function checkRecipient(value) {
   const v = value.trim();
-  if (!v) return "Enter the name of the person who receives the goods.";
-  if (v.length < 2) return "Enter the recipient's full name.";
-  if (v.length > 80) return "Keep the name to 80 characters or fewer.";
+  if (!v) return t("Enter the name of the person who receives the goods.");
+  if (v.length < 2) return t("Enter the recipient's full name.");
+  if (v.length > 80) return t("Keep the name to 80 characters or fewer.");
   return "";
 }
 
 export function checkKg(value) {
   const v = String(value).trim();
-  if (!v) return "Enter the weight in kg.";
-  if (!/^\d+$/.test(v)) return "Use a whole number of kilograms, like 800.";
+  if (!v) return t("Enter the weight in kg.");
+  if (!/^\d+$/.test(v)) return t("Use a whole number of kilograms, like 800.");
   const kg = Number(v);
-  if (kg < 1) return "The weight must be at least 1 kg.";
-  if (kg > 100000) return "That's over 100 tonnes. Check the number.";
+  if (kg < 1) return t("The weight must be at least 1 kg.");
+  if (kg > 100000) return t("That's over 100 tonnes. Check the number.");
   return "";
 }
 
@@ -190,28 +192,28 @@ export function localDateString(date = new Date()) {
 }
 
 export function checkPickupDate(value, today = new Date()) {
-  if (!value) return "Pick a pickup date.";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "Pick a pickup date from the calendar.";
-  if (value < localDateString(today)) return "Pick today or a later date.";
+  if (!value) return t("Pick a pickup date.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return t("Pick a pickup date from the calendar.");
+  if (value < localDateString(today)) return t("Pick today or a later date.");
   return "";
 }
 
 export function checkNotes(value) {
-  return value.trim().length > 500 ? "Keep notes under 500 characters." : "";
+  return value.trim().length > 500 ? t("Keep notes under 500 characters.") : "";
 }
 
 // ---------- Driver vehicle ----------
 
 export function checkVehicleType(value) {
-  return value.trim().length > 40 ? "Keep this under 40 characters." : "";
+  return value.trim().length > 40 ? t("Keep this under 40 characters.") : "";
 }
 
 export function checkPlate(value) {
   const v = value.trim();
   if (!v) return "";
-  if (v.length > 15) return "Keep the plate under 15 characters.";
-  if (!/^[A-Za-z0-9 -]+$/.test(v)) return "Use letters, numbers, spaces, or dashes only.";
-  if (!/\d/.test(v)) return "A plate number has at least one digit.";
+  if (v.length > 15) return t("Keep the plate under 15 characters.");
+  if (!/^[A-Za-z0-9 -]+$/.test(v)) return t("Use letters, numbers, spaces, or dashes only.");
+  if (!/\d/.test(v)) return t("A plate number has at least one digit.");
   return "";
 }
 
@@ -219,22 +221,22 @@ export function checkPlate(value) {
 
 export function checkMessage(value) {
   const v = value.trim();
-  if (!v) return "Write your message.";
-  if (v.length > 4900) return "Keep your message under 4,900 characters.";
+  if (!v) return t("Write your message.");
+  if (v.length > 4900) return t("Keep your message under 4,900 characters.");
   return "";
 }
 
 export function checkBookingCode(value) {
   const v = value.trim();
   if (!v) return "";
-  return /^SK-?\d{3,8}$/i.test(v) ? "" : "Booking codes look like SK-00142.";
+  return /^SK-?\d{3,8}$/i.test(v) ? "" : t("Booking codes look like SK-00142.");
 }
 
 // ---------- Dashboard: Track your shipment ----------
 
 export function checkTrackQuery(value) {
   const v = value.trim();
-  if (!v) return "Type a booking code, like SK-00142.";
-  if (v.length > 60) return "Keep it under 60 characters.";
+  if (!v) return t("Type a booking code, like SK-00142.");
+  if (v.length > 60) return t("Keep it under 60 characters.");
   return "";
 }
