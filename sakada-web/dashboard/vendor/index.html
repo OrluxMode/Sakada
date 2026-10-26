@@ -149,14 +149,18 @@
                 <div class="rq-broute-field">
                   <label for="pickupAddress">From · Pickup address</label>
                   <input id="pickupAddress" type="text" placeholder="Barangay, town, province" autocomplete="off" enterkeyhint="next" maxlength="200" required />
+                  <p class="rq-pinned" id="pickupPinned" hidden>Pinned on the map</p>
                 </div>
+                <button type="button" class="rq-bmap" data-pin-for="pickup" aria-label="Pin pickup on the map">Map</button>
               </div>
               <div class="rq-broute-row">
                 <img src="../../assets/icons/book/pin-amber.svg" width="14.75" height="18.0833" alt="" />
                 <div class="rq-broute-field">
                   <label for="dropoffAddress">To · Delivery address</label>
                   <input id="dropoffAddress" type="text" placeholder="Market or warehouse, city" autocomplete="off" enterkeyhint="done" maxlength="200" required />
+                  <p class="rq-pinned" id="dropoffPinned" hidden>Pinned on the map</p>
                 </div>
+                <button type="button" class="rq-bmap" data-pin-for="dropoff" aria-label="Pin drop-off on the map">Map</button>
               </div>
             </div>
 
@@ -257,6 +261,24 @@
     </dialog>
 
     <!-- Pickup date: the whole month, past dates off -->
+    <dialog class="rq-sheet rq-mapsheet" id="mapSheet" aria-labelledby="mapSheetTitle">
+      <div class="rq-map-area" id="mapArea">
+        <div class="rq-map" id="pinMap"></div>
+        <div class="rq-map-pin" aria-hidden="true"><img src="../../assets/icons/book/map-pin.svg" width="36" height="44" alt="" /></div>
+        <div class="rq-map-top">
+          <button type="button" class="rq-bclose" data-close-sheet aria-label="Close"><img src="../../assets/icons/book/close.svg" width="18" height="18" alt="" /></button>
+          <h2 class="rq-map-title" id="mapSheetTitle">Pin pickup location</h2>
+        </div>
+        <button type="button" class="rq-map-locate" id="mapLocate">Use my location</button>
+      </div>
+      <div class="rq-map-panel">
+        <p class="rq-map-label" id="mapSpotLabel">Pickup point</p>
+        <p class="rq-map-address" id="mapSpotAddress" aria-live="polite"></p>
+        <p class="rq-map-hint" id="mapSpotHint"></p>
+        <button class="rq-btn rq-bbtn" type="button" id="useSpot" disabled>Use this spot</button>
+      </div>
+    </dialog>
+
     <dialog class="rq-sheet rq-bsheet" id="dateSheet" aria-labelledby="dateSheetTitle">
       <div class="rq-sheet-grab" aria-hidden="true"></div>
       <div class="rq-bsheet-head">

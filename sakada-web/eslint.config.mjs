@@ -4,7 +4,7 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["node_modules/**", "playwright-report/**", "test-results/**"],
+    ignores: ["node_modules/**", "playwright-report/**", "test-results/**", "vendor/**"],
   },
   js.configs.recommended,
   {

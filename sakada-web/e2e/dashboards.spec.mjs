@@ -128,8 +128,29 @@ test.describe("dashboards (fake sign-in)", () => {
     // 1 of 3: route, day and time
     await page.locator("#toDetails").click();
     await expect(page.locator("#pickupAddressError")).toBeVisible();
-    await page.fill("#pickupAddress", "Cabanatuan City, Nueva Ecija");
-    await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
+    // Addresses picked from the places suggested while typing
+    const lookups = [];
+    page.on("request", (r) => {
+      const u = new URL(r.url());
+      if (u.pathname.startsWith("/geocoding/") && !u.searchParams.has("autocomplete")) lookups.push(u.pathname);
+    });
+    const pickup = page.locator("#pickupAddress");
+    await pickup.pressSequentially("Cabanatuan City");
+    await expect(page.locator("#pickupAddressPlaces [role=option]")).toHaveCount(2);
+    await expect(pickup).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("#pickupAddressPlaces [role=option]").first()).toContainText("City or town · Nueva Ecija");
+    await pickup.press("ArrowDown");
+    await expect(pickup).toHaveAttribute("aria-activedescendant", "pickupAddressPlaces-0");
+    await pickup.press("Enter"); // picks the place, doesn't leave the step
+    await expect(pickup).toHaveValue("Cabanatuan City, Nueva Ecija");
+    await expect(pickup).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator("#bookTitle")).toHaveText("Book a shipment");
+    await expect(page.locator("#pickupAddressError")).toBeHidden();
+    await expect(page.locator("#dropoffAddress")).toBeFocused();
+    await page.locator("#dropoffAddress").pressSequentially("Marikina");
+    await page.locator("#dropoffAddressPlaces").getByRole("option", { name: /Marikina Public Market/ }).click();
+    await expect(page.locator("#dropoffAddress")).toHaveValue("Marikina Public Market, Marikina, Metro Manila");
+    await expect(page.locator("#dropoffAddressPlaces")).toBeHidden();
     await page.locator("#quickDates button").nth(2).click();
     await expect(page.locator("#quickDates button").nth(2)).toHaveAttribute("aria-pressed", "true");
     await page.locator("#openTime").click();
@@ -156,6 +177,7 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(ticket).toContainText("Maria Santos");
     await expect(ticket).toContainText("10:00 AM–12:00 PM");
     await expect(ticket).toContainText("Use the side gate.");
+    expect(lookups).toEqual([]); // the fare used the picked places' own points
     expect(db.deliveries).toHaveLength(6); // nothing booked until Request booking
     await page.locator("#confirmBtn").click();
     // Request sent
@@ -213,6 +235,64 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.locator("#bookTitle")).toHaveText("Book a shipment");
     await expect(page.locator("#pickupAddressError")).toHaveText("We couldn't find this address. Add the town and province.");
     await expect(page.locator("#pickupAddress")).toBeFocused();
+  });
+
+  test("a typed address with no matching place says so", async ({ page }) => {
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#book");
+    const pickup = page.locator("#pickupAddress");
+    await pickup.pressSequentially("nowhere");
+    await expect(page.locator(".rq-places[data-open] .rq-places-empty")).toHaveText(/No places match “nowhere”.*Check the spelling/);
+    await expect(page.locator("#pickupAddressPlaces [role=option]")).toHaveCount(0);
+    await pickup.press("Escape");
+    await expect(pickup).toHaveAttribute("aria-expanded", "false");
+    await expect(pickup).toBeFocused();
+    await pickup.fill("ab"); // under 3 letters: no list
+    await expect(pickup).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("pin the pickup on the map from your location", async ({ page, context }) => {
+    const errors = trackErrors(page);
+    await context.grantPermissions(["geolocation"]);
+    await context.setGeolocation({ latitude: 15.4865, longitude: 120.9672 });
+    await page.setViewportSize(PHONE);
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#book");
+    await page.getByRole("button", { name: "Pin pickup on the map" }).click();
+    const sheet = page.locator("#mapSheet");
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator("#mapSheetTitle")).toHaveText("Pin pickup location");
+    await expect(sheet.locator(".leaflet-container")).toBeVisible(); // Leaflet loaded on demand
+    await expect(sheet.locator("#mapSpotAddress")).toHaveText("Burgos Avenue, Cabanatuan City, Nueva Ecija");
+    await expect(sheet.locator("#useSpot")).toBeEnabled();
+    await sheet.locator("#useSpot").click();
+    await expect(sheet).toBeHidden();
+    await expect(page.locator("#pickupAddress")).toHaveValue("Burgos Avenue, Cabanatuan City, Nueva Ecija");
+    await expect(page.locator("#pickupPinned")).toBeVisible();
+    // Opening it again starts on the pinned spot
+    await page.getByRole("button", { name: "Pin pickup on the map" }).click();
+    await expect(sheet.locator("#mapSpotAddress")).toHaveText("Burgos Avenue, Cabanatuan City, Nueva Ecija");
+    await sheet.getByRole("button", { name: "Close" }).click();
+    await expect(sheet).toBeHidden();
+    // Typing over it drops the pin
+    await page.locator("#pickupAddress").fill("Cabanatuan City, Nueva Ecija");
+    await expect(page.locator("#pickupPinned")).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
+  test("with location off the map says how to pin by hand", async ({ page }) => {
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#book");
+    await page.locator("#dropoffAddress").pressSequentially("nowhere");
+    await page.getByRole("button", { name: "Pin it on the map instead" }).click();
+    const sheet = page.locator("#mapSheet");
+    await expect(sheet.locator("#mapSheetTitle")).toHaveText("Pin drop-off location");
+    await expect(sheet.locator("#mapSpotHint")).toHaveText(/Location is off for this site|Couldn't find your location/);
+    await expect(sheet.locator("#mapSpotHint")).toHaveClass(/is-warn/);
+    await expect(sheet.locator("#useSpot")).toBeEnabled(); // the spot in view can still be used
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(page.locator("#dropoffAddress")).toHaveValue("nowhere");
   });
 
   test("on a phone each Book step is a Back step", async ({ page }) => {

@@ -35,6 +35,74 @@ export async function geocodeAddress(address) {
 }
 
 /**
+ * Up to 5 places in the Philippines that match what's typed so far, for the
+ * suggestion list under an address field. Countries and postcodes are left
+ * out because neither is somewhere a truck can go.
+ */
+export async function suggestPlaces(text, { signal } = {}) {
+  const query = encodeURIComponent(text);
+  const types = "region,district,place,locality,neighborhood,address,poi";
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&country=PH&autocomplete=true&limit=5&language=en&types=${types}`;
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error("Couldn't reach the map service.");
+  const data = await res.json();
+  return (data.features || []).filter((f) => Array.isArray(f.center)).map(toSuggestion);
+}
+
+/**
+ * The address at a point pinned on the map. The point itself is what the
+ * fare uses, so it's kept exactly; Mapbox only supplies the words. When it
+ * has none (open fields, the sea), the coordinates stand in for them.
+ */
+export async function placeAt(lat, lng, { signal } = {}) {
+  const types = "address,poi,neighborhood,locality,place";
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&types=${types}&limit=1&language=en`;
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error("Couldn't reach the map service.");
+  const feature = (await res.json()).features?.[0];
+  return pinnedPlace(lat, lng, feature);
+}
+
+/** A pinned point with Mapbox's address for it (or just the coordinates). */
+export function pinnedPlace(lat, lng, feature) {
+  const at = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  const address = feature ? toSuggestion(feature).address : `Pinned spot (${at})`;
+  return { address, geo: { lat, lng, placeName: feature?.place_name || address, city: feature ? placeCity(feature) : "" } };
+}
+
+/** Mapbox's dark map as 512px tiles, for the draggable pin map. */
+export function mapTilesUrl() {
+  return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/512/{z}/{x}/{y}{r}?access_token=${MAPBOX_TOKEN}`;
+}
+
+const KIND = { region: "Province", district: "District", place: "City or town", locality: "Area", neighborhood: "Area", address: "Street" };
+
+/**
+ * One geocoding result as a suggestion row: the place's own name, what kind
+ * of place it is with the town/province it sits in, the full address that
+ * goes in the field, and the point the fare is worked out from.
+ */
+export function toSuggestion(feature) {
+  const type = feature.place_type?.[0];
+  const category = String(feature.properties?.category || "").split(",")[0].trim();
+  const kind = type === "poi"
+    ? (category ? category[0].toUpperCase() + category.slice(1) : "Place")
+    : (KIND[type] || "Place");
+  const where = (feature.context || [])
+    .filter((c) => /^(place|region)\./.test(String(c.id)))
+    .map((c) => c.text)
+    .filter((t, i, all) => t && t !== feature.text && all.indexOf(t) === i);
+  const address = String(feature.place_name || feature.text || "").replace(/,\s*Philippines$/, "");
+  const [lng, lat] = feature.center;
+  return {
+    name: feature.text || address.split(",")[0],
+    detail: [kind, where.join(", ")].filter(Boolean).join(" · "),
+    address,
+    geo: { lat, lng, placeName: feature.place_name || address, city: placeCity(feature) },
+  };
+}
+
+/**
  * The city or town a geocoding result sits in ("Marikina" for "Marikina
  * Public Market, Marikina, Metro Manila"), or "" when Mapbox doesn't say.
  */

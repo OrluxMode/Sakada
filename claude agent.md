@@ -2075,4 +2075,32 @@ Owner's exact task-to-skill assignments:
 
 - 2026-10-25: Owner said "bro" (no request). Checked status, asked what's next. No changes.
 
+- 2026-10-26: Owner said "bro" again. Checked push status, asked what they need. No changes.
+
+- 2026-10-26: Owner wants address autocomplete on Book step 1 pickup/drop-off (reference: Nominatim-style dropdown). Owner chose Figma first. Impeccable + figma-use/generate-design loaded. Built on Figma page `mobile` (147:294), new row at y=1299 under the Book frames (existing frames untouched): pickup typing `315:875`, drop-off typing `315:1025`, no matches `315:1166`, component set `Book / Place suggestion` `315:874` (State=Default/Highlighted, Title/Detail text props, 56px rows, muted pin) in `315:855`, behaviour notes `315:1274`, label `315:1273`. Plan: Mapbox geocoding v5 autocomplete (same token, country=PH, limit 5, 3+ letters, ~250 ms debounce), picked place's coords reused for the fare, free typing still works, combobox a11y, 140 ms fade+4px open. No backend change. Awaiting owner approval, then build in farmer + vendor.
+
+- 2026-10-26: Owner asked for the Figma link; gave links to the 3 suggestion frames, component set and notes. No changes.
+
+- 2026-10-26: Owner approved the address-suggestion Figma ("yess… i love it"). Built (impeccable craft-floor, mobile-native, emil-design-eng read), not committed:
+  - mapbox-client: suggestPlaces(text,{signal}) (geocoding v5, autocomplete, country=PH, limit 5, language=en, no country/postcode types) + toSuggestion(feature) → {name, detail "Kind · town, province", address (place_name minus ", Philippines"), geo}. Kinds: Province / District / City or town / Area / Street / POI category / Place (honest labels; Mapbox doesn't say city vs municipality).
+  - New js/place-suggest.js: ARIA combobox + listbox, 3+ letters, 250 ms pause, abort old requests, per-query cache, ↑↓/Enter/Esc, mousedown keeps focus, blur closes, ignores untrusted input events (Book again, picks), status announces count, scrolls just enough to keep the list above the phone keyboard (visualViewport). No-match line; offline/Mapbox error = no list.
+  - requester-dashboard: picked place stored per field (pickedPlaces); Review reuses its point when the field still matches (no second lookup). Pickup pick → focus drop-off.
+  - requester.css: .rq-places panel (#1c1d16, line border, 18px radius, soft shadow), 56px+ rows, muted pin via mask (cream when highlighted), ellipsis, max-height 305px (5 rows), open 140 ms fade+4px, close 100 ms fade, reduced motion fade only.
+  - Tests: unit 189 (toSuggestion ×4), e2e 81 (book flow picks via keyboard + tap and asserts no extra geocode; new no-match test). Lint clean. Screens 320/390/1440 with long-name worst case: no sideways scroll, no console errors.
+  - Started npx serve on 4400 for owner testing (LAN http://192.168.254.156:4400).
+
+- 2026-10-26: Owner asked to also let users pin their location on a map. App has no interactive map yet (static Mapbox images only). Figma first (rule). Built on page `mobile`, new row y=2303 (label `320:2095`): from Book (no match + Map buttons + "Pin it on the map instead") `320:1888`, map sheet spot found `320:1098`, moving the map `320:1126`, location off `320:1154`, back on Book pinned `320:2015`, components `320:1064` (icons map/locate, Book / Map pin Resting/Lifted `320:1084`, Book / Map button `320:1085`, Book / Use my location `320:1091`), notes `320:2158`. Map image = real Mapbox dark-v11 static of Cabanatuan uploaded (hash 576265d4…). Approved suggestion frames untouched (no-match one copied). Plan: Leaflet (~40 KB, lazy-loaded) + Mapbox dark tiles, fixed centre pin, reverse geocode, picked point reused for fare, geolocation button; no DB change. Awaiting owner approval (incl. Leaflet dependency). Address suggestions still uncommitted; 4400 server still running.
+
+- 2026-10-26: Owner approved the pin-on-map Figma ("yess i love it bro!"). Built on top of the address suggestions, not committed:
+  - vendor/leaflet (1.9.4 leaflet.js + leaflet.css + LICENSE, self-hosted because CSP style-src is 'self'; ~42 KB gz, loaded only when the map opens). eslint ignores vendor/**.
+  - mapbox-client: placeAt(lat,lng) reverse geocode, pinnedPlace(lat,lng,feature) (exact point kept; "Pinned spot (lat, lng)" when Mapbox has no address), mapTilesUrl() (dark-v11 512 tiles, {r} retina).
+  - New js/pin-map.js: fixed centre pin, movestart lifts pin + "Finding the address…" + Use disabled, moveend 250 ms then reverse geocode; Use my location (geolocation; copy for unavailable/denied/failed, amber .is-warn); start = field's pinned/picked place → typed text geocoded → other address → central Luzon + ask location. PH maxBounds, zoom 5–19, attribution bottom-left (Mapbox, OSM, Improve this map).
+  - HTML (farmer + vendor): .rq-bmap "Map" button per route row (aria-label "Pin pickup/drop-off on the map"), p.rq-pinned "Pinned on the map", dialog#mapSheet (full screen phone, 560×640 desktop). place-suggest emptyAction "Pin it on the map instead". Row focus line now :has(input:focus).
+  - requester-dashboard: usePlace() shared by list + map; pickedPlaces gets pinned flag; syncPinned on input.
+  - Icons: assets/icons/book/map.svg, locate.svg, map-pin.svg.
+  - Tests: unit 192, e2e 83 (pin from location, location off via no-match action), lint clean. Screens 320/390/1440 with real tiles: no sideways scroll, no console errors. Fixed: map panes painting over panel (z-index 0 on .rq-map), Leaflet attribution style specificity.
+  - Note: geolocation needs https or localhost, so on the phone via LAN IP "Use my location" says location isn't available; works on the live site.
+
+- 2026-10-26: Owner tested address suggestions + pin on map: "all goods bro!". Stopped the 4400 server and committed both (frontend only, no backend). Owner to push.
+
 <!-- Add the next session's entry above this line -->

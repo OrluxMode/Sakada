@@ -167,13 +167,33 @@ export async function mockSupabase(page, role, overrides = {}) {
   );
 
   await page.routeWebSocket(/\/realtime\/v1\//, () => {}); // never connects, never errors
-  // Mapbox: geocoding echoes the query as a Philippine place, directions
+  // Mapbox: geocoding echoes the query as a Philippine place (two suggestions
+  // while typing), directions
   // returns 118.4 km in 2 h 28 min, and static map images are a 1x1 PNG.
   await page.route("https://api.mapbox.com/**", (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/geocoding/")) {
       const query = decodeURIComponent(url.pathname.split("/").pop().replace(/\.json$/, ""));
       if (/nowhere/i.test(query)) return route.fulfill({ json: { features: [] } });
+      if (/^-?[\d.]+,-?[\d.]+$/.test(query)) {
+        // The address under a pin dropped on the map
+        const [lng, lat] = query.split(",").map(Number);
+        return route.fulfill({ json: { features: [
+          { text: "Burgos Avenue", place_type: ["address"], center: [lng, lat],
+            place_name: "Burgos Avenue, Cabanatuan City, Nueva Ecija, Philippines",
+            context: [{ id: "place.1", text: "Cabanatuan City" }, { id: "region.1", text: "Nueva Ecija" }] },
+        ] } });
+      }
+      if (url.searchParams.has("autocomplete")) {
+        // Suggestions while typing: a town and a market named after the query.
+        return route.fulfill({ json: { features: [
+          { text: query, place_type: ["place"], center: [120.97, 15.49], place_name: `${query}, Nueva Ecija, Philippines`,
+            context: [{ id: "region.1", text: "Nueva Ecija" }] },
+          { text: `${query} Public Market`, place_type: ["poi"], properties: { category: "market" }, center: [121.1, 14.63],
+            place_name: `${query} Public Market, ${query}, Metro Manila, Philippines`,
+            context: [{ id: "place.1", text: query }, { id: "region.1", text: "Metro Manila" }] },
+        ] } });
+      }
       return route.fulfill({ json: { features: [{ center: [121.0, 14.6], place_name: `${query}, Philippines` }] } });
     }
     if (url.pathname.startsWith("/directions/")) {

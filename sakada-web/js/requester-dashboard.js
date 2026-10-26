@@ -3,6 +3,7 @@ import { supabase } from "./supabase-client.js";
 import { requireRole, signOut, updateLastLogin } from "./auth.js";
 import {
   geocodeAddress,
+  suggestPlaces,
   getDrivingRoute,
   estimateCost,
   getRouteLine,
@@ -56,6 +57,8 @@ import { toastSuccess, toastError } from "./toast.js";
 import { enableSheetDrag } from "./sheet-drag.js";
 import { paginate } from "./pagination.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
+import { attachPlaceSuggest } from "./place-suggest.js";
+import { createPinMap } from "./pin-map.js";
 import {
   checkAddress,
   checkGoods,
@@ -256,6 +259,96 @@ const DETAIL_RULES = [
   [inputs.notes, checkNotes],
 ];
 clearWhenFixed([...ROUTE_RULES, ...DETAIL_RULES]);
+
+// Places suggested while typing an address. A picked place keeps its exact
+// point, so the fare is worked out from the place they chose, not whatever
+// a fresh lookup of the same words returns. Editing the field drops it.
+const pickedPlaces = new Map(); // "pickup" | "dropoff" → { address, geo, pinned }
+const addressInput = (which) => (which === "pickup" ? inputs.pickupAddress : inputs.dropoffAddress);
+/** Put a chosen place (from the list or the map) in its field and remember its point. */
+function usePlace(which, place, { pinned = false } = {}) {
+  const input = addressInput(which);
+  input.value = place.address.slice(0, input.maxLength);
+  pickedPlaces.set(which, { address: input.value.trim(), geo: place.geo, pinned });
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+/** "Pinned on the map" shows while the field still says what was pinned. */
+function syncPinned() {
+  for (const which of ["pickup", "dropoff"]) {
+    const picked = pickedPlaces.get(which);
+    $(`${which}Pinned`).hidden = !(picked?.pinned && picked.address === addressInput(which).value.trim());
+  }
+}
+form.addEventListener("input", syncPinned);
+for (const [which, input, next] of [
+  ["pickup", inputs.pickupAddress, inputs.dropoffAddress],
+  ["dropoff", inputs.dropoffAddress, null],
+]) {
+  attachPlaceSuggest({
+    input,
+    row: input.closest(".rq-broute-row"),
+    host: input.closest(".rq-broute"),
+    search: suggestPlaces,
+    canSearch: () => !getIsOffline(),
+    onPick(place) {
+      usePlace(which, place);
+      if (next && !next.value.trim()) next.focus();
+    },
+    emptyAction: { label: "Pin it on the map instead", run: () => openPinMap(which) },
+  });
+}
+
+// --- Pin on the map: the pin stays put, the map moves under it ---
+const mapSheet = $("mapSheet");
+const pinMap = createPinMap({
+  area: $("mapArea"),
+  mapEl: $("pinMap"),
+  addressEl: $("mapSpotAddress"),
+  hintEl: $("mapSpotHint"),
+  useBtn: $("useSpot"),
+  locateBtn: $("mapLocate"),
+  isOffline: getIsOffline,
+});
+let pinningFor = "pickup";
+/** Where the map starts: this field's place, what's typed in it, the other address, or the user's location. */
+async function pinStart(which) {
+  const input = addressInput(which);
+  const text = input.value.trim();
+  const own = pickedPlaces.get(which);
+  if (own && own.address === text) return { at: own.geo, zoom: 17 };
+  if (text.length >= 3 && !getIsOffline()) {
+    try {
+      return { at: await geocodeAddress(text), zoom: 16 };
+    } catch {
+      // not a place Mapbox knows: fall through
+    }
+  }
+  const other = pickedPlaces.get(which === "pickup" ? "dropoff" : "pickup");
+  if (other) return { at: other.geo, zoom: 12 };
+  return { at: null };
+}
+async function openPinMap(which) {
+  pinningFor = which;
+  const pickup = which === "pickup";
+  $("mapSheetTitle").textContent = pickup ? "Pin pickup location" : "Pin drop-off location";
+  $("mapSpotLabel").textContent = pickup ? "Pickup point" : "Drop-off point";
+  openSheet(mapSheet);
+  const { at, zoom } = await pinStart(which);
+  if (mapSheet.open) await pinMap.open(at, zoom);
+}
+bookView.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-pin-for]");
+  if (b) openPinMap(b.dataset.pinFor);
+});
+mapSheet.addEventListener("transitionend", (e) => {
+  if (e.target === mapSheet && e.propertyName === "transform") pinMap.resize();
+});
+$("useSpot").addEventListener("click", async () => {
+  const spot = pinMap.spot();
+  if (!spot) return;
+  await closeSheet(mapSheet);
+  usePlace(pinningFor, spot, { pinned: true });
+});
 /** True when every rule passes, without showing anything. */
 const passes = (rules) => rules.every(([input, check]) => {
   const r = check(input.value);
@@ -418,6 +511,8 @@ function showBookingError(error) {
 }
 
 async function geocodeLabelled(address, which) {
+  const picked = pickedPlaces.get(which);
+  if (picked?.address === address) return picked.geo;
   try {
     return await geocodeAddress(address);
   } catch (err) {
