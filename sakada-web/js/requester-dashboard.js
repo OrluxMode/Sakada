@@ -40,7 +40,6 @@ import {
   pickupPassed,
   shortPlace,
   bookingErrorCopy,
-  contactUrl,
   parseTrackHash,
   trackHeadline,
   ratingSummary,
@@ -59,6 +58,7 @@ import { paginate } from "./pagination.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
 import { attachPlaceSuggest } from "./place-suggest.js";
 import { createPinMap } from "./pin-map.js";
+import { createContactSheet, liftAboveKeyboard } from "./contact-sheet.js";
 import {
   checkAddress,
   checkGoods,
@@ -76,7 +76,6 @@ const ROLE = document.body.dataset.role;
 if (ROLE !== "farmer" && ROLE !== "vendor") {
   throw new Error(`requester-dashboard.js: unexpected data-role "${ROLE}"`);
 }
-const CONTACT = "../../pages/contact.html";
 
 const profile = await requireRole(ROLE, "../../auth/login.html", "../../index.html");
 if (!profile) throw new Error("redirecting");
@@ -92,10 +91,11 @@ document.querySelector(".rq-account")?.setAttribute("title", profile.full_name);
 document.querySelectorAll("[data-initials]").forEach((el) => (el.textContent = initialsFor(profile.full_name)));
 // Greeting only: "yayan" reads as "Yayan". The saved name is left as typed.
 $("homeTitle").textContent = `${firstName.charAt(0).toLocaleUpperCase("en-PH")}${firstName.slice(1)}`;
+let accountEmail = "";
 supabase.auth.getUser().then(({ data }) => {
-  if (data?.user?.email) $("profileEmail").textContent = ` · ${data.user.email}`;
+  accountEmail = data?.user?.email || "";
+  $("profileEmail").textContent = accountEmail;
 });
-$("signOutBtn").addEventListener("click", () => signOut("../../index.html"));
 
 // ---------- Tabs (hash sections in one page, so realtime stays connected) ----------
 const VIEWS = ["home", "track", "book", "history", "profile"];
@@ -233,6 +233,25 @@ document.querySelectorAll("dialog").forEach((dialog) => {
     onGrab: () => cancelClose(dialog),
     onDismiss: ({ offscreen }) => closeSheet(dialog, { immediate: offscreen }),
   });
+});
+
+// ---------- Profile sheets (Figma 327:1289, 327:1474, 327:1583) ----------
+// Log out asks first; Contact Support and How it works stay in the app.
+$("signOutBtn").addEventListener("click", () => openSheet($("logoutSheet")));
+$("logoutConfirm").addEventListener("click", () => signOut("../../index.html"));
+$("openHow").addEventListener("click", () => openSheet($("howSheet")));
+const openContact = createContactSheet({
+  sheet: $("contactSheet"),
+  openSheet,
+  profile,
+  role: ROLE,
+  email: () => accountEmail,
+});
+liftAboveKeyboard($("contactSheet"));
+// Profile's row, a shipment's "Something wrong?" link, the "driver accepted first" note.
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-open-contact]");
+  if (btn) openContact(btn.dataset.openContact || "");
 });
 
 // ---------- Book (Figma "Book —"): route & schedule → details → review → request sent ----------
@@ -666,7 +685,12 @@ function renderSent() {
     <div class="rq-bcard rq-bcode">
       <p class="rq-bcode-label">Booking code</p>
       <p class="rq-bcode-value">${esc(live.delivery_code || "")}</p>
-      <p class="rq-bcode-note">Keep this code for tracking and support.</p>
+      <button type="button" class="rq-copy" id="copyCode">
+        <span class="rq-copy-face"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></svg>Copy code</span>
+        <span class="rq-copy-face rq-copy-face--done" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.2 2.8 2.8 5.2-6"/></svg>Copied</span>
+      </button>
+      <p class="rq-bcode-note">Share it with the recipient, or use it to track and contact support.</p>
+      <p class="rq-sr" role="status" id="copyStatus"></p>
       ${NOTCHES}
     </div>
     <div class="rq-bcard rq-ticket">
@@ -676,7 +700,8 @@ function renderSent() {
       <p class="rq-ticket-value">${esc(b.recipient_name)} · ${esc(b.goods_description)}${kg}</p>
     </div>
     <p class="rq-bstatus" id="sentStatus" data-status="${esc(status)}" aria-live="polite">${sentStatus(status)}</p>
-    <button class="rq-btn rq-bbtn" type="button" id="sentDone">${isPhone() ? "Back to Home" : "Book another shipment"}</button>`;
+    <button class="rq-btn rq-bbtn" type="button" id="sentTrack">Track this shipment</button>
+    <button class="rq-btn rq-bbtn rq-btn--ghost" type="button" id="sentDone">${isPhone() ? "Back to Home" : "Book another shipment"}</button>`;
 }
 /** A driver can accept while Request sent is still open: only the status line changes. */
 function refreshSent() {
@@ -691,8 +716,66 @@ function finishSent() {
   setStep(1, { focus: !isPhone() });
   if (isPhone()) goTo("home");
 }
+/** Open the booking just sent on Track (desktop's Book panel starts a new booking). */
+function trackSent() {
+  const id = sentBooking?.id;
+  const code = (deliveries.find((d) => d.id === id) || sentBooking)?.delivery_code;
+  if (!isPhone()) {
+    sentBooking = null;
+    setStep(1, { focus: false });
+  }
+  if (deliveries.some((d) => d.id === id)) openTrack(id);
+  else if (code) goTo(`track/${encodeURIComponent(code)}`);
+}
+
+// Copy code: the button reads "Copied" for 2 seconds (Figma 328:1536).
+let copiedTimer = 0;
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // No clipboard API (plain http on a phone, older browsers): select and copy.
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.cssText = "position:fixed;top:0;left:0;opacity:0;";
+    document.body.append(area);
+    area.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    area.remove();
+    return ok;
+  }
+}
+async function copyCode(btn) {
+  const code = btn.closest(".rq-bcode").querySelector(".rq-bcode-value").textContent.trim();
+  if (!code) return;
+  if (!(await copyText(code))) {
+    toastError("Couldn't copy. Press and hold the code to copy it.");
+    return;
+  }
+  btn.dataset.copied = "";
+  $("copyStatus").textContent = `Booking code ${code} copied`;
+  clearTimeout(copiedTimer);
+  copiedTimer = setTimeout(() => {
+    delete btn.dataset.copied;
+    const status = $("copyStatus");
+    if (status) status.textContent = "";
+  }, 2000);
+}
+
 $("bookSent").addEventListener("click", (e) => {
   if (e.target.closest("#sentDone")) finishSent();
+  else if (e.target.closest("#sentTrack")) trackSent();
+  else {
+    const copy = e.target.closest("#copyCode");
+    if (copy) copyCode(copy);
+  }
 });
 
 // --- Date and time sheets (keep the choice only on "Use …") ---
@@ -1267,7 +1350,7 @@ function trackDetail(d, { back }) {
       <p>${d.recipient_name ? esc(d.recipient_name) : "Whoever receives the goods"} pays the driver this amount in cash at drop-off.</p>
     </div>
     ${actions ? `<div class="rq-track-actions">${actions}</div>` : ""}
-    <a class="rq-track-help" href="${contactUrl(CONTACT, d.delivery_code)}">Something wrong? Send Sakada a message about ${esc(d.delivery_code)}</a>`;
+    <button type="button" class="rq-track-help" data-open-contact="${esc(d.delivery_code)}" aria-haspopup="dialog">Something wrong? Contact Support about ${esc(d.delivery_code)}</button>`;
 }
 
 function trackRowStatus(d) {
@@ -1768,7 +1851,7 @@ $("cancelConfirm").addEventListener("click", async () => {
         || document.querySelector(`[data-delivery-id="${CSS.escape(d.id)}"]`);
       card?.insertAdjacentHTML(
         "afterbegin",
-        `<div class="rq-banner rq-banner--warn" role="alert"><p><strong>A driver accepted first.</strong> Your cancel didn't go through. Only Sakada can cancel now. <a href="${contactUrl(CONTACT, d.delivery_code)}">Message Sakada about ${esc(d.delivery_code)}</a></p></div>`,
+        `<div class="rq-banner rq-banner--warn" role="alert"><p><strong>A driver accepted first.</strong> Your cancel didn't go through. Only Sakada can cancel now. <button type="button" class="rq-link" data-open-contact="${esc(d.delivery_code)}" aria-haspopup="dialog">Contact Support about ${esc(d.delivery_code)}</button></p></div>`,
       );
       card?.focus();
     } else {

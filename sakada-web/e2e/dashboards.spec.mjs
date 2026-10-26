@@ -121,7 +121,8 @@ test.describe("dashboards (fake sign-in)", () => {
     expect(errors).toEqual([]);
   });
 
-  test("farmer books a shipment in three steps", async ({ page }) => {
+  test("farmer books a shipment in three steps", async ({ page, context }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const errors = trackErrors(page);
     const db = await mockSupabase(page, "farmer");
     await page.goto("/dashboard/farmer/index.html#book");
@@ -193,6 +194,13 @@ test.describe("dashboards (fake sign-in)", () => {
       notes: "Use the side gate.",
     });
     await expect(page.locator("#homeLists [data-delivery-id]", { hasText: "SK-00007" })).toContainText("Waiting for a driver");
+    // Copy code puts the code on the clipboard and reads "Copied" for a moment
+    const copy = page.locator("#copyCode");
+    await copy.click();
+    await expect(copy).toHaveAttribute("data-copied", "");
+    await expect(page.locator("#copyStatus")).toHaveText("Booking code SK-00007 copied");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("SK-00007");
+    await expect(copy).not.toHaveAttribute("data-copied", "", { timeout: 3000 });
     // Desktop: the panel starts a fresh booking
     await page.getByRole("button", { name: "Book another shipment" }).click();
     await expect(page.locator("#bookTitle")).toHaveText("Book a shipment");
@@ -311,6 +319,108 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.locator("#recipientName")).toHaveValue("Maria Santos"); // kept when going back
     await page.locator("#bookBack").click();
     await expect(page.locator("#bookTitle")).toHaveText("Book a shipment");
+  });
+
+  test("Request sent opens the new booking on Track", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#book");
+    await page.fill("#pickupAddress", "Cabanatuan City, Nueva Ecija");
+    await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
+    await page.locator("#toDetails").click();
+    await page.fill("#recipientName", "Maria Santos");
+    await page.fill("#goodsDescription", "Tomatoes, 20 crates");
+    await page.fill("#quantityKg", "400");
+    await page.locator("#toReview").click();
+    await page.locator("#confirmBtn").click();
+    await expect(page.locator(".rq-bcode-value")).toHaveText("SK-00007");
+    await expect(page.getByRole("button", { name: "Back to Home" })).toBeVisible();
+    await page.getByRole("button", { name: "Track this shipment" }).click();
+    await expect(page).toHaveURL(/#track\/SK-00007$/);
+    await expect(page.locator("#trackPage")).toContainText("SK-00007");
+  });
+
+  test("profile: log out asks first", async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.setViewportSize(PHONE);
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#profile");
+    await expect(page.locator("#profileEmail")).toHaveText("farmer@example.com");
+    await page.getByRole("button", { name: "Log out" }).click();
+    const sheet = page.locator("#logoutSheet");
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Stay logged in" })).toBeFocused();
+    await sheet.getByRole("button", { name: "Stay logged in" }).click();
+    await expect(sheet).toBeHidden();
+    await expect(page).toHaveURL(/#profile$/);
+    await page.getByRole("button", { name: "Log out" }).click();
+    await sheet.getByRole("button", { name: "Log out" }).click();
+    await expect(page).toHaveURL(/:4400\/(index\.html)?$/); // the landing page
+    expect(errors).toEqual([]);
+  });
+
+  test("profile: How it works stays in the app and links out only on request", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#profile");
+    await page.getByRole("button", { name: "How it works" }).click();
+    const sheet = page.locator("#howSheet");
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator(".rq-how li")).toHaveCount(4);
+    const web = sheet.getByRole("link", { name: /Read the full guide/ });
+    await expect(web).toHaveAttribute("target", "_blank");
+    await expect(web).toHaveAttribute("href", "../../pages/how-it-works.html");
+    await sheet.getByRole("button", { name: "Close" }).click();
+    await expect(sheet).toBeHidden();
+    await expect(page).toHaveURL(/#profile$/);
+  });
+
+  test("profile: Contact Support sends from the app with the account's name and email", async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.setViewportSize(PHONE);
+    const db = await mockSupabase(page, "vendor");
+    await page.goto("/dashboard/vendor/index.html#profile");
+    await page.getByRole("button", { name: "Contact Support" }).click();
+    const sheet = page.locator("#contactSheet");
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator("#contactReply")).toHaveText("We reply by email to vendor@example.com.");
+    await expect(sheet.locator("#contactCodeField")).toBeHidden(); // no topic yet
+    await sheet.getByRole("button", { name: "Send message" }).click();
+    await expect(sheet.locator("#contactMessageError")).toHaveText("Write your message.");
+    await sheet.getByText("Problem at drop-off").click();
+    await sheet.locator("#contactCode").fill("SK12");
+    await sheet.locator("#contactMessage").fill("The receiver wasn't at the stall.");
+    await sheet.getByRole("button", { name: "Send message" }).click();
+    await expect(sheet.locator("#contactCodeError")).toHaveText("Booking codes look like SK-00142.");
+    await sheet.locator("#contactCode").fill("sk-00004");
+    await sheet.getByRole("button", { name: "Send message" }).click();
+    await expect(sheet.locator("#contactSentTitle")).toBeFocused();
+    await expect(sheet.locator("#contactSentLead")).toHaveText("We'll reply by email to vendor@example.com. Your message is about SK-00004.");
+    expect(db.contact_submissions).toHaveLength(1);
+    expect(db.contact_submissions[0]).toMatchObject({
+      name: "Ben Cruz",
+      email: "vendor@example.com",
+      role: "vendor",
+      purpose: "support",
+      message: "Booking code: SK-00004\n\nThe receiver wasn't at the stall.",
+    });
+    await sheet.getByRole("button", { name: "Done" }).click();
+    await expect(sheet).toBeHidden();
+    // Opening it again starts a fresh message
+    await page.getByRole("button", { name: "Contact Support" }).click();
+    await expect(sheet.locator("#contactMessage")).toHaveValue("");
+    await expect(sheet.locator("#contactSent")).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
+  test("a shipment's Something wrong? link opens Contact Support about it", async ({ page }) => {
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#track/SK-00003");
+    await page.getByRole("button", { name: "Something wrong? Contact Support about SK-00003" }).click();
+    const sheet = page.locator("#contactSheet");
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByRole("radio", { name: "A booking" })).toBeChecked();
+    await expect(sheet.locator("#contactCode")).toHaveValue("SK-00003");
   });
 
   test("on a phone the tabs switch views and the landing link opens Book", async ({ page }) => {

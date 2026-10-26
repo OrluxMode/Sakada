@@ -104,25 +104,27 @@
 
         <!-- PROFILE -->
         <section class="rq-view" id="view-profile" aria-labelledby="profileTitle">
+          <!-- Figma "Profile — spacing fixed" (326:1281) -->
           <div class="rq-profile-head">
-            <span class="rq-avatar rq-avatar--lg" data-initials aria-hidden="true"></span>
-            <div>
+            <span class="rq-avatar rq-avatar--xl" data-initials aria-hidden="true"></span>
+            <div class="rq-profile-who">
               <h1 id="profileTitle" class="rq-display" data-user-name>Profile</h1>
-              <p class="rq-muted"><span>Farmer</span><span id="profileEmail"></span></p>
+              <p class="rq-profile-role">Farmer</p>
+              <p class="rq-profile-email" id="profileEmail"></p>
             </div>
           </div>
           <div class="rq-list">
             <button type="button" class="rq-row" data-open-notifs>
-              <span>Notifications</span><span class="rq-row-meta" data-unread-text></span>
+              <span>Notifications</span><span class="rq-row-meta" data-unread-text></span><svg class="rq-row-chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6.5 5.5 5.5-5.5 5.5"/></svg>
             </button>
-            <a class="rq-row" href="../../pages/contact.html"><span>Send Sakada a message</span></a>
-            <a class="rq-row" href="../../pages/how-it-works.html"><span>How it works</span></a>
+            <button type="button" class="rq-row" data-open-contact aria-haspopup="dialog"><span>Contact Support</span><svg class="rq-row-chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6.5 5.5 5.5-5.5 5.5"/></svg></button>
+            <button type="button" class="rq-row" id="openHow" aria-haspopup="dialog"><span>How it works</span><svg class="rq-row-chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6.5 5.5 5.5-5.5 5.5"/></svg></button>
           </div>
           <div class="rq-note">
             <p><strong>Your role: Farmer</strong></p>
             <p class="rq-muted">Roles can't be changed. Farmers and vendors get the same booking tools.</p>
           </div>
-          <button class="rq-btn rq-btn--ghost" id="signOutBtn" type="button">Log out</button>
+          <button class="rq-btn rq-btn--ghost rq-logout" id="signOutBtn" type="button" aria-haspopup="dialog"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10"/><path d="M14.5 8 19 12l-4.5 4M19 12H9.5"/></svg>Log out</button>
         </section>
       </main>
 
@@ -339,6 +341,80 @@
       <p class="rq-muted" id="cancelWhat"></p>
       <button class="rq-btn rq-btn--ghost" type="button" data-close-sheet autofocus>Keep request</button>
       <button class="rq-btn rq-btn--danger" type="button" id="cancelConfirm">Cancel request</button>
+    </dialog>
+
+    <!-- Contact Support (Figma 327:1289 / sent 327:1391). Name and email come
+         from the account; saved to contact_submissions like the website form. -->
+    <dialog class="rq-sheet rq-bsheet rq-psheet" id="contactSheet" aria-labelledby="contactTitle">
+      <div class="rq-sheet-grab" aria-hidden="true"></div>
+      <div class="rq-psheet-body" id="contactFormWrap">
+        <div class="rq-psheet-head">
+          <div>
+            <h2 id="contactTitle" class="rq-display">Contact Support</h2>
+            <p id="contactReply">We reply by email.</p>
+          </div>
+          <button type="button" class="rq-bclose" data-close-sheet aria-label="Close"><img src="../../assets/icons/book/close.svg" width="18" height="18" alt="" /></button>
+        </div>
+        <form id="contactForm" class="rq-contact" novalidate>
+          <fieldset class="rq-topics">
+            <legend>What's it about?</legend>
+            <div class="rq-topic-pills">
+              <label class="rq-topic"><input class="rq-sr" type="radio" name="contactTopic" value="booking" /><span>A booking</span></label>
+              <label class="rq-topic"><input class="rq-sr" type="radio" name="contactTopic" value="support" /><span>Problem at drop-off</span></label>
+              <label class="rq-topic"><input class="rq-sr" type="radio" name="contactTopic" value="other" /><span>Something else</span></label>
+            </div>
+          </fieldset>
+          <div class="rq-bfield" id="contactCodeField" hidden>
+            <label for="contactCode">Booking code · Optional</label>
+            <input id="contactCode" type="text" maxlength="12" placeholder="SK-00142" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next" />
+          </div>
+          <div class="rq-bfield">
+            <label for="contactMessage">Message</label>
+            <textarea id="contactMessage" rows="3" maxlength="4900" placeholder="What happened, and what do you need?" required></textarea>
+          </div>
+          <p class="rq-banner rq-banner--bad" id="contactSendError" role="alert" hidden>It didn't send. Your message is still here. Check your signal and try again.</p>
+          <button class="rq-btn rq-bbtn" type="submit" id="contactSubmit">Send message</button>
+          <p class="rq-psheet-note">Only the Sakada team can read your message.</p>
+        </form>
+      </div>
+      <div class="rq-psheet-body rq-contact-sent" id="contactSent" hidden>
+        <span class="rq-psent-mark" aria-hidden="true"><img src="../../assets/icons/book/check-ink.svg" width="22" height="22" alt="" /></span>
+        <h2 class="rq-display" id="contactSentTitle" tabindex="-1">Message sent.</h2>
+        <p class="rq-muted" id="contactSentLead"></p>
+        <button class="rq-btn rq-bbtn" type="button" data-close-sheet>Done</button>
+      </div>
+    </dialog>
+
+    <!-- How it works (Figma 327:1474): the steps stay in the app; the full guide opens in the browser -->
+    <dialog class="rq-sheet rq-bsheet rq-psheet" id="howSheet" aria-labelledby="howTitle">
+      <div class="rq-sheet-grab" aria-hidden="true"></div>
+      <div class="rq-psheet-head">
+        <div>
+          <h2 id="howTitle" class="rq-display">How it works</h2>
+          <p>Book a truck in four steps.</p>
+        </div>
+        <button type="button" class="rq-bclose" data-close-sheet aria-label="Close"><img src="../../assets/icons/book/close.svg" width="18" height="18" alt="" /></button>
+      </div>
+      <ol class="rq-how">
+        <li><span class="rq-how-n" aria-hidden="true">01</span><p><strong>Book it</strong>Pickup, drop-off, what you're shipping and the date.</p></li>
+        <li><span class="rq-how-n" aria-hidden="true">02</span><p><strong>See the fare first</strong>₱150 base + ₱15 per km + ₱2 per kg. Tolls included.</p></li>
+        <li><span class="rq-how-n" aria-hidden="true">03</span><p><strong>A driver accepts</strong>You get a notification. Until then you can cancel.</p></li>
+        <li><span class="rq-how-n" aria-hidden="true">04</span><p><strong>Track every step</strong>Picked up, on the road, delivered. No need to call.</p></li>
+      </ol>
+      <p class="rq-psheet-note rq-psheet-note--left">The receiver pays the driver in cash at drop-off.</p>
+      <a class="rq-how-web" href="../../pages/how-it-works.html" target="_blank" rel="noopener">
+        <span><strong>Read the full guide</strong><span>Opens the Sakada website in your browser</span></span>
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19h11a1.5 1.5 0 0 0 1.5-1.5V14"/><path d="M14 5h5v5M19 5l-8 8"/></svg>
+      </a>
+    </dialog>
+
+    <!-- Log out asks first (Figma 327:1583) -->
+    <dialog class="rq-sheet rq-bsheet rq-psheet" id="logoutSheet" aria-labelledby="logoutTitle" aria-describedby="logoutWhat">
+      <div class="rq-sheet-grab" aria-hidden="true"></div>
+      <h2 id="logoutTitle" class="rq-display">Log out of Sakada?</h2>
+      <p class="rq-muted" id="logoutWhat">You'll need your email and password, or Google, to get back in. Your bookings stay on your account.</p>
+      <button class="rq-btn rq-bbtn rq-btn--ghost" type="button" data-close-sheet autofocus>Stay logged in</button>
+      <button class="rq-btn rq-bbtn rq-btn--danger" type="button" id="logoutConfirm">Log out</button>
     </dialog>
 
     <script type="module" src="../../js/requester-dashboard.js"></script>

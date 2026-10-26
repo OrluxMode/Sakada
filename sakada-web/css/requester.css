@@ -277,7 +277,18 @@
 .rq-list .rq-row { border: 0; border-radius: 0; border-top: 1px solid rgb(var(--cream-rgb) / 0.12); }
 .rq-list .rq-row:first-child { border-top: 0; }
 .rq-note { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--rq-card-line); margin-bottom: 24px; font-size: 15px; line-height: 1.5; }
-.rq-profile-head { display: flex; gap: 14px; align-items: center; }
+/* Profile head (Figma 326:1281): name, role and email each get a line, with room between */
+.rq-profile-head { display: flex; gap: 16px; align-items: center; }
+.rq-avatar--xl { width: 72px; height: 72px; font-size: 24px; }
+.rq-profile-who { display: grid; gap: 8px; min-width: 0; }
+.rq .rq-profile-who .rq-display { line-height: 1.05; overflow-wrap: anywhere; }
+.rq-profile-who p { font-size: 15px; line-height: 20px; }
+.rq-profile-who p + p { margin-top: -6px; } /* role and email sit together, 2px apart */
+.rq .rq-profile-role { color: #f0b25a; font-weight: 600; }
+.rq .rq-profile-email { color: var(--rq-meta); overflow-wrap: anywhere; }
+.rq-row-chev { flex: none; margin-left: auto; color: var(--rq-meta); }
+.rq-row-meta + .rq-row-chev { margin-left: 0; }
+.rq .rq-logout { gap: 8px; }
 
 /* History pages */
 .rq-pager { display: grid; gap: 10px; margin-top: 8px; }
@@ -509,6 +520,31 @@
   color: var(--accent-amber); font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
 }
 .rq .rq-bcode-note { color: var(--text-muted); font-size: 14px; line-height: 1.4; }
+.rq .rq-bcode-value { user-select: all; -webkit-user-select: all; } /* press and hold copies it if Copy can't */
+
+/* Copy code (Figma 326:1280): the label cross-fades to "Copied" through a 2px blur */
+.rq-copy {
+  display: grid; min-height: 44px; padding: 0 16px 0 14px; margin: 4px 0;
+  border: 1px solid rgb(var(--cream-rgb) / 0.16); border-radius: 999px; background: rgb(var(--cream-rgb) / 0.06);
+  color: var(--text-cream); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: transform 160ms var(--rq-ease-out), background-color 150ms var(--rq-ease-out), border-color 150ms var(--rq-ease-out);
+}
+.rq-copy-face {
+  grid-area: 1 / 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: opacity 150ms var(--rq-ease-out), filter 150ms var(--rq-ease-out), transform 150ms var(--rq-ease-out);
+}
+.rq-copy-face--done { color: #f0b25a; opacity: 0; filter: blur(2px); transform: scale(0.96); }
+.rq-copy[data-copied] { background: rgb(224 151 47 / 0.14); border-color: rgb(224 151 47 / 0.6); }
+.rq-copy[data-copied] .rq-copy-face:not(.rq-copy-face--done) { opacity: 0; filter: blur(2px); transform: scale(0.96); }
+.rq-copy[data-copied] .rq-copy-face--done { opacity: 1; filter: none; transform: none; }
+.rq-copy:active { transform: scale(0.97); transition-duration: 100ms; }
+.rq-copy:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .rq-copy:not([data-copied]):hover { background: rgb(var(--cream-rgb) / 0.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rq-copy-face, .rq-copy-face--done, .rq-copy[data-copied] .rq-copy-face:not(.rq-copy-face--done) { filter: none; transform: none; }
+}
 .rq .rq-bstatus { display: flex; align-items: center; gap: 8px; color: var(--text-cream); font-size: 16px; font-weight: 600; }
 .rq .rq-bstatus[data-status="pending"] { color: #f0b25a; }
 .rq-bstatus .rq-sdot[data-status="pending"] { background: var(--accent-amber); }
@@ -649,6 +685,55 @@
 }
 .rq-sheet-head { display: flex; justify-content: space-between; align-items: center; }
 .rq-sheet .rq-display { font-size: 28px; }
+
+/* Profile sheets: Contact Support, How it works, Log out (Figma 327:1289, 327:1474, 327:1583).
+   They sit on the phone keyboard while typing (--rq-keyboard, js/contact-sheet.js). */
+.rq-psheet { overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 1023px) {
+  .rq-psheet { margin-bottom: var(--rq-keyboard, 0px); max-height: calc(92dvh - var(--rq-keyboard, 0px)); }
+}
+.rq .rq-psheet .rq-display { font-size: 28px; line-height: 30px; letter-spacing: 0; }
+.rq-psheet-body { display: grid; gap: 16px; }
+.rq-psheet-body[hidden] { display: none; }
+.rq-psheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.rq-psheet-head > div { display: grid; gap: 4px; min-width: 0; }
+.rq-psheet-head p { color: var(--text-muted); font-size: 15px; line-height: 22px; overflow-wrap: anywhere; }
+.rq .rq-psheet-note { color: var(--text-muted); font-size: 14px; line-height: 20px; text-align: center; }
+.rq .rq-psheet-note--left { text-align: left; }
+.rq-psheet .rq-muted { font-size: 15px; line-height: 22px; overflow-wrap: anywhere; }
+.rq-contact { display: grid; gap: 16px; }
+.rq-topics { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.rq-topics legend { padding: 0; margin-bottom: 8px; font-size: 15px; font-weight: 600; line-height: 20px; }
+.rq-topic-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.rq-topic span {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid rgb(var(--cream-rgb) / 0.2); color: var(--text-cream); font-size: 15px; cursor: pointer;
+  transition: background-color 150ms var(--rq-ease-out), color 150ms var(--rq-ease-out), transform 100ms var(--rq-ease-out);
+}
+.rq-topic input:checked + span { background: var(--text-cream); border-color: var(--text-cream); color: var(--bg-black); font-weight: 700; }
+.rq-topic input:focus-visible + span { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
+.rq-topic:active span { transform: scale(0.97); }
+.rq-psent-mark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--accent-amber); }
+.rq-contact-sent .rq-display:focus { outline: none; }
+.rq-contact-sent .rq-btn { margin-top: 8px; }
+.rq-how { display: grid; margin: 0; padding: 0; list-style: none; border-radius: 18px; background: var(--panel-dark); }
+.rq-how li { display: flex; gap: 14px; padding: 14px 16px; }
+.rq-how li + li { border-top: 1px solid var(--line); }
+.rq-how-n { flex: none; font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 22px; line-height: 24px; color: var(--accent-amber); font-variant-numeric: tabular-nums; }
+.rq .rq-how p { color: var(--text-muted); font-size: 14px; line-height: 20px; }
+.rq-how strong { display: block; margin-bottom: 2px; color: var(--text-cream); font-size: 16px; font-weight: 600; line-height: 22px; }
+.rq-how-web {
+  display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 14px 12px 16px;
+  border: 1px solid rgb(var(--cream-rgb) / 0.16); border-radius: 18px; color: var(--rq-meta); text-decoration: none;
+  transition: transform 160ms var(--rq-ease-out), background-color 150ms var(--rq-ease-out);
+}
+.rq-how-web > span { display: grid; gap: 2px; flex: 1; min-width: 0; font-size: 14px; line-height: 20px; }
+.rq-how-web strong { color: var(--text-cream); font-size: 16px; font-weight: 600; line-height: 22px; }
+.rq-how-web:active { transform: scale(0.98); }
+.rq-how-web:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .rq-how-web:hover { background: rgb(var(--cream-rgb) / 0.06); }
+}
 .rq-notifs { list-style: none; margin: 0; padding: 0; overflow: auto; border-radius: 14px; border: 1px solid var(--rq-card-line); }
 .rq-notifs li + li { border-top: 1px solid rgb(var(--cream-rgb) / 0.12); }
 .rq-notif {
@@ -978,6 +1063,7 @@
   transition: opacity 100ms var(--rq-ease-out);
 }
 .rq-track-help:active { opacity: 0.6; }
+button.rq-track-help { width: 100%; background: none; border: 0; font-family: inherit; text-align: left; cursor: pointer; }
 #view-track > #trackPage > .rq-btn { margin-bottom: 8px; }
 
 /* The Track tab with several bookings: one row each, on the road first */
