@@ -2125,4 +2125,6 @@ Owner's exact task-to-skill assignments:
 
 - 2026-10-27: Owner tested batch 1: "all goods bro". Stopped the 4400 server and committed (frontend only, no backend). Owner to push. Next: batch 2 (avatar + Edit profile, saved addresses; needs Codex storage bucket + table).
 
+- 2026-10-27: Owner asked to run localhost again to test the booking page. Started npx serve on 4400 (LAN http://192.168.254.156:4400). No code changes.
+
 <!-- Add the next session's entry above this line -->
