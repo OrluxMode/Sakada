@@ -20,5 +20,5 @@ export const config = {
   mapboxToken: overrides.mapboxToken || "pk.eyJ1IjoicWFkcmlhbmNhcmxvIiwiYSI6ImNtdTJpMW5iYzA3MHMyeXNlcW1oYnpsODkifQ.eIvugh9G7UAa-sTCkJmZ7g",
   // Phone alerts: the PUBLIC VAPID key from sakada-backend/docs/PUSH-SETUP.md.
   // Empty until the backend is set up; Profile → Phone alerts says so meanwhile.
-  vapidPublicKey: overrides.vapidPublicKey || "",
+  vapidPublicKey: overrides.vapidPublicKey || "BNSFH8lrToQ8IgRJvmVS9EPB8xSRE1wNRv34lkV0P_F8K7DPhltszSn1dOpt-xqDJUTFFDczzEVbsIsxzHXK-0s",
 };
