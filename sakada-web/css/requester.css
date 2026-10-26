@@ -550,6 +550,72 @@
 .rq-places-empty strong { color: var(--text-cream); font-size: 16px; font-weight: 600; line-height: 22px; overflow-wrap: anywhere; }
 .rq-places-empty span { color: var(--text-muted); font-size: 14px; line-height: 20px; }
 
+/* "What are you shipping?": one row per produce with its kg (Figma 345:2174) */
+.rq .rq-flabel { font-size: 15px; font-weight: 600; line-height: 20px; color: var(--text-cream); }
+.rq-produce {
+  position: relative; border: 1px solid var(--line); border-radius: 18px; background: var(--panel-dark);
+  transition: border-color 150ms var(--rq-ease-out);
+}
+.rq-produce[data-invalid] { border-color: var(--accent-amber); }
+.rq-produce-rows { margin: 0; padding: 0 8px 0 16px; list-style: none; }
+.rq-prow { display: flex; align-items: center; gap: 8px; min-height: 56px; border-bottom: 1px solid var(--line); }
+.rq-prow:has(.rq-pname:focus) { box-shadow: inset 0 -2px 0 var(--accent-amber); }
+.rq-pname {
+  flex: 1; min-width: 0; height: 56px; padding: 0; border: 0; background: none; color: var(--text-cream);
+  font: inherit; font-size: 16px; font-weight: 600; line-height: 24px; text-overflow: ellipsis; outline: none;
+}
+.rq-pname::placeholder { color: rgb(var(--cream-rgb) / 0.42); font-weight: 400; }
+/* Not the boxed Book field: the row is the field (its line turns amber on focus) */
+.rq-bfield .rq-pname, .rq-bfield .rq-pname:focus { min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+.rq-kgchip {
+  position: relative; flex: none; display: inline-flex; align-items: center; gap: 4px; height: 40px; padding: 0 10px 0 14px;
+  border: 1px solid rgb(var(--cream-rgb) / 0.16); border-radius: 999px; background: #1c1d16; color: var(--text-cream);
+  font: inherit; font-size: 15px; font-weight: 600; line-height: 20px; font-variant-numeric: tabular-nums; white-space: nowrap;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: transform 100ms var(--rq-ease-out), border-color 150ms var(--rq-ease-out), background-color 150ms var(--rq-ease-out);
+}
+.rq-kgchip::before { content: ""; position: absolute; inset: -2px -2px; } /* 44px tap target */
+.rq-kgchip::after {
+  content: ""; width: 16px; height: 16px; background: currentColor;
+  -webkit-mask: url("../assets/icons/book/chevron-down.svg") center / 16px no-repeat;
+  mask: url("../assets/icons/book/chevron-down.svg") center / 16px no-repeat;
+}
+.rq-kgchip[data-state="empty"] { color: var(--text-muted); }
+.rq-kgchip[data-state="error"] { border-color: var(--accent-amber); color: #f0b25a; }
+.rq-kgchip[data-open] { border-color: var(--accent-amber); background: rgb(224 151 47 / 0.16); }
+.rq-kgchip:disabled { cursor: default; }
+.rq-kgchip:active:not(:disabled) { transform: scale(0.96); }
+.rq-kgchip:focus-visible, .rq-premove:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
+.rq-premove {
+  flex: none; display: grid; place-items: center; width: 36px; height: 44px; padding: 0; border: 0; border-radius: 12px;
+  background: none; color: var(--text-muted); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: transform 100ms var(--rq-ease-out), color 150ms var(--rq-ease-out);
+}
+.rq-premove::before {
+  content: ""; width: 18px; height: 18px; background: currentColor;
+  -webkit-mask: url("../assets/icons/book/close.svg") center / 18px no-repeat;
+  mask: url("../assets/icons/book/close.svg") center / 18px no-repeat;
+}
+.rq-premove[hidden] { display: grid; visibility: hidden; } /* keeps the kg chips lined up */
+.rq-premove:active { transform: scale(0.9); }
+.rq .rq-produce-total {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px;
+  color: var(--rq-meta); font-size: 15px; line-height: 20px;
+}
+.rq-produce-total strong { color: var(--text-cream); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rq-place-pin--leaf, .rq-place[aria-selected="true"] .rq-place-pin--leaf {
+  -webkit-mask: url("../assets/icons/book/leaf.svg") center / 20px no-repeat;
+  mask: url("../assets/icons/book/leaf.svg") center / 20px no-repeat;
+}
+.rq-place--typed {
+  min-height: 48px; color: #f0b25a; font-size: 15px; font-weight: 600; line-height: 20px;
+  text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rq-kgchip:not(:disabled):hover { background: #23241c; }
+  .rq-premove:hover { color: var(--text-cream); }
+}
+
 /* Date and time rows */
 .rq-bdate { display: grid; gap: 12px; }
 .rq-bpick {
@@ -740,6 +806,51 @@
 .rq-window:active:not(:disabled) { transform: scale(0.985); }
 .rq-window:disabled { color: rgb(184 180 166 / 0.4); cursor: default; }
 
+/* The kg wheel (Figma 346:2376): native scroll snapping into the amber band */
+.rq-kgpick, .rq-kgtype { display: grid; gap: 12px; }
+.rq-kgpick[hidden], .rq-kgtype[hidden] { display: none; }
+.rq-kgwheel { position: relative; height: 240px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel-dark); overflow: hidden; }
+.rq-kgwheel:has(.rq-kgwheel-scroll:focus-visible) { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
+.rq-kgwheel-band {
+  position: absolute; left: 8px; right: 8px; top: 95px; height: 48px; display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 16px; border: 1px solid var(--accent-amber); border-radius: 12px; background: rgb(224 151 47 / 0.14);
+  color: #f0b25a; font-size: 16px; font-weight: 600; pointer-events: none;
+}
+.rq-kgwheel-scroll {
+  position: relative; height: 100%; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory;
+  scrollbar-width: none; outline: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 32%, #000 68%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 32%, #000 68%, transparent);
+}
+.rq-kgwheel-scroll::-webkit-scrollbar { display: none; }
+.rq-kgwheel-list { margin: 0; padding: 95px 0; list-style: none; }
+.rq-kgwheel-list li {
+  display: grid; place-items: center; height: 48px; scroll-snap-align: center;
+  color: var(--rq-meta); font-size: 28px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums;
+  cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.rq-kgwheel-list li[data-on] { color: var(--text-cream); }
+.rq-kgexact { position: relative; }
+.rq-kgexact input {
+  width: 100%; height: 72px; padding: 0 56px 0 20px; border: 2px solid var(--line); border-radius: 18px;
+  background: var(--panel-dark); color: var(--text-cream); font: inherit; font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums;
+  transition: border-color 150ms var(--rq-ease-out);
+}
+.rq-kgexact input:focus { outline: none; border-color: var(--accent-amber); }
+.rq-kgexact input[aria-invalid="true"] { border-color: var(--accent-amber); }
+.rq-kgexact span {
+  position: absolute; right: 20px; top: 0; height: 72px; display: grid; place-items: center;
+  color: #f0b25a; font-size: 16px; font-weight: 600; pointer-events: none;
+}
+.rq-kgtype .field-error { margin: 0; color: #f0b25a; font-size: 14px; line-height: 1.4; }
+.rq-textbtn {
+  position: relative; padding: 0; border: 0; background: none; color: #f0b25a; font: inherit; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer; touch-action: manipulation;
+}
+.rq-textbtn::after { content: ""; position: absolute; inset: -12px -4px; } /* 44px tap target */
+.rq-kgtype .rq-textbtn { justify-self: start; font-size: 15px; line-height: 20px; }
+.rq-textbtn:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 2px; border-radius: 4px; }
+
 @media (hover: hover) and (pointer: fine) {
   .rq-bday:not([aria-pressed="true"]):hover, .rq-cal-day:not(:disabled):not([aria-pressed="true"]):hover { background: rgb(var(--cream-rgb) / 0.08); }
   .rq-btime:hover, .rq-brecent-card:hover, .rq-window:not(:disabled):hover { background: #1b1c15; }
@@ -834,7 +945,7 @@
    They sit on the phone keyboard while typing (--rq-keyboard, js/contact-sheet.js). */
 .rq-psheet { overflow-y: auto; overscroll-behavior: contain; }
 @media (max-width: 1023px) {
-  .rq-psheet { margin-bottom: var(--rq-keyboard, 0px); max-height: calc(92dvh - var(--rq-keyboard, 0px)); }
+  .rq-psheet, .rq-kgsheet { margin-bottom: var(--rq-keyboard, 0px); max-height: calc(92dvh - var(--rq-keyboard, 0px)); }
 }
 .rq .rq-psheet .rq-display { font-size: 28px; line-height: 30px; letter-spacing: 0; }
 .rq-psheet-body { display: grid; gap: 16px; }

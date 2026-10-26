@@ -290,17 +290,17 @@
               <label for="recipientName">Recipient name</label>
               <input id="recipientName" type="text" placeholder="Who receives and pays at drop-off" autocomplete="off" autocapitalize="words" enterkeyhint="next" maxlength="80" required />
             </div>
+            <!-- One row per produce with its own kg (Figma 345:2174); js/produce-rows.js fills the two hidden fields -->
             <div class="rq-bfield">
-              <label for="goodsDescription">What are you shipping?</label>
-              <input id="goodsDescription" type="text" placeholder="e.g. Onions · 20 sacks" autocomplete="off" enterkeyhint="next" maxlength="120" required />
-            </div>
-            <div class="rq-bfield">
-              <label for="quantityKg">Total weight</label>
-              <div class="rq-bunit">
-                <input id="quantityKg" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 800" autocomplete="off" enterkeyhint="next" aria-describedby="kgHint" required />
-                <span aria-hidden="true">kg</span>
+              <p class="rq-flabel" id="produceLabel">What are you shipping?</p>
+              <div class="rq-produce" id="produceCard" role="group" aria-labelledby="produceLabel" aria-describedby="produceError produceHint">
+                <ul class="rq-produce-rows" id="produceRows"></ul>
+                <p class="rq-produce-total"><span>Total weight</span><strong id="produceTotal">0 kg</strong></p>
               </div>
-              <p class="rq-bhint" id="kgHint">Use the total weight of all items, including packaging.</p>
+              <p class="field-error" id="produceError" role="alert" hidden></p>
+              <p class="rq-bhint" id="produceHint">Weigh each produce with its sacks or crates.</p>
+              <input type="hidden" id="goodsDescription" />
+              <input type="hidden" id="quantityKg" />
             </div>
             <div class="rq-bfield">
               <label for="notes">Notes for the driver · Optional</label>
@@ -398,6 +398,38 @@
       <div class="rq-windows" id="timeWindows" role="group" aria-labelledby="timeSheetTitle"></div>
       <p class="rq-bsheet-note" id="timeSheetNote" hidden></p>
       <button class="rq-btn rq-bbtn" type="button" id="useTime">Use pickup time</button>
+    </dialog>
+
+    <!-- How many kg of one produce (Figma 346:2376, 346:2444) -->
+    <dialog class="rq-sheet rq-bsheet rq-kgsheet" id="kgSheet" aria-labelledby="kgSheetTitle">
+      <div class="rq-sheet-grab" aria-hidden="true"></div>
+      <div class="rq-bsheet-head">
+        <div>
+          <h2 id="kgSheetTitle">Produce</h2>
+          <p>How many kg? Include sacks or crates.</p>
+        </div>
+        <button type="button" class="rq-bclose" data-close-sheet aria-label="Close"><img src="../../assets/icons/book/close.svg" width="18" height="18" alt="" /></button>
+      </div>
+      <div class="rq-kgpick" id="kgPick">
+        <div class="rq-kgwheel">
+          <span class="rq-kgwheel-band" aria-hidden="true">kg</span>
+          <div class="rq-kgwheel-scroll" id="kgWheel" role="spinbutton" tabindex="0" aria-labelledby="kgSheetTitle" aria-valuemin="1" aria-valuemax="100000">
+            <ol class="rq-kgwheel-list" id="kgWheelList" aria-hidden="true"></ol>
+          </div>
+        </div>
+        <p class="rq-bsheet-note">Scroll to choose, or <button type="button" class="rq-textbtn" id="kgTypeBtn">type an exact weight</button>.</p>
+      </div>
+      <div class="rq-kgtype" id="kgType" hidden>
+        <label class="visually-hidden" for="kgExact">Exact weight in kilograms</label>
+        <div class="rq-kgexact">
+          <input id="kgExact" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" maxlength="6" aria-describedby="kgExactHint" />
+          <span aria-hidden="true">kg</span>
+        </div>
+        <p class="field-error" id="kgExactError" hidden></p>
+        <p class="rq-bsheet-note" id="kgExactHint">From 1 to 100,000 kg.</p>
+        <button type="button" class="rq-textbtn" id="kgWheelBtn">Use the wheel instead</button>
+      </div>
+      <button class="rq-btn rq-bbtn" type="button" id="useKg">Use 100 kg</button>
     </dialog>
 
     <!-- Book a late request again with a new date -->

@@ -62,10 +62,10 @@ import { createContactSheet, liftAboveKeyboard } from "./contact-sheet.js";
 import { createProfilePages } from "./profile-pages.js";
 import { paintAvatar } from "./avatar.js";
 import { savedMatches, savedAsPlace, isSaved } from "./saved-addresses.js";
+import { createProduceRows } from "./produce-rows.js";
+import { createKgWheel } from "./kg-wheel.js";
 import {
   checkAddress,
-  checkGoods,
-  checkKg,
   checkPickupDate,
   checkNotes,
   checkTrackQuery,
@@ -333,11 +333,23 @@ const ROUTE_RULES = [
 ];
 const DETAIL_RULES = [
   [inputs.recipientName, checkRecipient],
-  [inputs.goodsDescription, checkGoods],
-  [inputs.quantityKg, checkKg],
   [inputs.notes, checkNotes],
 ];
 clearWhenFixed([...ROUTE_RULES, ...DETAIL_RULES]);
+
+// "What are you shipping?": one row per produce, each kg from the wheel
+// (Figma 345:2174). The rows fill the hidden goodsDescription and quantityKg.
+const kgWheel = createKgWheel({ dialog: $("kgSheet"), openSheet, closeSheet });
+const produceRows = createProduceRows({
+  card: $("produceCard"),
+  list: $("produceRows"),
+  total: $("produceTotal"),
+  error: $("produceError"),
+  hint: $("produceHint"),
+  goods: inputs.goodsDescription,
+  kg: inputs.quantityKg,
+  chooseKg: kgWheel.choose,
+});
 
 // Places suggested while typing an address. A picked place keeps its exact
 // point, so the fare is worked out from the place they chose, not whatever
@@ -488,7 +500,7 @@ function setBusy(button, busy, label) {
 function reachableStep(n) {
   if (n === 4) return sentBooking ? 4 : 1;
   if (n >= 2 && !(passes(ROUTE_RULES) && !checkPickupDate(pickup.date) && windowOpen())) return 1;
-  if (n >= 3 && !(passes(DETAIL_RULES) && quoteFresh())) return 2;
+  if (n >= 3 && !(passes(DETAIL_RULES) && produceRows.ok() && quoteFresh())) return 2;
   return n;
 }
 function setStep(n, { focus = true } = {}) {
@@ -623,7 +635,11 @@ async function geocodeLabelled(address, which) {
 }
 
 async function toReview() {
-  if (!validateFields(DETAIL_RULES)) return;
+  // Every problem shows; focus goes to the first from the top (recipient, produce, notes).
+  const produceOk = produceRows.validate({ focus: false });
+  const fieldsOk = validateFields(DETAIL_RULES);
+  if (!produceOk && !checkRecipient(inputs.recipientName.value)) produceRows.validate();
+  if (!produceOk || !fieldsOk) return;
   if (quoteFresh()) return goStep(3);
   if (getIsOffline()) return showMessage("No connection. Check your signal and try again. Your details are still here.");
   const btn = $("toReview");
@@ -676,6 +692,12 @@ const ticketWhen = (date, window) => `
     <div><p class="rq-ticket-label">Pickup date</p><p class="rq-ticket-value">${esc(bookDateLabel(date))}</p></div>
     <div><p class="rq-ticket-label">Pickup time</p><p class="rq-ticket-value">${esc(windowLabel(window))}</p></div>
   </div>`;
+/** One produce: its name (the weight sits beside it). Several: a line each with its kg. */
+function reviewGoods() {
+  const items = produceRows.items();
+  if (items.length === 1) return esc(items[0].name);
+  return items.map((r) => `${esc(r.name)}&nbsp;·&nbsp;${r.kg.toLocaleString("en-PH")}&nbsp;kg`).join("<br />");
+}
 function renderReview() {
   const q = pendingQuote;
   if (!q) return;
@@ -687,7 +709,7 @@ function renderReview() {
     <div class="rq-ticket-cut" aria-hidden="true">${NOTCHES}</div>
     <div><p class="rq-ticket-label">Recipient</p><p class="rq-ticket-name">${esc(inputs.recipientName.value.trim())}</p></div>
     <div class="rq-ticket-pair rq-ticket-pair--load">
-      <div><p class="rq-ticket-label">What you're shipping</p><p class="rq-ticket-value">${esc(inputs.goodsDescription.value.trim())}</p></div>
+      <div><p class="rq-ticket-label">What you're shipping</p><p class="rq-ticket-value">${reviewGoods()}</p></div>
       <div><p class="rq-ticket-label">Total weight</p><p class="rq-ticket-value">${q.quantityKg.toLocaleString("en-PH")}&nbsp;kg</p></div>
     </div>
     ${notes ? `<div><p class="rq-ticket-label">Notes for the driver</p><p class="rq-ticket-notes">${esc(notes)}</p></div>` : ""}
@@ -744,6 +766,7 @@ confirmBtn.addEventListener("click", async () => {
     to: cityOf(q.dropoff, q.dropoffAddress),
   };
   form.reset();
+  produceRows.clear();
   pendingQuote = null;
   pickup.date = dayChoices()[0];
   pickup.window = PICKUP_WINDOWS[0].id;
@@ -1712,6 +1735,7 @@ function rebookIntoForm(d) {
     inputs[id].value = value;
     inputs[id].dispatchEvent(new Event("input", { bubbles: true }));
   }
+  produceRows.load(inputs.goodsDescription.value, inputs.quantityKg.value);
   pendingQuote = null;
   sentBooking = null;
   if (document.body.dataset.view !== "book") goTo("book");

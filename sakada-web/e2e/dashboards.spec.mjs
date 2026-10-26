@@ -25,6 +25,18 @@ const futureDate = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
+/** Book step 2: type into the empty produce row, pick `option`, then type its kg on the wheel sheet. */
+async function addProduce(page, typed, option, kg) {
+  await page.locator("#produceRows .rq-prow").last().locator("input").pressSequentially(typed);
+  await page.locator(".rq-places[data-open]").getByRole("option", { name: new RegExp(`^${option}`) }).click();
+  const sheet = page.locator("#kgSheet");
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole("button", { name: "type an exact weight" }).click();
+  await page.fill("#kgExact", String(kg));
+  await sheet.locator("#useKg").click();
+  await expect(sheet).toBeHidden();
+}
+
 test.describe("dashboards (fake sign-in)", () => {
   test("farmer sees status counts and one card per active shipment", async ({ page }) => {
     const errors = trackErrors(page);
@@ -164,16 +176,33 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.locator("#bookTitle")).toHaveText("Shipment details");
     await page.locator("#toReview").click();
     await expect(page.locator("#recipientNameError")).toHaveText("Enter the name of the person who receives the goods.");
+    await expect(page.locator("#produceError")).toHaveText("Add what you're shipping, like tomatoes or mangoes.");
     await expect(page.locator("#recipientName")).toBeFocused();
     await page.fill("#recipientName", "Maria Santos");
-    await page.fill("#goodsDescription", "Eggplant, 32 crates");
-    await page.fill("#quantityKg", "800");
+    // Produce rows: a Tagalog name finds the English one; the kg comes from the wheel
+    await addProduce(page, "talong", "Eggplant", 500);
+    await expect(page.locator("#produceError")).toBeHidden();
+    await expect(page.locator("#produceRows .rq-prow")).toHaveCount(2); // the next empty row
+    await page.locator("#produceRows .rq-prow").last().locator("input").pressSequentially("kamatis");
+    await page.locator(".rq-places[data-open]").getByRole("option", { name: /^Tomatoes/ }).click();
+    const wheel = page.locator("#kgWheel");
+    await expect(wheel).toBeFocused(); // starts at 100 kg
+    await expect(wheel).toHaveAttribute("aria-valuenow", "100");
+    for (let i = 0; i < 3; i++) await wheel.press("ArrowDown"); // 110, 120, 130
+    await expect(wheel).toHaveAttribute("aria-valuetext", "130 kilograms");
+    await expect(page.locator("#useKg")).toHaveText("Use 130 kg");
+    await wheel.press("Enter");
+    await expect(page.locator("#kgSheet")).toBeHidden();
+    await expect(page.locator("#produceTotal")).toHaveText("630 kg");
+    await expect(page.locator("#produceRows .rq-kgchip").nth(1)).toHaveText("130 kg");
     await page.fill("#notes", "Use the side gate.");
     await page.locator("#toReview").click();
     // 3 of 3: the ticket with the fare
     await expect(page.locator("#bookTitle")).toHaveText("Check your booking");
     const ticket = page.locator("#reviewTicket");
-    await expect(ticket).toContainText("₱3,526"); // 150 + 118.4 km × 15 + 800 kg × 2
+    await expect(ticket).toContainText("₱3,186"); // 150 + 118.4 km × 15 + 630 kg × 2
+    await expect(ticket).toContainText(/Eggplant\s·\s500\skg\s*Tomatoes\s·\s130\skg/);
+    await expect(ticket).toContainText("630 kg");
     await expect(ticket).toContainText(/118\skm by road · About\s2\sh\s30\smin\sdrive/); // Mapbox's 8,880 s
     await expect(ticket).toContainText("Maria Santos");
     await expect(ticket).toContainText("10:00 AM–12:00 PM");
@@ -187,8 +216,8 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.locator("#sentStatus")).toHaveText("Waiting for a driver");
     expect(db.deliveries).toHaveLength(7);
     expect(db.deliveries[6]).toMatchObject({
-      goods_description: "Eggplant, 32 crates",
-      quantity_kg: 800,
+      goods_description: "Eggplant 500 kg, Tomatoes 130 kg",
+      quantity_kg: 630,
       recipient_name: "Maria Santos",
       pickup_window: "10-12",
       notes: "Use the side gate.",
@@ -237,8 +266,7 @@ test.describe("dashboards (fake sign-in)", () => {
     await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
     await page.locator("#toDetails").click();
     await page.fill("#recipientName", "Maria Santos");
-    await page.fill("#goodsDescription", "Eggplant, 32 crates");
-    await page.fill("#quantityKg", "800");
+    await addProduce(page, "Eggplant", "Eggplant", 800);
     await page.locator("#toReview").click();
     await expect(page.locator("#bookTitle")).toHaveText("Book a shipment");
     await expect(page.locator("#pickupAddressError")).toHaveText("We couldn't find this address. Add the town and province.");
@@ -321,6 +349,92 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.locator("#bookTitle")).toHaveText("Book a shipment");
   });
 
+  test("produce: kept as typed, a missing kg is named, rows can be removed", async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.setViewportSize(PHONE);
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#book");
+    await page.fill("#pickupAddress", "Cabanatuan City, Nueva Ecija");
+    await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
+    await page.locator("#toDetails").click();
+    await page.fill("#recipientName", "Maria Santos");
+    const first = page.locator("#produceRows .rq-prow").first();
+    await expect(first.locator(".rq-premove")).toBeHidden(); // nothing to remove yet
+    await expect(first.locator(".rq-kgchip")).toBeDisabled();
+    await first.locator("input").pressSequentially("Siling labuyo");
+    const typed = page.locator(".rq-places[data-open]").getByRole("option", { name: "Use “Siling labuyo” as typed" });
+    await expect(typed).toBeVisible();
+    await first.locator("input").press("ArrowUp"); // the last option
+    await first.locator("input").press("Enter");
+    await expect(first.locator("input")).toHaveValue("Siling labuyo");
+    await expect(page.locator("#kgSheet")).toBeVisible();
+    await page.locator("#kgSheet").getByRole("button", { name: "Close" }).click();
+    await expect(page.locator("#kgSheet")).toBeHidden();
+    await expect(first.locator(".rq-kgchip")).toBeFocused(); // back where the sheet came from
+    await page.locator("#toReview").click();
+    await expect(page.locator("#produceError")).toHaveText("Set the kg for Siling labuyo.");
+    await expect(first.locator(".rq-kgchip")).toHaveText("Set kg");
+    await expect(first.locator(".rq-kgchip")).toBeFocused();
+    await expect(page.locator("#bookTitle")).toHaveText("Shipment details");
+    // A typed weight that isn't on the wheel
+    await first.locator(".rq-kgchip").click();
+    await page.getByRole("button", { name: "type an exact weight" }).click();
+    await page.fill("#kgExact", "0");
+    await page.locator("#useKg").click();
+    await expect(page.locator("#kgExactError")).toHaveText("The weight must be at least 1 kg.");
+    await page.fill("#kgExact", "235");
+    await expect(page.locator("#useKg")).toHaveText("Use 235 kg");
+    await page.locator("#kgExact").press("Enter");
+    await expect(page.locator("#produceError")).toBeHidden();
+    await expect(page.locator("#produceTotal")).toHaveText("235 kg");
+    // Back on the wheel, 235 sits between 230 and 240
+    await first.locator(".rq-kgchip").click();
+    await expect(page.locator("#kgWheel")).toHaveAttribute("aria-valuenow", "235");
+    await page.locator("#kgWheel").press("ArrowUp");
+    await expect(page.locator("#kgWheel")).toHaveAttribute("aria-valuenow", "230");
+    await page.locator("#kgWheel").press("Escape");
+    await expect(page.locator("#kgSheet")).toBeHidden();
+    await expect(first.locator(".rq-kgchip")).toHaveText("235 kg"); // closing keeps the old kg
+    await expect(page.locator("#goodsDescription")).toHaveValue("Siling labuyo");
+    await expect(page.locator("#quantityKg")).toHaveValue("235");
+    await first.getByRole("button", { name: "Remove Siling labuyo" }).click();
+    await expect(page.locator("#produceRows .rq-prow")).toHaveCount(1);
+    await expect(page.locator("#produceTotal")).toHaveText("0 kg");
+    await expect(page.locator("#quantityKg")).toHaveValue("");
+    expect(errors).toEqual([]);
+  });
+
+  test("produce: Review booking right after typing a name still lands (no row added on blur)", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#book");
+    await page.fill("#pickupAddress", "Cabanatuan City, Nueva Ecija");
+    await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
+    await page.locator("#toDetails").click();
+    await page.fill("#recipientName", "Maria Santos");
+    await page.locator("#produceRows .rq-prow input").first().pressSequentially("Onions");
+    await expect(page.locator("#produceRows .rq-prow")).toHaveCount(2); // the next row came with the typing
+    await page.locator("#toReview").click();
+    await expect(page.locator("#produceError")).toHaveText("Set the kg for Onions.");
+  });
+
+  test("produce: Book again brings the rows back", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    const deliveries = fixtures().deliveries.map((d) =>
+      d.delivery_code === "SK-00004" ? { ...d, goods_description: "Tomatoes 200 kg, Onions 150 kg", quantity_kg: 350 } : d);
+    await mockSupabase(page, "farmer", { deliveries });
+    await page.goto("/dashboard/farmer/index.html#history");
+    await page.locator('[data-delivery-id] [data-rebook-id]').first().waitFor();
+    await page.locator(".rq-history-card", { hasText: "SK-00004" }).getByRole("button", { name: "Book again" }).click();
+    await page.locator("#toDetails").click();
+    const rows = page.locator("#produceRows .rq-prow");
+    await expect(rows).toHaveCount(3); // two produce and the empty one
+    await expect(rows.nth(0).locator("input")).toHaveValue("Tomatoes");
+    await expect(rows.nth(1).locator(".rq-kgchip")).toHaveText("150 kg");
+    await expect(page.locator("#produceTotal")).toHaveText("350 kg");
+    await expect(page.locator("#goodsDescription")).toHaveValue("Tomatoes 200 kg, Onions 150 kg");
+  });
+
   test("Request sent opens the new booking on Track", async ({ page }) => {
     await page.setViewportSize(PHONE);
     await mockSupabase(page, "farmer");
@@ -329,8 +443,7 @@ test.describe("dashboards (fake sign-in)", () => {
     await page.fill("#dropoffAddress", "Marikina Public Market, Marikina");
     await page.locator("#toDetails").click();
     await page.fill("#recipientName", "Maria Santos");
-    await page.fill("#goodsDescription", "Tomatoes, 20 crates");
-    await page.fill("#quantityKg", "400");
+    await addProduce(page, "Toma", "Tomatoes", 400);
     await page.locator("#toReview").click();
     await page.locator("#confirmBtn").click();
     await expect(page.locator(".rq-bcode-value")).toHaveText("SK-00007");
