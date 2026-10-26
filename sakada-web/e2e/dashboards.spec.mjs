@@ -1124,6 +1124,11 @@ test.describe("phone alerts", () => {
   });
 
   test("before the backend key is set, Phone alerts says it's almost ready", async ({ page }) => {
+    // Explicitly simulate missing configuration, independent of the deployed key.
+    await page.route("**/js/config.js", async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: `${await response.text()}\nconfig.vapidPublicKey = "";\n` });
+    });
     await mockSupabase(page, "vendor");
     await page.goto("/dashboard/vendor/index.html#profile/alerts");
     await expect(page.locator("#alertsStatus")).toHaveText("Not ready yet");
