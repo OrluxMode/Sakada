@@ -163,3 +163,52 @@ farmer's deliveries, or a driver from marking someone else's delivery
 `delivered`. Test this specifically and adversarially in Phase 11 (Internal
 Testing) — log in as one role and deliberately try to query another role's
 data through the browser console.
+
+## Avatars (0025)
+
+The public Storage bucket `avatars` accepts `image/webp`, `image/jpeg` and
+`image/png`, limited to 1,048,576 bytes per file. The migration creates it;
+no manual bucket creation is needed on hosted Supabase. Public reads are
+allowed. Authenticated inserts, updates (both old and new paths) and deletes
+require the first object-name folder to equal `auth.uid()`. The website uses
+`<user-id>/<timestamp>.webp` inside the bucket, saves the new URL, then removes
+the old object. Bucket creation uses `ON CONFLICT DO NOTHING`; an already
+existing bucket's configuration is not overwritten.
+
+`profiles_avatar_url_valid` permits NULL or a URL starting exactly with
+`https://aeeniueayubeugvooyqj.supabase.co/storage/v1/object/public/avatars/<row-id>/`.
+The project reference matches the existing frontend configuration; update it
+for another deployment. The constraint is `NOT VALID`: existing rows are not
+scanned or rewritten, but subsequent inserts/updates must pass. It checks URL
+ownership, not object existence. Existing name/phone/avatar column grants and
+profile RLS remain in effect.
+
+## Saved addresses (0026)
+
+`saved_addresses` stores up to ten addresses per user:
+
+| Column | Definition |
+|---|---|
+| `id` | UUID primary key, generated automatically |
+| `user_id` | Required profile foreign key, defaults to `auth.uid()`, cascades on profile deletion |
+| `label` | Required, 1–40 characters after outer-space trimming |
+| `address` | Required, 2–200 characters after outer-space trimming |
+| `lat` / `lng` | Required double precision, -90–90 / -180–180 inclusive |
+| `city` | NULL or at most 120 characters |
+| `created_at` / `updated_at` | Required timestamps, default now; existing `set_updated_at()` stamps updates |
+
+The explicit saved-address requirement uses a two-character minimum; booking
+addresses retain their existing five-character minimum. A unique index on
+`(user_id, lower(btrim(label)))` rejects labels differing only in case or outer
+spaces; a separate index supports user lookup. Values are validated without
+rewriting the supplied text.
+
+The before-insert limit trigger locks the user's parent profile row before
+counting, serializing concurrent inserts per user. It raises exactly
+`saved address limit reached` at ten. Its SECURITY DEFINER function fixes
+`search_path` and has no client EXECUTE grant. RLS permits only caller-owned
+rows for all CRUD operations, including an ownership check on inserts and
+updates. Only `authenticated` receives SELECT/INSERT/DELETE and UPDATE on
+`label,address,lat,lng,city`; ownership and timestamps cannot be edited.
+No anonymous grants or admin override are provided. See Readme.md for the
+PGlite test command and required manual Storage checks.

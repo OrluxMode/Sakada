@@ -5,6 +5,10 @@
 //
 // The field is an ARIA combobox: arrows move the highlight, Enter picks,
 // Escape closes, and the number of places found is announced.
+//
+// Saved addresses (when the caller has any) come first: all of them when the
+// field is empty and focused, the matching ones above the map's places
+// while typing.
 
 const MIN_CHARS = 3;
 const PAUSE_MS = 250; // wait for a pause in typing before asking the map service
@@ -18,12 +22,14 @@ const PAUSE_MS = 250; // wait for a pause in typing before asking the map servic
  * @param {() => boolean} [o.canSearch] false while offline: no list, typing carries on
  * @param {(place: object) => void} o.onPick
  * @param {{label: string, run: () => void}} [o.emptyAction] offered when nothing matches
+ * @param {(text: string) => Array<object>} [o.saved] saved addresses matching the text (all for "")
  */
-export function attachPlaceSuggest({ input, row, host, search, canSearch = () => true, onPick, emptyAction }) {
+export function attachPlaceSuggest({ input, row, host, search, canSearch = () => true, onPick, emptyAction, saved = () => [] }) {
   const id = `${input.id}Places`;
   const box = document.createElement("div");
   box.className = "rq-places";
   box.innerHTML = `
+    <p class="rq-places-head" id="${id}Head" hidden>Saved addresses</p>
     <ul class="rq-places-list" role="listbox" id="${id}" aria-label="Suggested places"></ul>
     <div class="rq-places-empty" hidden>
       <p><strong></strong><span>Check the spelling, or add the town and province.</span></p>
@@ -76,8 +82,18 @@ export function attachPlaceSuggest({ input, row, host, search, canSearch = () =>
     status.textContent = "";
   }
 
-  function show(text, results) {
+  const head = box.querySelector(".rq-places-head");
+  /** Saved addresses first, then the map's places that aren't the same address. */
+  function withSaved(text, results) {
+    const mine = saved(text);
+    const known = new Set(mine.map((p) => p.address.toLowerCase()));
+    return [...mine, ...results.filter((p) => !known.has(p.address.toLowerCase()))];
+  }
+
+  function show(text, results, { savedOnly = false } = {}) {
     places = results;
+    head.hidden = !savedOnly;
+    list.setAttribute("aria-label", savedOnly ? "Saved addresses" : "Suggested places");
     active = -1;
     input.removeAttribute("aria-activedescendant");
     list.replaceChildren(...results.map((p, i) => {
@@ -88,7 +104,7 @@ export function attachPlaceSuggest({ input, row, host, search, canSearch = () =>
       li.setAttribute("role", "option");
       li.setAttribute("aria-selected", "false");
       const pin = document.createElement("span");
-      pin.className = "rq-place-pin";
+      pin.className = p.saved ? "rq-place-pin rq-place-pin--saved" : "rq-place-pin";
       pin.setAttribute("aria-hidden", "true");
       const words = document.createElement("span");
       words.className = "rq-place-words";
@@ -106,7 +122,7 @@ export function attachPlaceSuggest({ input, row, host, search, canSearch = () =>
     empty.hidden = results.length > 0;
     empty.querySelector("strong").textContent = `No places match “${text}”`;
     status.textContent = results.length
-      ? `${results.length} ${results.length === 1 ? "place" : "places"} found`
+      ? `${results.length} ${savedOnly ? (results.length === 1 ? "saved address" : "saved addresses") : results.length === 1 ? "place" : "places"} found`
       : `No places match ${text}`;
     open();
   }
@@ -135,9 +151,10 @@ export function attachPlaceSuggest({ input, row, host, search, canSearch = () =>
       const results = await search(text, { signal: controller.signal });
       cache.set(text.toLowerCase(), results);
       // Only show it if they're still on this field and haven't typed on.
-      if (document.activeElement === input && input.value.trim() === text) show(text, results);
+      if (document.activeElement === input && input.value.trim() === text) show(text, withSaved(text, results));
     } catch (err) {
-      if (err.name !== "AbortError") close(); // map service down: no list, typing carries on
+      // Map service down: saved matches stay; otherwise no list, typing carries on.
+      if (err.name !== "AbortError" && !saved(text).length) close();
     }
   }
 
@@ -145,10 +162,27 @@ export function attachPlaceSuggest({ input, row, host, search, canSearch = () =>
     if (!e.isTrusted) return; // filled in by code (a pick, Book again), not typed
     const text = input.value.trim();
     clearTimeout(timer);
-    if (text.length < MIN_CHARS || !canSearch()) return close();
+    if (!text) return showAllSaved();
+    if (text.length < MIN_CHARS || !canSearch()) {
+      // Too short for the map (or offline): saved addresses can still match.
+      const mine = saved(text);
+      return mine.length ? show(text, mine) : close();
+    }
     const known = cache.get(text.toLowerCase());
-    if (known) return show(text, known);
+    if (known) return show(text, withSaved(text, known));
+    const mine = saved(text);
+    if (mine.length) show(text, mine); // right away; the map's places join after the pause
     timer = setTimeout(() => lookup(text), PAUSE_MS);
+  });
+
+  /** An empty field: every saved address, so one tap fills it. */
+  function showAllSaved() {
+    const mine = saved("");
+    if (mine.length) show("", mine, { savedOnly: true });
+    else close();
+  }
+  input.addEventListener("focus", () => {
+    if (!input.value.trim()) showAllSaved();
   });
 
   input.addEventListener("keydown", (e) => {
@@ -192,5 +226,11 @@ export function attachPlaceSuggest({ input, row, host, search, canSearch = () =>
     });
   }
 
-  return { close };
+  return {
+    close,
+    /** Saved addresses changed (they just loaded): show them if this empty field has focus. */
+    refresh() {
+      if (document.activeElement === input && !input.value.trim()) showAllSaved();
+    },
+  };
 }

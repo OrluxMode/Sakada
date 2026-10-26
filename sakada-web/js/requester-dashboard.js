@@ -59,6 +59,9 @@ import { initOfflineDetection, getIsOffline } from "./offline.js";
 import { attachPlaceSuggest } from "./place-suggest.js";
 import { createPinMap } from "./pin-map.js";
 import { createContactSheet, liftAboveKeyboard } from "./contact-sheet.js";
+import { createProfilePages } from "./profile-pages.js";
+import { paintAvatar } from "./avatar.js";
+import { savedMatches, savedAsPlace, isSaved } from "./saved-addresses.js";
 import {
   checkAddress,
   checkGoods,
@@ -85,16 +88,22 @@ initOfflineDetection();
 updateLastLogin();
 
 const $ = (id) => document.getElementById(id);
-const firstName = profile.full_name.split(" ")[0];
-document.querySelectorAll("[data-user-name]").forEach((el) => (el.textContent = profile.full_name));
-document.querySelector(".rq-account")?.setAttribute("title", profile.full_name); // long names are cut off there
-document.querySelectorAll("[data-initials]").forEach((el) => (el.textContent = initialsFor(profile.full_name)));
-// Greeting only: "yayan" reads as "Yayan". The saved name is left as typed.
-$("homeTitle").textContent = `${firstName.charAt(0).toLocaleUpperCase("en-PH")}${firstName.slice(1)}`;
+/** Name, initials and photo wherever they show; again after Edit profile saves. */
+function paintAccount() {
+  const firstName = profile.full_name.split(" ")[0];
+  document.querySelectorAll("[data-user-name]").forEach((el) => (el.textContent = profile.full_name));
+  document.querySelector(".rq-account")?.setAttribute("title", profile.full_name); // long names are cut off there
+  document.querySelectorAll("[data-initials]").forEach((el) =>
+    paintAvatar(el, { url: profile.avatar_url, initials: initialsFor(profile.full_name) }));
+  // Greeting only: "yayan" reads as "Yayan". The saved name is left as typed.
+  $("homeTitle").textContent = `${firstName.charAt(0).toLocaleUpperCase("en-PH")}${firstName.slice(1)}`;
+}
+paintAccount();
 let accountEmail = "";
 supabase.auth.getUser().then(({ data }) => {
   accountEmail = data?.user?.email || "";
   $("profileEmail").textContent = accountEmail;
+  profilePages.setUser(data?.user || null);
 });
 
 // ---------- Tabs (hash sections in one page, so realtime stays connected) ----------
@@ -102,12 +111,21 @@ const VIEWS = ["home", "track", "book", "history", "profile"];
 let viewsReady = false;
 // The booking the Track page shows (#track/SK-00142), or null for the Track tab itself.
 let trackCode = null;
+// The page inside Profile: main, edit (#profile/edit) or addresses (#profile/addresses).
+let profilePage = "main";
 function showView(hash, { focus = false } = {}) {
   let view = hash;
   const track = parseTrackHash(hash);
   if (track) {
     view = "track";
     trackCode = track.code;
+  }
+  const inProfile = /^profile\/(edit|addresses)$/.exec(view);
+  if (view === "profile" || inProfile) {
+    const page = inProfile?.[1] || "main";
+    const moved = page !== profilePage && document.body.dataset.view === "profile";
+    view = "profile";
+    showProfilePage(page, { animate: moved && viewsReady });
   }
   if (view === "deliveryForm") view = "book"; // the landing page's "Book a Delivery" link
   if (!VIEWS.includes(view)) view = "home";
@@ -125,7 +143,9 @@ function showView(hash, { focus = false } = {}) {
     else a.removeAttribute("aria-current");
   });
   if (focus) {
-    const heading = $(`view-${view}`)?.querySelector("h1");
+    const heading = view === "profile"
+      ? document.querySelector(`[data-profile-page="${profilePage}"] h1`)
+      : $(`view-${view}`)?.querySelector("h1");
     heading?.setAttribute("tabindex", "-1");
     heading?.focus({ preventScroll: true });
     window.scrollTo({ top: 0 });
@@ -248,6 +268,46 @@ const openContact = createContactSheet({
   email: () => accountEmail,
 });
 liftAboveKeyboard($("contactSheet"));
+// Edit profile and Saved addresses: pages inside the Profile tab.
+const profilePages = createProfilePages({
+  profile,
+  openSheet,
+  closeSheet,
+  initials: () => initialsFor(profile.full_name),
+  onProfileChange: paintAccount,
+  onSavedChange: () => {
+    syncSaveLinks();
+    addressSuggest.forEach((list) => list.refresh());
+  },
+  pinOnMap: (which) => openPinMap(which),
+  isOffline: getIsOffline,
+});
+liftAboveKeyboard($("savedSheet"));
+profilePages.loadSaved();
+function showProfilePage(page, { animate = false } = {}) {
+  if (page === "edit" && profilePage !== "edit") profilePages.openEdit();
+  profilePage = page;
+  document.querySelectorAll("[data-profile-page]").forEach((el) => {
+    el.hidden = el.dataset.profilePage !== page;
+    if (!el.hidden && animate) enterView("profile");
+  });
+}
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("[data-profile-back]")) return;
+  // Back to Profile: the browser's Back when Profile is where they came from.
+  if (history.state?.back) history.back();
+  else goTo("profile");
+});
+// Profile rows link to #profile/edit and #profile/addresses; mark them so Back returns.
+document.querySelectorAll('#view-profile a[href^="#profile/"]').forEach((a) => {
+  a.addEventListener("click", (e) => {
+    e.preventDefault();
+    goTo(a.getAttribute("href").slice(1));
+    document.querySelector(`[data-profile-page="${profilePage}"] h1`)?.setAttribute("tabindex", "-1");
+    document.querySelector(`[data-profile-page="${profilePage}"] h1`)?.focus({ preventScroll: true });
+  });
+});
+
 // Profile's row, a shipment's "Something wrong?" link, the "driver accepted first" note.
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-open-contact]");
@@ -298,23 +358,44 @@ function syncPinned() {
     $(`${which}Pinned`).hidden = !(picked?.pinned && picked.address === addressInput(which).value.trim());
   }
 }
+/**
+ * "Save this address" under a field that holds a place picked or pinned on
+ * Book, when it isn't saved yet and there's room for another.
+ */
+function syncSaveLinks() {
+  for (const which of ["pickup", "dropoff"]) {
+    const picked = pickedPlaces.get(which);
+    const btn = bookView.querySelector(`[data-save-place="${which}"]`);
+    btn.hidden = !(picked && picked.address === addressInput(which).value.trim()
+      && profilePages.canSave() && !isSaved(profilePages.saved(), picked));
+  }
+}
 form.addEventListener("input", syncPinned);
+form.addEventListener("input", syncSaveLinks);
+bookView.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-save-place]");
+  if (!b) return;
+  const picked = pickedPlaces.get(b.dataset.savePlace);
+  if (picked) profilePages.openSavedSheet({ prefill: { address: picked.address, geo: picked.geo } });
+});
+const addressSuggest = [];
 for (const [which, input, next] of [
   ["pickup", inputs.pickupAddress, inputs.dropoffAddress],
   ["dropoff", inputs.dropoffAddress, null],
 ]) {
-  attachPlaceSuggest({
+  addressSuggest.push(attachPlaceSuggest({
     input,
     row: input.closest(".rq-broute-row"),
     host: input.closest(".rq-broute"),
     search: suggestPlaces,
     canSearch: () => !getIsOffline(),
+    saved: (text) => savedMatches(profilePages.saved(), text, text ? 3 : 10).map((r) => savedAsPlace(r, { matched: Boolean(text) })),
     onPick(place) {
       usePlace(which, place);
       if (next && !next.value.trim()) next.focus();
     },
     emptyAction: { label: "Pin it on the map instead", run: () => openPinMap(which) },
-  });
+  }));
 }
 
 // --- Pin on the map: the pin stays put, the map moves under it ---
@@ -331,9 +412,9 @@ const pinMap = createPinMap({
 let pinningFor = "pickup";
 /** Where the map starts: this field's place, what's typed in it, the other address, or the user's location. */
 async function pinStart(which) {
-  const input = addressInput(which);
+  const input = which === "saved" ? $("savedAddress") : addressInput(which);
   const text = input.value.trim();
-  const own = pickedPlaces.get(which);
+  const own = which === "saved" ? profilePages.savedPicked() : pickedPlaces.get(which);
   if (own && own.address === text) return { at: own.geo, zoom: 17 };
   if (text.length >= 3 && !getIsOffline()) {
     try {
@@ -342,15 +423,15 @@ async function pinStart(which) {
       // not a place Mapbox knows: fall through
     }
   }
-  const other = pickedPlaces.get(which === "pickup" ? "dropoff" : "pickup");
+  const other = which === "saved" ? null : pickedPlaces.get(which === "pickup" ? "dropoff" : "pickup");
   if (other) return { at: other.geo, zoom: 12 };
   return { at: null };
 }
 async function openPinMap(which) {
   pinningFor = which;
   const pickup = which === "pickup";
-  $("mapSheetTitle").textContent = pickup ? "Pin pickup location" : "Pin drop-off location";
-  $("mapSpotLabel").textContent = pickup ? "Pickup point" : "Drop-off point";
+  $("mapSheetTitle").textContent = which === "saved" ? "Pin the address" : pickup ? "Pin pickup location" : "Pin drop-off location";
+  $("mapSpotLabel").textContent = which === "saved" ? "Address point" : pickup ? "Pickup point" : "Drop-off point";
   openSheet(mapSheet);
   const { at, zoom } = await pinStart(which);
   if (mapSheet.open) await pinMap.open(at, zoom);
@@ -366,7 +447,8 @@ $("useSpot").addEventListener("click", async () => {
   const spot = pinMap.spot();
   if (!spot) return;
   await closeSheet(mapSheet);
-  usePlace(pinningFor, spot, { pinned: true });
+  if (pinningFor === "saved") profilePages.setSavedSpot(spot);
+  else usePlace(pinningFor, spot, { pinned: true });
 });
 /** True when every rule passes, without showing anything. */
 const passes = (rules) => rules.every(([input, check]) => {

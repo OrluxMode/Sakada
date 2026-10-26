@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Vendor Dashboard — Sakada Logistics</title>
     <meta name="robots" content="noindex" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https://api.mapbox.com data:; connect-src 'self' https://*.supabase.co https://api.mapbox.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com wss://*.supabase.co; frame-src 'none';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https://api.mapbox.com https://*.supabase.co data: blob:; connect-src 'self' https://*.supabase.co https://api.mapbox.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com wss://*.supabase.co; frame-src 'none';" />
     <link rel="stylesheet" href="../../css/fonts.css" />
     <link rel="stylesheet" href="../../css/style.css" />
     <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
@@ -104,7 +104,8 @@
 
         <!-- PROFILE -->
         <section class="rq-view" id="view-profile" aria-labelledby="profileTitle">
-          <!-- Figma "Profile — spacing fixed" (326:1281) -->
+          <!-- Figma "Profile — with photo + account rows" (334:1531) -->
+          <div class="rq-ppage" data-profile-page="main">
           <div class="rq-profile-head">
             <span class="rq-avatar rq-avatar--xl" data-initials aria-hidden="true"></span>
             <div class="rq-profile-who">
@@ -112,6 +113,10 @@
               <p class="rq-profile-role">Vendor</p>
               <p class="rq-profile-email" id="profileEmail"></p>
             </div>
+          </div>
+          <div class="rq-list rq-list--account">
+            <a class="rq-row" href="#profile/edit"><span>Edit profile</span><svg class="rq-row-chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6.5 5.5 5.5-5.5 5.5"/></svg></a>
+            <a class="rq-row" href="#profile/addresses"><span>Saved addresses</span><span class="rq-row-meta rq-row-meta--count" id="savedCount"></span><svg class="rq-row-chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6.5 5.5 5.5-5.5 5.5"/></svg></a>
           </div>
           <div class="rq-list">
             <button type="button" class="rq-row" data-open-notifs>
@@ -125,6 +130,79 @@
             <p class="rq-muted">Roles can't be changed. Farmers and vendors get the same booking tools.</p>
           </div>
           <button class="rq-btn rq-btn--ghost rq-logout" id="signOutBtn" type="button" aria-haspopup="dialog"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10"/><path d="M14.5 8 19 12l-4.5 4M19 12H9.5"/></svg>Log out</button>
+          </div>
+
+          <!-- Edit profile (Figma 334:1579, 334:1650, 334:1736) -->
+          <div class="rq-ppage" data-profile-page="edit" hidden>
+            <div class="rq-track-top rq-book-top">
+              <button class="rq-back" type="button" data-profile-back aria-label="Back to Profile"><img src="../../assets/icons/book/back.svg" width="20" height="20" alt="" /></button>
+              <h1 class="rq-track-where">Edit profile</h1>
+              <p class="rq-track-logo" aria-hidden="true">SAKA<span>DA</span></p>
+            </div>
+            <form id="profileForm" class="rq-pedit" novalidate>
+              <div class="rq-pphoto">
+                <span class="rq-avatar rq-avatar--photo" id="editAvatar" aria-hidden="true"></span>
+                <div class="rq-pphoto-actions">
+                  <button type="button" class="rq-chip-btn" id="changePhoto">Change photo</button>
+                  <button type="button" class="rq-text-btn" id="removePhoto" hidden>Remove</button>
+                </div>
+                <input type="file" id="photoInput" accept="image/*" class="rq-sr" tabindex="-1" aria-hidden="true" />
+                <p class="rq-pphoto-note" id="photoNote" role="status"></p>
+              </div>
+              <div class="rq-bfield">
+                <label for="editName">Full name</label>
+                <input id="editName" type="text" autocomplete="name" autocapitalize="words" maxlength="120" enterkeyhint="done" required />
+              </div>
+              <div class="rq-pemail">
+                <p class="rq-pemail-label">Email</p>
+                <p class="rq-muted" id="editEmail"></p>
+              </div>
+              <p class="rq-banner rq-banner--bad" id="profileSaveError" role="alert" hidden></p>
+              <p class="rq-sr" role="status" id="saveStatus"></p>
+              <button class="rq-btn rq-bbtn rq-save" type="submit" id="saveProfile" disabled>
+                <span class="rq-save-face">Save changes</span>
+                <span class="rq-save-face rq-save-face--done" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.2 2.8 2.8 5.2-6"/></svg>Saved</span>
+              </button>
+            </form>
+            <div class="rq-pcard" id="passwordCard">
+              <button type="button" class="rq-pcard-toggle" id="passwordToggle" aria-expanded="false" aria-controls="passwordForm">
+                <span><strong id="passwordHeading">Password</strong><span id="passwordSub">Change the password you log in with.</span></span>
+                <img class="rq-pcard-chev" src="../../assets/icons/book/chevron-down.svg" width="20" height="20" alt="" />
+              </button>
+              <p class="rq-pcard-static" id="googleNote" hidden><strong>Password</strong><span>You log in with Google, so there's no Sakada password to change.</span></p>
+              <form class="rq-pcard-body" id="passwordForm" novalidate hidden>
+                <div class="rq-bfield">
+                  <label for="currentPassword">Current password</label>
+                  <div class="rq-pw">
+                    <input id="currentPassword" type="password" autocomplete="current-password" maxlength="72" enterkeyhint="next" />
+                    <button type="button" class="rq-show" data-show-for="currentPassword" aria-pressed="false" aria-label="Show password">Show</button>
+                  </div>
+                </div>
+                <div class="rq-bfield">
+                  <label for="newPassword">New password</label>
+                  <div class="rq-pw">
+                    <input id="newPassword" type="password" autocomplete="new-password" maxlength="72" enterkeyhint="done" aria-describedby="newPasswordHint" />
+                    <button type="button" class="rq-show" data-show-for="newPassword" aria-pressed="false" aria-label="Show password">Show</button>
+                  </div>
+                  <p class="rq-bhint" id="newPasswordHint">At least 8 characters. You stay logged in on this phone.</p>
+                </div>
+                <p class="rq-banner rq-banner--bad" id="passwordError" role="alert" hidden></p>
+                <button class="rq-btn rq-bbtn" type="submit" id="updatePassword">Update password</button>
+                <button class="rq-btn rq-bbtn rq-btn--text rq-pcancel" type="button" id="cancelPassword">Cancel</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Saved addresses (Figma 335:1698, none yet 335:1774) -->
+          <div class="rq-ppage" data-profile-page="addresses" hidden>
+            <div class="rq-track-top rq-book-top">
+              <button class="rq-back" type="button" data-profile-back aria-label="Back to Profile"><img src="../../assets/icons/book/back.svg" width="20" height="20" alt="" /></button>
+              <h1 class="rq-track-where">Saved addresses</h1>
+              <p class="rq-track-logo" aria-hidden="true">SAKA<span>DA</span></p>
+            </div>
+            <p class="rq-psub" id="savedIntro">They show first when you type an address on Book.</p>
+            <div id="savedBox" aria-live="polite"></div>
+          </div>
         </section>
       </main>
 
@@ -152,6 +230,7 @@
                   <label for="pickupAddress">From · Pickup address</label>
                   <input id="pickupAddress" type="text" placeholder="Barangay, town, province" autocomplete="off" enterkeyhint="next" maxlength="200" required />
                   <p class="rq-pinned" id="pickupPinned" hidden>Pinned on the map</p>
+                  <button type="button" class="rq-savehere" data-save-place="pickup" hidden>Save this address</button>
                 </div>
                 <button type="button" class="rq-bmap" data-pin-for="pickup" aria-label="Pin pickup on the map">Map</button>
               </div>
@@ -161,6 +240,7 @@
                   <label for="dropoffAddress">To · Delivery address</label>
                   <input id="dropoffAddress" type="text" placeholder="Market or warehouse, city" autocomplete="off" enterkeyhint="done" maxlength="200" required />
                   <p class="rq-pinned" id="dropoffPinned" hidden>Pinned on the map</p>
+                  <button type="button" class="rq-savehere" data-save-place="dropoff" hidden>Save this address</button>
                 </div>
                 <button type="button" class="rq-bmap" data-pin-for="dropoff" aria-label="Pin drop-off on the map">Map</button>
               </div>
@@ -406,6 +486,37 @@
         <span><strong>Read the full guide</strong><span>Opens the Sakada website in your browser</span></span>
         <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19h11a1.5 1.5 0 0 0 1.5-1.5V14"/><path d="M14 5h5v5M19 5l-8 8"/></svg>
       </a>
+    </dialog>
+
+    <!-- Add / edit a saved address (Figma 335:1829, 335:1957) -->
+    <dialog class="rq-sheet rq-bsheet rq-psheet" id="savedSheet" aria-labelledby="savedTitle">
+      <div class="rq-sheet-grab" aria-hidden="true"></div>
+      <div class="rq-psheet-head">
+        <div><h2 id="savedTitle" class="rq-display">Add an address</h2></div>
+        <button type="button" class="rq-bclose" data-close-sheet aria-label="Close"><img src="../../assets/icons/book/close.svg" width="18" height="18" alt="" /></button>
+      </div>
+      <form id="savedForm" class="rq-contact" novalidate>
+        <div class="rq-bfield">
+          <label for="savedLabel">Name</label>
+          <div class="rq-topic-pills" id="savedQuick" role="group" aria-label="Quick names">
+            <button type="button" class="rq-qname" data-name="My farm" aria-pressed="false">My farm</button>
+            <button type="button" class="rq-qname" data-name="My stall" aria-pressed="false">My stall</button>
+            <button type="button" class="rq-qname" data-name="Warehouse" aria-pressed="false">Warehouse</button>
+          </div>
+          <input id="savedLabel" type="text" maxlength="40" placeholder="Or type a name" autocomplete="off" autocapitalize="sentences" enterkeyhint="next" />
+        </div>
+        <div class="rq-bfield rq-saved-address">
+          <label for="savedAddress">Address</label>
+          <div class="rq-saved-row">
+            <input id="savedAddress" type="text" maxlength="200" placeholder="Barangay, town, province" autocomplete="off" enterkeyhint="done" aria-describedby="savedHint" />
+            <button type="button" class="rq-bmap" data-pin-saved aria-label="Pin the address on the map">Map</button>
+          </div>
+          <p class="rq-bhint" id="savedHint">Type to search, or pin it on the map.</p>
+        </div>
+        <p class="rq-banner rq-banner--bad" id="savedError" role="alert" hidden></p>
+        <button class="rq-btn rq-bbtn" type="submit" id="savedSave">Save address</button>
+        <button class="rq-btn rq-bbtn rq-btn--danger-line" type="button" id="savedDelete" hidden>Delete address</button>
+      </form>
     </dialog>
 
     <!-- Log out asks first (Figma 327:1583) -->

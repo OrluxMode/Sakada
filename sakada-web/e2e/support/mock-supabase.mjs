@@ -87,6 +87,9 @@ export function fixtures(overrides = {}) {
     ],
     ratings: [],
     contact_submissions: [],
+    saved_addresses: [],
+    storage: [], // avatar files uploaded ("<user id>/<name>")
+    passwordChanges: [],
     ...overrides,
   };
 }
@@ -138,17 +141,19 @@ function rpcResult(name, db, userId) {
  * (`db`) so a test can inspect them after a write.
  */
 export async function mockSupabase(page, role, overrides = {}) {
-  const db = fixtures(overrides);
+  const { authUser = {}, ...tables } = overrides; // authUser: e.g. a Google-only account
+  const db = fixtures(tables);
   const userId = IDS[role];
   const user = {
     id: userId,
     aud: "authenticated",
     role: "authenticated",
     email: `${role}@example.com`,
-    app_metadata: { provider: "email" },
+    app_metadata: { provider: "email", providers: ["email"] },
     user_metadata: { full_name: NAMES[role], role },
     identities: [],
     created_at: "2026-09-01T00:00:00.000Z",
+    ...authUser,
   };
   const session = {
     access_token: "e2e-access-token",
@@ -209,9 +214,35 @@ export async function mockSupabase(page, role, overrides = {}) {
   });
   await page.route(`https://${PROJECT_REF}.supabase.co/auth/v1/**`, (route) => {
     const url = new URL(route.request().url());
-    if (url.pathname.endsWith("/user")) return route.fulfill({ json: user });
+    if (url.pathname.endsWith("/user")) {
+      if (route.request().method() === "PUT") db.passwordChanges.push(route.request().postDataJSON().password);
+      return route.fulfill({ json: user });
+    }
     if (url.pathname.endsWith("/logout")) return route.fulfill({ status: 204, body: "" });
+    // Checking the current password: only "right-password" is right.
+    if (url.searchParams.get("grant_type") === "password" && route.request().postDataJSON()?.password !== "right-password") {
+      return route.fulfill({ status: 400, json: { code: 400, error_code: "invalid_credentials", msg: "Invalid login credentials" } });
+    }
     return route.fulfill({ json: session });
+  });
+  // Storage: avatar uploads land in db.storage; public photos are a 1x1 PNG.
+  await page.route(`https://${PROJECT_REF}.supabase.co/storage/v1/**`, (route) => {
+    const req = route.request();
+    const path = new URL(req.url()).pathname.replace(/^\/storage\/v1\//, "");
+    if (path.startsWith("object/public/")) {
+      return route.fulfill({
+        contentType: "image/png",
+        body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64"),
+      });
+    }
+    if (req.method() === "DELETE") {
+      const gone = req.postDataJSON()?.prefixes || [];
+      db.storage = db.storage.filter((f) => !gone.includes(f));
+      return route.fulfill({ json: [] });
+    }
+    const file = path.replace(/^object\/avatars\//, "");
+    db.storage.push(file);
+    return route.fulfill({ json: { Key: `avatars/${file}`, Id: file } });
   });
   await page.route(`https://${PROJECT_REF}.supabase.co/rest/v1/**`, async (route) => {
     const req = route.request();
@@ -244,8 +275,15 @@ export async function mockSupabase(page, role, overrides = {}) {
         }
       }
       rows.forEach((r) => Object.assign(r, patch, { updated_at: new Date().toISOString() }));
+    } else if (req.method() === "DELETE") {
+      rows = table.filter((r) => matches(r, params));
+      db[path] = table.filter((r) => !rows.includes(r));
     } else if (req.method() === "POST") {
       const body = req.postDataJSON();
+      // 0026: at most 10 saved addresses each.
+      if (path === "saved_addresses" && table.filter((r) => r.user_id === userId).length >= 10) {
+        return route.fulfill({ status: 400, json: { code: "P0001", message: "saved address limit reached" } });
+      }
       rows = (Array.isArray(body) ? body : [body]).map((r, i) => ({
         id: `00000000-0000-4000-8000-0000000e${String(table.length + i).padStart(4, "0")}`,
         created_at: new Date().toISOString(),
@@ -253,6 +291,7 @@ export async function mockSupabase(page, role, overrides = {}) {
         ...(path === "deliveries"
           ? { delivery_code: `SK-${String(table.length + i + 1).padStart(5, "0")}`, status: "pending", driver_id: null, updated_at: NOW }
           : {}),
+        ...(path === "saved_addresses" ? { user_id: userId } : {}),
         ...r,
       }));
       table.push(...rows);

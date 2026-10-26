@@ -413,6 +413,176 @@ test.describe("dashboards (fake sign-in)", () => {
     expect(errors).toEqual([]);
   });
 
+  test("profile: Edit profile saves a new name and photo", async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.setViewportSize(PHONE);
+    const db = await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#profile");
+    await page.getByRole("link", { name: "Edit profile" }).click();
+    await expect(page).toHaveURL(/#profile\/edit$/);
+    const save = page.locator("#saveProfile");
+    await expect(page.locator("#editName")).toHaveValue("Ana Reyes");
+    await expect(page.locator("#editEmail")).toHaveText("farmer@example.com");
+    await expect(save).toBeDisabled(); // nothing changed yet
+    await page.fill("#editName", "");
+    await page.fill("#editName", "A");
+    await expect(save).toBeEnabled();
+    await save.click();
+    await expect(page.locator("#editNameError")).toHaveText("Enter your full name.");
+    await page.fill("#editName", "Ana Reyes-Cruz");
+    // A 40x24 PNG: cut to a square and shrunk before upload
+    await page.locator("#photoInput").setInputFiles({
+      name: "me.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAACgAAAAYCAIAAAAH5iiXAAAAK0lEQVR4nGM8Mc2GYSAA04DYOmrxqMWjFo9aPGrxqMWjFo9aPGrxqMU0AQBE/QHKm4muQgAAAABJRU5ErkJggg==", "base64"),
+    });
+    await expect(page.locator("#photoNote")).toHaveText("New photo. Save changes to use it.");
+    await expect(page.locator("#removePhoto")).toBeVisible();
+    await save.click();
+    await expect(save).toHaveAttribute("data-saved", "");
+    const me = db.profiles.find((p) => p.role === "farmer");
+    expect(me.full_name).toBe("Ana Reyes-Cruz");
+    expect(me.avatar_url).toMatch(new RegExp(`/storage/v1/object/public/avatars/${me.id}/\\d+\\.(webp|jpg)$`));
+    expect(db.storage).toHaveLength(1);
+    await expect(save).toBeDisabled();
+    // Back on Profile: the new name, and the photo instead of initials
+    await page.getByRole("button", { name: "Back to Profile" }).click();
+    await expect(page).toHaveURL(/#profile$/);
+    await expect(page.locator("#profileTitle")).toHaveText("Ana Reyes-Cruz");
+    await expect(page.locator(".rq-profile-head .rq-avatar img")).toHaveCount(1);
+    // Remove goes back to initials
+    await page.getByRole("link", { name: "Edit profile" }).click();
+    await page.getByRole("button", { name: "Remove" }).click();
+    await save.click();
+    await expect(save).toHaveAttribute("data-saved", "");
+    expect(me.avatar_url).toBeNull();
+    expect(db.storage).toHaveLength(0); // the old file is deleted too
+    expect(errors).toEqual([]);
+  });
+
+  test("profile: changing the password checks the current one first", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    const db = await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#profile/edit");
+    const toggle = page.locator("#passwordToggle");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("#currentPassword")).toBeFocused();
+    await page.getByRole("button", { name: "Update password" }).click();
+    await expect(page.locator("#currentPasswordError")).toHaveText("Enter your password.");
+    await expect(page.locator("#newPasswordError")).toHaveText("Create a password.");
+    await page.fill("#currentPassword", "wrong-password");
+    await page.fill("#newPassword", "short");
+    await page.getByRole("button", { name: "Update password" }).click();
+    await expect(page.locator("#newPasswordError")).toHaveText("Use at least 8 characters.");
+    await page.fill("#newPassword", "tomatoes2026");
+    await page.locator('[data-show-for="newPassword"]').click();
+    await expect(page.locator("#newPassword")).toHaveAttribute("type", "text");
+    await page.getByRole("button", { name: "Update password" }).click();
+    await expect(page.locator("#currentPasswordError")).toHaveText("That's not your current password.");
+    expect(db.passwordChanges).toEqual([]);
+    await page.fill("#currentPassword", "right-password");
+    await page.getByRole("button", { name: "Update password" }).click();
+    await expect(page.locator(".toast")).toContainText("Password changed.");
+    expect(db.passwordChanges).toEqual(["tomatoes2026"]);
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator("#passwordForm")).toBeHidden();
+  });
+
+  test("profile: a Google account has no Sakada password to change", async ({ page }) => {
+    await mockSupabase(page, "vendor", { authUser: { app_metadata: { provider: "google", providers: ["google"] } } });
+    await page.goto("/dashboard/vendor/index.html#profile/edit");
+    await expect(page.locator("#googleNote")).toBeVisible();
+    await expect(page.locator("#googleNote")).toContainText("You log in with Google");
+    await expect(page.locator("#passwordToggle")).toBeHidden();
+  });
+
+  test("saved addresses: add, rename and delete from Profile", async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.setViewportSize(PHONE);
+    const db = await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#profile");
+    await page.getByRole("link", { name: /Saved addresses/ }).click();
+    await expect(page).toHaveURL(/#profile\/addresses$/);
+    await expect(page.locator("#savedBox")).toContainText("No saved addresses yet");
+    await page.locator("#savedBox").getByRole("button", { name: "Add an address" }).click();
+    const sheet = page.locator("#savedSheet");
+    await expect(sheet.locator("#savedTitle")).toHaveText("Add an address");
+    await sheet.getByRole("button", { name: "Save address" }).click();
+    await expect(sheet.locator("#savedLabelError")).toHaveText("Give it a name, like My farm.");
+    await expect(sheet.locator("#savedAddressError")).toHaveText("Enter the address.");
+    await sheet.getByRole("button", { name: "My farm" }).click();
+    await expect(sheet.locator("#savedLabel")).toHaveValue("My farm");
+    await expect(sheet.getByRole("button", { name: "My farm" })).toHaveAttribute("aria-pressed", "true");
+    await sheet.locator("#savedAddress").pressSequentially("Jaen");
+    await sheet.locator("#savedAddressPlaces").getByRole("option", { name: /^Jaen City or town/ }).click();
+    await expect(sheet.locator("#savedAddress")).toHaveValue("Jaen, Nueva Ecija");
+    await sheet.getByRole("button", { name: "Save address" }).click();
+    await expect(sheet).toBeHidden();
+    await expect(page.locator(".rq-saved-list li")).toHaveCount(1);
+    await expect(page.locator(".rq-saved-list")).toContainText("My farm");
+    expect(db.saved_addresses).toHaveLength(1);
+    expect(db.saved_addresses[0]).toMatchObject({ label: "My farm", address: "Jaen, Nueva Ecija", lat: 15.49, lng: 120.97, user_id: IDS.farmer });
+    // Rename it
+    await page.locator(".rq-saved-item").click();
+    await expect(sheet.locator("#savedTitle")).toHaveText("Edit address");
+    await page.fill("#savedLabel", "Farm in Jaen");
+    await sheet.getByRole("button", { name: "Save address" }).click();
+    await expect(page.locator(".rq-saved-list")).toContainText("Farm in Jaen");
+    expect(db.saved_addresses[0].label).toBe("Farm in Jaen");
+    // Delete takes a second tap
+    await page.locator(".rq-saved-item").click();
+    const del = sheet.locator("#savedDelete");
+    await del.click();
+    await expect(del).toHaveText("Tap again to delete “Farm in Jaen”");
+    expect(db.saved_addresses).toHaveLength(1);
+    await del.click();
+    await expect(sheet).toBeHidden();
+    await expect(page.locator("#savedBox")).toContainText("No saved addresses yet");
+    expect(db.saved_addresses).toHaveLength(0);
+    // Back on Profile, no count
+    await page.getByRole("button", { name: "Back to Profile" }).click();
+    await expect(page.locator("#savedCount")).toHaveText("");
+    expect(errors).toEqual([]);
+  });
+
+  test("Book: saved addresses come first, and a picked place can be saved", async ({ page }) => {
+    const errors = trackErrors(page);
+    const farm = { id: "00000000-0000-4000-8000-00000000aa01", user_id: IDS.farmer, label: "My farm", address: "Brgy. Sapang, Jaen, Nueva Ecija", lat: 15.33, lng: 120.91, city: "Jaen", created_at: "2026-10-01T00:00:00.000Z" };
+    const db = await mockSupabase(page, "farmer", { saved_addresses: [farm] });
+    await page.goto("/dashboard/farmer/index.html#book");
+    const pickup = page.locator("#pickupAddress");
+    await pickup.focus();
+    const list = page.locator("#pickupAddressPlaces");
+    await expect(page.locator("#pickupAddressPlacesHead")).toHaveText("Saved addresses");
+    await list.getByRole("option", { name: /My farm/ }).click();
+    await expect(pickup).toHaveValue("Brgy. Sapang, Jaen, Nueva Ecija");
+    await expect(page.locator('[data-save-place="pickup"]')).toBeHidden(); // already saved
+    // Typing matches a saved name before the map's places
+    await pickup.fill("");
+    await pickup.pressSequentially("far");
+    await expect(list.getByRole("option").first()).toContainText("Saved · Brgy. Sapang");
+    await pickup.press("Escape");
+    await pickup.fill("");
+    await list.getByRole("option", { name: /My farm/ }).click();
+    // The drop-off is new: offer to save it
+    const dropoff = page.locator("#dropoffAddress");
+    await dropoff.pressSequentially("Marikina");
+    await page.locator("#dropoffAddressPlaces").getByRole("option", { name: /Marikina Public Market/ }).click();
+    const saveHere = page.locator('[data-save-place="dropoff"]');
+    await expect(saveHere).toBeVisible();
+    await saveHere.click();
+    const sheet = page.locator("#savedSheet");
+    await expect(sheet.locator("#savedAddress")).toHaveValue("Marikina Public Market, Marikina, Metro Manila");
+    await sheet.getByRole("button", { name: "My stall" }).click();
+    await sheet.getByRole("button", { name: "Save address" }).click();
+    await expect(sheet).toBeHidden();
+    await expect(saveHere).toBeHidden();
+    expect(db.saved_addresses).toHaveLength(2);
+    expect(db.saved_addresses[1]).toMatchObject({ label: "My stall", lat: 14.63, lng: 121.1 });
+    expect(errors).toEqual([]);
+  });
+
   test("a shipment's Something wrong? link opens Contact Support about it", async ({ page }) => {
     await mockSupabase(page, "farmer");
     await page.goto("/dashboard/farmer/index.html#track/SK-00003");
