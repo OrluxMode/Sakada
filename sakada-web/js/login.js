@@ -2,10 +2,12 @@ import {
   loginWithEmail,
   loginWithGoogle,
   getCurrentProfile,
+  sendPasswordReset,
 } from "./auth.js";
 import { checkEmail, emailChecker, checkPassword } from "./validators.js";
 import { validateFields, clearWhenFixed } from "./field-errors.js";
-import { loginErrorCopy } from "./signup-result.js";
+import { loginErrorCopy, resetErrorCopy } from "./signup-result.js";
+import { wirePasswordToggle } from "./password-toggle.js";
 
 const DASHBOARD_PATHS = {
   farmer: "../dashboard/farmer/index.html",
@@ -38,13 +40,7 @@ const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 
 // ---- Show / hide password ----
-const passwordToggle = document.getElementById("passwordToggle");
-passwordToggle.addEventListener("click", () => {
-  const show = passwordInput.type === "password";
-  passwordInput.type = show ? "text" : "password";
-  passwordToggle.setAttribute("aria-pressed", String(show));
-  passwordToggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
-});
+wirePasswordToggle(document.getElementById("passwordToggle"), passwordInput);
 
 const RULES = [
   [emailInput, emailChecker()],
@@ -104,4 +100,127 @@ window.addEventListener("pageshow", (e) => {
   if (!e.persisted) return;
   setBusy(googleBtn, false, "Continue with Google");
   setBusy(submitBtn, false, "Log in");
+});
+
+// ---- Forgot password (Figma 338:2112, 338:2135): a second step on this page at #reset ----
+const loginStep = document.getElementById("loginStep");
+const resetStep = document.getElementById("resetStep");
+const resetAsk = document.getElementById("resetAsk");
+const resetSent = document.getElementById("resetSent");
+const resetEmail = document.getElementById("resetEmail");
+const resetBtn = document.getElementById("resetBtn");
+const resendBtn = document.getElementById("resendBtn");
+const resetMessage = document.getElementById("resetMessage");
+const resendMessage = document.getElementById("resendMessage");
+const RESEND_WAIT = 60; // seconds before another email can be asked for
+let sentTo = "";
+let countdown = 0;
+let tickTimer = 0;
+let cameFromLogin = false; // Forgot password? added a history entry: Back to log in undoes it
+
+function say(el, text) {
+  el.textContent = text;
+  el.className = text ? "form-message visible error" : "form-message";
+}
+
+/** The two steps swap in place with a short fade (no slide: it's the same page). */
+function showStep(step) {
+  const reset = step === "reset";
+  if (resetStep.hidden === !reset) return;
+  loginStep.hidden = reset;
+  resetStep.hidden = !reset;
+  const shown = reset ? resetStep : loginStep;
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    shown.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "cubic-bezier(0.23, 1, 0.32, 1)" });
+  }
+  if (reset) {
+    if (!resetEmail.value) resetEmail.value = emailInput.value.trim();
+    (resetSent.hidden ? document.getElementById("resetTitle") : document.getElementById("resetSentTitle")).focus();
+  } else {
+    passwordInput.focus();
+  }
+}
+const syncStep = () => showStep(location.hash === "#reset" ? "reset" : "login");
+window.addEventListener("hashchange", syncStep);
+syncStep();
+
+document.getElementById("forgotLink").addEventListener("click", () => {
+  resetEmail.value = emailInput.value.trim(); // carry over what they typed
+  cameFromLogin = true;
+});
+document.getElementById("backToLogin").addEventListener("click", (e) => {
+  e.preventDefault();
+  if (cameFromLogin) {
+    cameFromLogin = false;
+    history.back(); // hashchange shows the log in step
+    return;
+  }
+  history.replaceState(null, "", location.pathname + location.search);
+  syncStep();
+});
+
+clearWhenFixed([[resetEmail, (v) => checkEmail(v)]]);
+resetEmail.addEventListener("input", () => say(resetMessage, ""));
+
+function tick() {
+  clearTimeout(tickTimer);
+  if (countdown > 0) {
+    resendBtn.disabled = true;
+    resendBtn.textContent = `Resend link in ${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, "0")}`;
+    countdown -= 1;
+    tickTimer = setTimeout(tick, 1000);
+  } else {
+    resendBtn.disabled = false;
+    resendBtn.textContent = "Resend link";
+  }
+}
+
+async function sendLink(email) {
+  let error;
+  try {
+    ({ error } = await sendPasswordReset(email));
+  } catch (err) {
+    error = err;
+  }
+  return error;
+}
+
+document.getElementById("resetForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  say(resetMessage, "");
+  if (!validateFields([[resetEmail, emailChecker()]])) return;
+  const email = resetEmail.value.trim();
+  setBusy(resetBtn, true, "Sending…");
+  const error = await sendLink(email);
+  setBusy(resetBtn, false, "Send reset link");
+  if (error) return say(resetMessage, resetErrorCopy(error));
+  sentTo = email;
+  document.getElementById("resetSentLead").textContent = `We sent a reset link to ${email}. Open it on this phone to set a new password.`;
+  resetAsk.hidden = true;
+  resetSent.hidden = false;
+  say(resendMessage, "");
+  document.getElementById("resetSentTitle").focus();
+  countdown = RESEND_WAIT;
+  tick();
+});
+
+resendBtn.addEventListener("click", async () => {
+  if (resendBtn.disabled || !sentTo) return;
+  resendBtn.disabled = true;
+  resendBtn.textContent = "Sending…";
+  const error = await sendLink(sentTo);
+  say(resendMessage, error ? resetErrorCopy(error) : "");
+  if (!error) {
+    resendMessage.textContent = `Sent again to ${sentTo}.`;
+    resendMessage.className = "form-message visible success";
+  }
+  countdown = error ? 0 : RESEND_WAIT;
+  tick();
+});
+
+document.getElementById("differentEmail").addEventListener("click", () => {
+  resetSent.hidden = true;
+  resetAsk.hidden = false;
+  resetEmail.focus();
+  resetEmail.select();
 });

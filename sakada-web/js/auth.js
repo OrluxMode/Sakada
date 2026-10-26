@@ -53,6 +53,17 @@ export async function loginWithGoogle(role) {
   });
 }
 
+/**
+ * Email a link to set a new password. The link opens auth/reset-password.html
+ * (it must be in Supabase's Redirect URLs). Supabase answers the same way
+ * whether or not the email has an account, so nobody can probe for users.
+ */
+export async function sendPasswordReset(email) {
+  return await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: new URL("../auth/reset-password.html", import.meta.url).href,
+  });
+}
+
 export async function signOut(homePath) {
   localStorage.removeItem("sakada.role");
   await supabase.auth.signOut();

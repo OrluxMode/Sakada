@@ -3,6 +3,7 @@
 // login. The signed-in state is faked the same way js/landing-auth.js
 // reads it (a role hint plus a session key in localStorage).
 import { test, expect } from "@playwright/test";
+import { mockSupabase } from "./support/mock-supabase.mjs";
 
 const PUBLIC_PAGES = [
   "/index.html",
@@ -15,6 +16,7 @@ const PUBLIC_PAGES = [
   "/pages/contact.html",
   "/auth/login.html",
   "/auth/register.html",
+  "/auth/reset-password.html",
 ];
 
 function fakeLogin(page, role) {
@@ -378,9 +380,12 @@ test.describe("sign up", () => {
   test("show password toggles the field", async ({ page }) => {
     await page.goto("/auth/register.html");
     await page.fill("#password", "password123");
+    const toggle = page.locator("#passwordToggle");
+    await expect(toggle).toHaveText("Show password"); // "Show" on screen, full name for screen readers
     await page.getByRole("button", { name: "Show password" }).click();
     await expect(page.locator("#password")).toHaveAttribute("type", "text");
-    await expect(page.getByRole("button", { name: "Hide password" })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Hide password" }).click();
+    await expect(page.locator("#password")).toHaveAttribute("type", "password");
   });
 });
 
@@ -406,5 +411,71 @@ test.describe("log in", () => {
     await page.fill("#password", "password123");
     await page.getByRole("button", { name: "Show password" }).click();
     await expect(page.locator("#password")).toHaveAttribute("type", "text");
+  });
+});
+
+test.describe("forgot password", () => {
+  test("from log in: carries the email over, sends the link, waits before resending", async ({ page }) => {
+    const db = await mockSupabase(page, "farmer", { signedOut: true });
+    await page.goto("/auth/login.html");
+    await page.fill("#email", "ana@gmail.com");
+    await page.getByRole("link", { name: "Forgot password?" }).click();
+    await expect(page).toHaveURL(/#reset$/);
+    await expect(page.getByRole("heading", { name: "Reset your password" })).toBeFocused();
+    await expect(page.locator("#resetEmail")).toHaveValue("ana@gmail.com");
+    await page.getByRole("button", { name: "Send reset link" }).click();
+    await expect(page.getByRole("heading", { name: "Check your email" })).toBeFocused();
+    await expect(page.locator("#resetSentLead")).toContainText("ana@gmail.com");
+    expect(db.resetEmails).toEqual(["ana@gmail.com"]);
+    await expect(page.locator("#resendBtn")).toBeDisabled();
+    await expect(page.locator("#resendBtn")).toHaveText(/Resend link in (1:00|0:[0-5]\d)/);
+    await page.getByRole("button", { name: "Use a different email" }).click();
+    await expect(page.locator("#resetEmail")).toBeFocused();
+    await page.getByRole("link", { name: "Back to log in" }).click();
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+    await expect(page).not.toHaveURL(/#reset/);
+  });
+
+  test("a typo'd email is caught before anything is sent", async ({ page }) => {
+    const db = await mockSupabase(page, "farmer", { signedOut: true });
+    await page.goto("/auth/login.html#reset");
+    await page.fill("#resetEmail", "ana@gmail.co");
+    await page.getByRole("button", { name: "Send reset link" }).click();
+    await expect(page.locator("#resetEmailError")).toBeVisible();
+    expect(db.resetEmails).toEqual([]);
+  });
+
+  test("the email link sets a new password and opens the dashboard", async ({ page }) => {
+    const db = await mockSupabase(page, "vendor", { signedOut: true });
+    await page.goto("/auth/reset-password.html#access_token=e2e-access-token&refresh_token=e2e-refresh-token&expires_in=3600&token_type=bearer&type=recovery");
+    await expect(page.getByRole("heading", { name: "Set a new password" })).toBeFocused();
+    await expect(page.locator("#setFor")).toHaveText("For vendor@example.com");
+    await page.fill("#password", "short");
+    await page.getByRole("button", { name: "Save new password" }).click();
+    await expect(page.locator("#passwordError")).toHaveText("Use at least 8 characters.");
+    await page.fill("#password", "mangoes2026");
+    await page.getByRole("button", { name: "Show password" }).click();
+    await expect(page.locator("#password")).toHaveAttribute("type", "text");
+    await page.getByRole("button", { name: "Save new password" }).click();
+    await expect(page.getByRole("heading", { name: "Password changed." })).toBeFocused();
+    expect(db.passwordChanges).toEqual(["mangoes2026"]);
+    await expect(page.getByRole("link", { name: "Go to my dashboard" })).toHaveAttribute("href", "../dashboard/vendor/index.html");
+  });
+
+  test("an expired link offers a new one", async ({ page }) => {
+    const db = await mockSupabase(page, "farmer", { signedOut: true });
+    await page.goto("/auth/reset-password.html#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired");
+    await expect(page.getByRole("heading", { name: "This link has expired" })).toBeFocused();
+    await page.fill("#againEmail", "farmer@example.com");
+    await page.getByRole("button", { name: "Send a new link" }).click();
+    await expect(page.locator("#againMessage")).toHaveText("We sent a new link to farmer@example.com. Open it on this phone.");
+    expect(db.resetEmails).toEqual(["farmer@example.com"]);
+  });
+
+  test("opening the reset page without a link shows the expired step", async ({ page }) => {
+    await mockSupabase(page, "farmer", { signedOut: true });
+    await page.goto("/auth/reset-password.html");
+    await expect(page.getByRole("heading", { name: "This link has expired" })).toBeVisible();
+    await expect(page.locator("#setStep")).toBeHidden();
   });
 });

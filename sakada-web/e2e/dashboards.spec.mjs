@@ -489,6 +489,35 @@ test.describe("dashboards (fake sign-in)", () => {
     await expect(page.locator("#passwordForm")).toBeHidden();
   });
 
+  test("profile: forgot the current password emails a reset link", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    const db = await mockSupabase(page, "vendor");
+    await page.goto("/dashboard/vendor/index.html#profile/edit");
+    await page.locator("#passwordToggle").click();
+    await page.getByRole("button", { name: "Forgot your current password?" }).click();
+    await expect(page.locator("#resetNote")).toContainText("Reset link sent");
+    await expect(page.locator("#resetNote")).toContainText("vendor@example.com");
+    await expect(page.locator("#forgotCurrent")).toBeHidden();
+    expect(db.resetEmails).toEqual(["vendor@example.com"]);
+    await page.locator("#passwordToggle").click(); // closing resets it for next time
+    await expect(page.locator("#passwordForm")).toBeHidden();
+    await page.locator("#passwordToggle").click();
+    await expect(page.locator("#forgotCurrent")).toBeVisible();
+    await expect(page.locator("#resetNote")).toBeHidden();
+  });
+
+  test("profile: reopening the password form mid-close keeps it open", async ({ page }) => {
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html#profile/edit");
+    const toggle = page.locator("#passwordToggle");
+    await toggle.click();
+    await toggle.click();
+    await toggle.click(); // within the 150ms close
+    await page.waitForTimeout(300);
+    await expect(page.locator("#passwordForm")).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  });
+
   test("profile: a Google account has no Sakada password to change", async ({ page }) => {
     await mockSupabase(page, "vendor", { authUser: { app_metadata: { provider: "google", providers: ["google"] } } });
     await page.goto("/dashboard/vendor/index.html#profile/edit");

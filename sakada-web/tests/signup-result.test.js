@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isExistingAccount, signupErrorCopy, loginErrorCopy, OFFLINE_MESSAGE } from "../js/signup-result.js";
+import { isExistingAccount, signupErrorCopy, loginErrorCopy, resetErrorCopy, OFFLINE_MESSAGE } from "../js/signup-result.js";
 
 describe("isExistingAccount", () => {
   it("is true when Supabase returns a user with no identities", () => {
@@ -57,5 +57,19 @@ describe("loginErrorCopy", () => {
     expect(loginErrorCopy({ message: "Database error querying schema", status: 500 })).toBe(
       "We couldn't log you in. Try again in a minute.",
     );
+  });
+});
+
+describe("resetErrorCopy", () => {
+  it("maps network failures and the email rate limit", () => {
+    expect(resetErrorCopy(new TypeError("Failed to fetch"))).toBe(OFFLINE_MESSAGE);
+    expect(resetErrorCopy({ code: "over_email_send_rate_limit", status: 429 })).toMatch(/^Too many emails/);
+  });
+  it("explains a reused or weak new password", () => {
+    expect(resetErrorCopy({ code: "same_password", status: 422 })).toBe("That's your current password. Pick a new one.");
+    expect(resetErrorCopy({ code: "weak_password", status: 422 })).toMatch(/^Pick a stronger password/);
+  });
+  it("never passes Supabase's own message through", () => {
+    expect(resetErrorCopy({ message: "Error sending recovery email", status: 500 })).toBe("It didn't go through. Try again in a minute.");
   });
 });

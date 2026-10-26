@@ -1,6 +1,7 @@
 import { registerWithEmail, loginWithGoogle } from "./auth.js";
 import { checkName, checkEmail, emailChecker, checkNewPassword } from "./validators.js";
 import { validateFields, clearWhenFixed, showFieldError } from "./field-errors.js";
+import { wirePasswordToggle } from "./password-toggle.js";
 import { isExistingAccount, signupErrorCopy } from "./signup-result.js";
 
 const ROLES = ["farmer", "vendor", "driver"];
@@ -47,13 +48,7 @@ function setBusy(button, busy, label) {
 
 // ---- Show / hide password ----
 const passwordInput = document.getElementById("password");
-const passwordToggle = document.getElementById("passwordToggle");
-passwordToggle.addEventListener("click", () => {
-  const show = passwordInput.type === "password";
-  passwordInput.type = show ? "text" : "password";
-  passwordToggle.setAttribute("aria-pressed", String(show));
-  passwordToggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
-});
+wirePasswordToggle(document.getElementById("passwordToggle"), passwordInput);
 
 // ---- Validation ----
 const form = document.getElementById("registerForm");

@@ -29,6 +29,8 @@
 
       <main class="signup-main" id="main">
         <div class="signup-panel">
+          <!-- Figma "Login — Forgot password + Show" (338:2083) -->
+          <div class="auth-step" id="loginStep">
           <h1>Welcome back</h1>
           <p class="signup-sub">Log in to book, track, or manage deliveries.</p>
 
@@ -38,13 +40,13 @@
               <input id="email" type="email" required autocomplete="email" inputmode="email" />
             </div>
             <div class="field">
-              <label for="password">Password</label>
+              <div class="field-label-row">
+                <label for="password">Password</label>
+                <a class="auth-forgot" href="#reset" id="forgotLink">Forgot password?</a>
+              </div>
               <div class="password-wrap">
                 <input id="password" type="password" required autocomplete="current-password" />
-                <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password" aria-pressed="false">
-                  <svg class="icon-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
-                  <svg class="icon-eye-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2" /><path d="M6.6 6.6A17 17 0 0 0 2 12s3.5 8 10 8a9.7 9.7 0 0 0 5.4-1.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><path d="M2 2l20 20" /></svg>
-                </button>
+                <button type="button" class="password-toggle" id="passwordToggle" aria-controls="password">Show<span class="visually-hidden"> password</span></button>
               </div>
               <p class="field-error" id="passwordError" hidden></p>
             </div>
@@ -76,6 +78,42 @@
           <p class="signup-admin">
             Are you an admin? <a href="admin-login.html">Admin login</a>
           </p>
+          </div>
+
+          <!-- Reset your password (Figma 338:2112, sent 338:2135): same page, #reset -->
+          <div class="auth-step" id="resetStep" hidden>
+            <a class="auth-back" href="#" id="backToLogin">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+              Back to log in
+            </a>
+            <div id="resetAsk">
+              <h1 id="resetTitle" tabindex="-1">Reset your password</h1>
+              <p class="signup-sub">Enter your account's email. We'll send a link to set a new password.</p>
+              <form id="resetForm" novalidate>
+                <div class="field">
+                  <label for="resetEmail">Email</label>
+                  <input id="resetEmail" type="email" required autocomplete="email" inputmode="email" enterkeyhint="send" />
+                </div>
+                <div id="resetMessage" class="form-message" role="alert"></div>
+                <button class="btn-primary" type="submit" id="resetBtn">
+                  <span class="btn-spinner" aria-hidden="true"></span>
+                  <span class="btn-label">Send reset link</span>
+                </button>
+              </form>
+              <p class="auth-note">Signed up with Google? You don't have a Sakada password. Use Continue with Google on the log in page.</p>
+            </div>
+            <div id="resetSent" hidden>
+              <span class="auth-mark auth-mark--mail" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="m4 7 8 6 8-6" /></svg>
+              </span>
+              <h1 id="resetSentTitle" tabindex="-1">Check your email</h1>
+              <p class="signup-sub" id="resetSentLead"></p>
+              <p class="auth-note">Not there after a few minutes? Check Spam or Promotions.</p>
+              <div id="resendMessage" class="form-message" role="alert"></div>
+              <button class="btn-outline auth-resend" type="button" id="resendBtn" disabled>Resend link</button>
+              <button class="auth-text-link" type="button" id="differentEmail">Use a different email</button>
+            </div>
+          </div>
         </div>
       </main>
     </div>

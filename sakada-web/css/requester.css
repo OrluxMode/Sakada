@@ -366,6 +366,18 @@
 }
 .rq-show:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: -2px; }
 .rq .rq-pcancel { width: 100%; }
+.rq-forgot {
+  justify-self: start; position: relative; margin-top: -8px; padding: 0; border: 0; background: none;
+  color: #f0b25a; font: inherit; font-size: 15px; font-weight: 600; line-height: 20px;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.rq-forgot::after { content: ""; position: absolute; inset: -12px -8px; } /* 44px tap target */
+.rq-forgot[hidden] { display: none; }
+.rq-forgot:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
+.rq-reset-note { display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgb(224 151 47 / 0.5); background: rgb(224 151 47 / 0.1); }
+.rq-reset-note[hidden] { display: none; }
+.rq-reset-note strong { font-size: 15px; font-weight: 600; line-height: 22px; }
+.rq-reset-note span { color: var(--rq-meta); font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
 
 .rq .rq-psub { color: var(--rq-meta); font-size: 15px; line-height: 22px; margin-bottom: 16px; }
 .rq-psub[hidden] { display: none; }

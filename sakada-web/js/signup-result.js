@@ -84,3 +84,13 @@ export function loginErrorCopy(error) {
   }
   return "We couldn't log you in. Try again in a minute.";
 }
+
+/** Plain copy for a failed "send me a reset link" or "save my new password". */
+export function resetErrorCopy(error) {
+  const code = String(error?.code || "");
+  if (isOffline(error)) return OFFLINE_MESSAGE;
+  if (code.startsWith("over_") || error?.status === 429) return "Too many emails for now. Wait a few minutes, then try again.";
+  if (code === "same_password") return "That's your current password. Pick a new one.";
+  if (code === "weak_password") return "Pick a stronger password: longer, with numbers or symbols.";
+  return "It didn't go through. Try again in a minute.";
+}

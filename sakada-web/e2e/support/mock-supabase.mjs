@@ -90,6 +90,7 @@ export function fixtures(overrides = {}) {
     saved_addresses: [],
     storage: [], // avatar files uploaded ("<user id>/<name>")
     passwordChanges: [],
+    resetEmails: [], // "send me a reset link" requests
     ...overrides,
   };
 }
@@ -141,7 +142,8 @@ function rpcResult(name, db, userId) {
  * (`db`) so a test can inspect them after a write.
  */
 export async function mockSupabase(page, role, overrides = {}) {
-  const { authUser = {}, ...tables } = overrides; // authUser: e.g. a Google-only account
+  // authUser: e.g. a Google-only account; signedOut: no saved session (log in, reset link pages)
+  const { authUser = {}, signedOut = false, ...tables } = overrides;
   const db = fixtures(tables);
   const userId = IDS[role];
   const user = {
@@ -163,7 +165,7 @@ export async function mockSupabase(page, role, overrides = {}) {
     expires_at: Math.floor(Date.now() / 1000) + 3600,
     user,
   };
-  await page.addInitScript(
+  if (!signedOut) await page.addInitScript(
     ([key, value, r]) => {
       localStorage.setItem(key, value);
       localStorage.setItem("sakada.role", r);
@@ -219,6 +221,10 @@ export async function mockSupabase(page, role, overrides = {}) {
       return route.fulfill({ json: user });
     }
     if (url.pathname.endsWith("/logout")) return route.fulfill({ status: 204, body: "" });
+    if (url.pathname.endsWith("/recover")) {
+      db.resetEmails.push(route.request().postDataJSON().email);
+      return route.fulfill({ json: {} });
+    }
     // Checking the current password: only "right-password" is right.
     if (url.searchParams.get("grant_type") === "password" && route.request().postDataJSON()?.password !== "right-password") {
       return route.fulfill({ status: 400, json: { code: 400, error_code: "invalid_credentials", msg: "Invalid login credentials" } });

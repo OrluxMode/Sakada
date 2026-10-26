@@ -10,6 +10,8 @@ import { paintAvatar, squarePhoto, uploadAvatar, removeAvatarFile } from "./avat
 import { geocodeAddress, suggestPlaces } from "./mapbox-client.js";
 import { attachPlaceSuggest } from "./place-suggest.js";
 import { toastSuccess } from "./toast.js";
+import { sendPasswordReset } from "./auth.js";
+import { resetErrorCopy } from "./signup-result.js";
 import {
   SAVED_LIMIT, listSaved, addSaved, updateSaved, deleteSaved, checkSavedLabel, savedErrorCopy,
 } from "./saved-addresses.js";
@@ -163,8 +165,11 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
   clearWhenFixed([[current, checkPassword], [fresh, differs]]);
 
   /** Open or close the password form in place: height and fade, 200ms in, 150ms out. */
+  let pwClosing = null; // reopening mid-close cancels it, so the close can't hide the reopened form
   function setPasswordOpen(open) {
     pwToggle.setAttribute("aria-expanded", String(open));
+    pwClosing?.cancel();
+    pwClosing = null;
     $("passwordHeading").textContent = open ? "Change password" : "Password";
     $("passwordSub").hidden = open;
     if (open) {
@@ -176,14 +181,18 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
       return;
     }
     const done = () => {
+      if (pwToggle.getAttribute("aria-expanded") === "true") return;
       pwForm.hidden = true;
       pwForm.reset();
       pwForm.querySelectorAll("[data-show-for]").forEach((b) => setShown(b, false));
       clearFieldErrors([current, fresh]);
       $("passwordError").hidden = true;
+      $("resetNote").hidden = true;
+      $("forgotCurrent").hidden = false;
     };
     if (reduceMotion()) return done();
-    pwForm.animate([{ height: `${pwForm.offsetHeight}px`, opacity: 1 }, { height: "0px", opacity: 0 }], { duration: 150, easing: EASE_OUT }).finished.then(done, done);
+    pwClosing = pwForm.animate([{ height: `${pwForm.offsetHeight}px`, opacity: 1 }, { height: "0px", opacity: 0 }], { duration: 150, easing: EASE_OUT });
+    pwClosing.finished.then(done, done);
   }
   pwToggle.addEventListener("click", () => setPasswordOpen(pwToggle.getAttribute("aria-expanded") !== "true"));
   $("cancelPassword").addEventListener("click", () => {
@@ -198,6 +207,31 @@ export function createProfilePages({ profile, openSheet, closeSheet, initials, o
   pwForm.querySelectorAll("[data-show-for]").forEach((b) => {
     b.addEventListener("click", () => setShown(b, b.getAttribute("aria-pressed") !== "true"));
   });
+  // Forgot the current one: email a reset link to the account (Figma 338:2937).
+  $("forgotCurrent").addEventListener("click", async () => {
+    const btn = $("forgotCurrent");
+    if (btn.disabled || !user?.email) return;
+    btn.disabled = true;
+    btn.textContent = "Sending a reset link…";
+    $("passwordError").hidden = true;
+    let error;
+    try {
+      ({ error } = await sendPasswordReset(user.email));
+    } catch (err) {
+      error = err;
+    }
+    btn.disabled = false;
+    btn.textContent = "Forgot your current password?";
+    if (error) {
+      $("passwordError").textContent = resetErrorCopy(error);
+      $("passwordError").hidden = false;
+      return;
+    }
+    btn.hidden = true;
+    $("resetNoteText").textContent = `Check ${user.email} and open the link on this phone to set a new password.`;
+    $("resetNote").hidden = false;
+  });
+
   pwForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = $("updatePassword");
