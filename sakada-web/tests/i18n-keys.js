@@ -9,7 +9,7 @@ const read = (p) => readFileSync(join(ROOT, p), "utf8");
 // Scripts that run on the translated pages.
 const SCRIPTS = [
   "requester-dashboard", "dashboard-shared", "profile-pages", "settings-pages", "contact-sheet", "produce-rows",
-  "kg-wheel", "produce", "place-suggest", "pin-map", "saved-addresses", "offline", "toast", "validators", "field-errors",
+  "kg-wheel", "produce", "place-suggest", "pin-map", "live-map", "saved-addresses", "offline", "toast", "validators", "field-errors",
   "mapbox-client", "signup-result", "login", "register", "reset-password", "password-toggle",
 ].map((f) => `js/${f}.js`);
 const PAGES = ["dashboard/farmer/index.html", "dashboard/vendor/index.html", "auth/login.html", "auth/register.html", "auth/reset-password.html"];

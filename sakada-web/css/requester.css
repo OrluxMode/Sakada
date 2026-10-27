@@ -242,6 +242,7 @@
 .rq-need-actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
 @media (min-width: 520px) { .rq-need-actions { grid-template-columns: 1fr 1fr; } }
 .rq-help strong { white-space: nowrap; } /* one action, one line */
+.rq-code { white-space: nowrap; } /* "SK-00142" in a sentence never splits at the hyphen */
 
 .rq-chip {
   display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 15px; font-weight: 600;
@@ -518,12 +519,24 @@
 .rq-pager-status { font-size: 15px; color: var(--rq-meta); white-space: nowrap; }
 
 /* History filters */
-.rq-filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+/* History filters: one row (Figma 361:3023). On narrow phones it scrolls to
+   the screen edge; the gutter fades out so a cut-off chip reads as "more". */
+.rq-filters { display: flex; gap: 6px; margin: 16px 0; }
 .rq-filter {
-  min-height: 44px; padding: 0 14px; border-radius: 999px;
-  background: none; border: 1px solid var(--rq-field-line); color: var(--text-cream); font-size: 15px; cursor: pointer;
+  flex: none; min-height: 44px; padding: 0 13px; border-radius: 999px; white-space: nowrap;
+  background: none; border: 1px solid var(--rq-field-line); color: var(--text-cream); font-size: 15px; font-weight: 600; cursor: pointer;
 }
-.rq-filter[aria-pressed="true"] { background: var(--text-cream); color: var(--bg-black); font-weight: 700; border-color: var(--text-cream); }
+.rq-filter[aria-pressed="true"] { background: var(--text-cream); color: var(--bg-black); border-color: var(--text-cream); }
+.rq-filter-count { font-weight: 400; color: var(--text-muted); }
+.rq-filter[aria-pressed="true"] .rq-filter-count { color: rgb(11 12 9 / 0.62); }
+@media (max-width: 1023px) {
+  .rq-filters {
+    margin: 16px -20px; padding: 0 20px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+  }
+  .rq-filters::-webkit-scrollbar { display: none; }
+}
 
 /* ---------- Book (Figma mobile "Book —" frames) ----------
    Route & schedule → Shipment details → Review → Request sent, one step
@@ -1242,9 +1255,12 @@
   position: absolute; top: 0; left: calc(var(--p) * (100% - var(--truck))); width: var(--truck); height: 28px;
   display: grid; place-items: center; background: var(--panel-dark); color: var(--accent-amber);
 }
-.rq-ship-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.rq-ship-foot p { min-width: 0; }
-.rq-ship-value { display: block; font-size: 16px; font-weight: 600; color: var(--accent-amber); }
+/* The date never breaks ("Since Oct 14"). When it and the button don't fit
+   side by side, the button drops below at full width (Figma 361:2983). */
+.rq-ship-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.rq-ship-foot p { flex: 999 1 auto; min-width: 0; }
+.rq .rq-ship-foot .rq-pill { flex: 1 0 auto; }
+.rq-ship-value { display: block; font-size: 16px; font-weight: 600; color: var(--accent-amber); white-space: nowrap; }
 .rq-ship.is-late .rq-ship-value { color: #f0b25a; }
 
 /* Real route map on the card (replaces the drawn line; the line stays as the fallback) */
@@ -1283,7 +1299,21 @@
   }
   .rq-dot[aria-current="true"]::before { background: var(--accent-amber); transform: scale(1.35); }
 }
-@media (min-width: 1024px) { .rq-ship-pos { display: none; } }
+@media (min-width: 1024px) {
+  .rq-ship-pos { display: none; }
+  .rq-ship-section { container-type: inline-size; }
+  .rq-ships:not(.is-many) .rq-ship-map { max-height: 240px; }
+}
+/* Desktop: two shipments per row once the main column has room (Figma 359:2979).
+   The map keeps 2:1, so it is half as tall; the footer lines up at the bottom. */
+@container (min-width: 640px) {
+  .rq-ships.is-many { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .rq-ships.is-many .rq-ship { margin-bottom: 0; }
+  .rq-ships.is-many .rq-ship-what {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+  }
+  .rq-ships.is-many .rq-ship-foot { margin-top: auto; }
+}
 
 
 /* Phones: no grid behind Home, and a floating tab bar with an amber pill */
@@ -1435,4 +1465,97 @@ button.rq-track-help { width: 100%; background: none; border: 0; font-family: in
   #view-track { max-width: 760px; }
   .rq-track-logo { display: none; }
   .rq-track-head { font-size: 56px; }
+}
+
+/* ---------- Live map, maximized (Figma 365:2983 card button, 365:3008 phone, 365:3042 desktop) ---------- */
+.rq-ship-map, .rq-track-map { cursor: zoom-in; }
+.rq .rq-map-max {
+  position: absolute; top: 8px; right: 8px; z-index: 2; display: grid; place-items: center;
+  width: 40px; height: 40px; padding: 0; border-radius: 50%; cursor: pointer; touch-action: manipulation;
+  background: rgb(20 21 15 / 0.88); border: 1px solid rgb(var(--cream-rgb) / 0.16); color: var(--text-cream);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.4); /* taste-skill-ignore: floats over the map */
+  transition: transform 100ms var(--rq-ease-out), background-color 150ms var(--rq-ease-out);
+}
+.rq .rq-map-max::before { content: ""; position: absolute; inset: -4px; } /* 48px to tap */
+.rq .rq-map-max:active { transform: scale(0.97); }
+.rq .rq-map-max:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .rq .rq-map-max:hover { background: rgb(36 37 28 / 0.95); } }
+
+.rq-sheet.rq-livesheet {
+  width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; gap: 0;
+  border: 0; border-radius: 0; background: var(--bg-black); overflow: hidden;
+}
+.rq-sheet.rq-livesheet[open] { gap: 0; }
+/* It grows out of the small map instead of sliding up (js: openLive) */
+.rq:not(.dv) .rq-sheet.rq-livesheet, .rq:not(.dv) .rq-sheet.rq-livesheet.is-shown { transform: none; transition: none; }
+.rq-live-area { position: relative; flex: 1; min-height: 0; }
+.rq-livesheet .rq-map { inset: 0 0 -20px; }
+.rq-live-top {
+  position: absolute; top: calc(16px + env(safe-area-inset-top)); left: 16px; right: 16px; z-index: 600;
+  display: flex; align-items: center; gap: 10px; pointer-events: none;
+}
+.rq-live-top > * { pointer-events: auto; }
+.rq-live-btn, .rq-live-zoom {
+  background: rgb(20 21 15 / 0.88); border: 1px solid rgb(var(--cream-rgb) / 0.16); color: var(--text-cream);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.4); /* taste-skill-ignore: floats over the map */
+}
+.rq .rq-live-btn {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: 50%;
+  cursor: pointer; touch-action: manipulation; transition: transform 100ms var(--rq-ease-out);
+}
+.rq-live-btn[hidden] { display: none; }
+.rq-live-caption {
+  display: inline-flex; align-items: center; gap: 8px; min-width: 0; margin: 0; padding: 10px 14px; border-radius: 999px;
+  background: rgb(20 21 15 / 0.88); border: 1px solid rgb(var(--cream-rgb) / 0.16); color: var(--text-cream);
+  font-size: 14px; font-weight: 600; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rq-live-caption.is-live::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--status-delivered, #7fb069); }
+.rq-live-tools {
+  position: absolute; right: 16px; bottom: 36px; z-index: 600; display: grid; gap: 10px; justify-items: end;
+}
+.rq-live-zoom { display: grid; border-radius: 22px; overflow: hidden; }
+.rq .rq-live-zoom button {
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; color: inherit;
+  cursor: pointer; touch-action: manipulation; transition: background-color 100ms var(--rq-ease-out);
+}
+.rq .rq-live-zoom button:active { background: rgb(var(--cream-rgb) / 0.1); }
+.rq .rq-live-btn:active { transform: scale(0.97); }
+.rq .rq-live-btn[aria-pressed="true"] { color: var(--accent-amber); }
+.rq-live-zoom button:focus-visible, .rq-live-btn:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
+.rq-live-problem {
+  position: absolute; left: 16px; right: 16px; top: 50%; z-index: 600; margin: 0; padding: 14px 16px; border-radius: 14px;
+  background: var(--panel-dark); color: var(--text-cream); font-size: 15px; line-height: 22px; text-align: center; transform: translateY(-50%);
+}
+.rq-live-problem[hidden] { display: none; }
+.rq-live-pin { background: none; border: 0; }
+.rq-live-pin svg { display: block; filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.5)); }
+.rq-live-panel {
+  position: relative; z-index: 1; display: grid; gap: 14px; padding: 18px 20px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0; background: var(--panel-dark); border-top: 1px solid var(--line);
+}
+.rq .rq-live-what { margin: 0; color: var(--text-muted); font-family: inherit; font-size: 14px; font-weight: 400; line-height: 20px; overflow-wrap: anywhere; }
+.rq-live-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.rq-live-facts p { min-width: 0; margin: 0; }
+.rq-live-to { text-align: right; font-size: 16px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+@media (min-width: 1024px) {
+  .rq-sheet.rq-livesheet {
+    width: min(1040px, calc(100vw - 80px)); height: min(740px, calc(100vh - 80px)); margin: auto;
+    border: 1px solid var(--rq-edge); border-radius: 22px;
+  }
+  .rq-livesheet .rq-map { inset: 0; }
+  .rq-live-top { top: 20px; left: 20px; right: 20px; }
+  .rq-live-top .rq-live-btn { order: 2; margin-left: auto; } /* Close sits top right on desktop */
+  .rq-live-tools { right: 20px; top: 50%; bottom: auto; transform: translateY(-50%); }
+  .rq-live-panel {
+    position: absolute; left: 20px; right: 20px; bottom: 20px; z-index: 600;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; align-items: center; gap: 28px;
+    padding: 16px 16px 16px 20px; border: 1px solid var(--line); border-radius: 18px; background: rgb(20 21 15 / 0.94);
+  }
+  .rq-live-facts { display: contents; }
+  .rq-live-to { text-align: left; }
+  .rq .rq-live-details { width: auto; min-height: 44px; padding: 0 20px; }
+  .rq-livesheet .leaflet-control-attribution { margin-bottom: 104px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rq .rq-map-max, .rq .rq-live-btn { transition: none; }
 }

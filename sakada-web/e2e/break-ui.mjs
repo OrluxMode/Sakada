@@ -70,13 +70,18 @@ async function openDashboard(browser, viewport) {
 const server = await ensureServer();
 if (shotsAt) {
   const browser = await chromium.launch();
-  const widths = { phone320: 320, phone390: 390, desktop1024: 1024, desktop1440: 1440 };
+  const widths = { phone320: 320, phone390: 390, desktop1440: 1440 };
+  // Every tab, plus the busiest booking's Track page and the Profile pages.
+  const views = ["home", "track", "track/first", "history", "profile", "profile/addresses", "book"];
   for (const name of Object.keys(DATASETS)) {
     for (const [label, width] of Object.entries(widths)) {
       const page = await openDashboard(browser, { width, height: 900 });
-      await page.goto(`${BASE}${PAGE}?data=${name}`);
-      await page.waitForTimeout(800);
-      await page.screenshot({ path: `${shotsAt}/${name}-${label}.png`, fullPage: true });
+      for (const view of views) {
+        const first = (DATASETS[name]().deliveries || [])[0]?.delivery_code || "SK-00001";
+        await page.goto(`${BASE}${PAGE}?data=${name}#${view.replace("first", first)}`);
+        await page.waitForTimeout(700);
+        await page.screenshot({ path: `${shotsAt}/${name}-${view.replace(/\//g, "-")}-${label}.png`, fullPage: true });
+      }
       await page.close();
     }
   }

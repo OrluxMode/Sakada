@@ -12,7 +12,7 @@ const LUZON = { lat: 15.48, lng: 120.97 }; // central Luzon, when there's nothin
 const PH_BOUNDS = [[3.5, 115.5], [21.5, 128]];
 
 let leafletLoad = null;
-function loadLeaflet() {
+export function loadLeaflet() {
   leafletLoad ??= new Promise((resolve, reject) => {
     const css = document.createElement("link");
     css.rel = "stylesheet";

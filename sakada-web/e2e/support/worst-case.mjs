@@ -1,7 +1,8 @@
 // Worst-case data for the farmer/vendor dashboard (break-ui). Each dataset is
 // a set of overrides for fixtures(), signed in as the farmer. Values are what
 // real users type, or the longest the booking form accepts (js/validators.js):
-// address 200, goods 120, notes 500, name 120, kg 100,000, vehicle 40, plate 15.
+// address 200, goods 120, notes 500, name 120, recipient 80, kg 100,000,
+// vehicle 40, plate 15, saved-address label 40 (10 addresses at most).
 import { IDS, delivery, fixtures } from "./mock-supabase.mjs";
 
 const NOW = "2026-10-14T09:00:00.000Z";
@@ -49,6 +50,9 @@ export function worst() {
       estimated_cost: 230150,
       distance_km: 2000,
       scheduled_pickup_at: "2026-10-01T00:00:00.000Z",
+      // 80 characters: the most the recipient field takes.
+      recipient_name: "Ma. Teresita Concepcion Villanueva-Dela Cruz de los Santos y Macaraeg-Fernandez",
+      pickup_window: "13-15",
     }),
     // Smallest booking: 1 kg, short goods, long driver name and longest vehicle.
     delivery(2, "driver_assigned", {
@@ -66,9 +70,10 @@ export function worst() {
       current_lat: null,
       current_lng: null,
     }),
-    // On the road with a map and the longest notes.
+    // On the road with a map, five produce rows (the 120-character goods line) and the longest notes.
     delivery(7, "picked_up", {
-      goods_description: "Pechay Baguio",
+      goods_description: "Sweet potatoes 1050 kg, Chinese cabbage 2500 kg, Saba bananas 850 kg, Bitter gourd 95 kg, Bell peppers 10000 kg",
+      quantity_kg: 14495,
       notes: "Receiver is Aling Bebeng at stall 14. ".repeat(13).trim(),
     }),
     // To rate: driver called Jo.
@@ -84,15 +89,41 @@ export function worst() {
     message:
       i === 0
         ? `Bartolome Fitzgerald Macapagal-Arroyo Jr. accepted ${deliveries[1].delivery_code}: Mangoes from ${NO_SPACES}.`
-        : `Your delivery ${deliveries[i % 4].delivery_code} is now In Transit.`,
+        : `Your delivery ${deliveries[i % 4].delivery_code} is in transit.`,
     is_read: false,
     created_at: NOW,
   }));
+  // Ten saved addresses (the most allowed), 40-character labels and 200-character addresses mixed in.
+  const saved = [
+    ["Bodega ni Lola Pacing sa may Barangay Hall", LONG_PICKUP.slice(0, 200)],
+    ["My farm", "Brgy. Sapang, Jaen, Nueva Ecija"],
+    ["Divisoria stall", "Divisoria Market, Tondo, Manila"],
+    ["Balintawak Market (Cloverleaf) Stall 214B", LONG_DROPOFF],
+    ["Jo", NO_SPACES],
+    ["Warehouse", "EDSA, Balintawak, Quezon City"],
+    ["Bagsakan sa Urdaneta", "Urdaneta City Public Market, Pangasinan"],
+    ["La Trinidad trading post", "La Trinidad Vegetable Trading Post, Benguet"],
+    ["Kamias", "Kamias Road, Quezon City"],
+    ["Farm 2", "Purok 3, Brgy. Bantug, Science City of Muñoz, Nueva Ecija"],
+  ].map(([label, address], i) => ({
+    id: `00000000-0000-4000-8000-0000000a${String(i).padStart(4, "0")}`,
+    user_id: IDS.farmer,
+    label,
+    address,
+    lat: 15.4 + i / 100,
+    lng: 120.9 + i / 100,
+    city: null,
+    created_at: NOW,
+    updated_at: NOW,
+  }));
+  const ratings = [5, 4, 5, 3, 5].map((rating, i) => ({ id: `r${i}`, rated_user_id: DRIVER_LONG, rating }));
   return {
     profiles: people("Maria Concepcion Villanueva-Dela Cruz III"),
     driver_profiles: vehicles,
     deliveries,
     notifications,
+    saved_addresses: saved,
+    ratings,
   };
 }
 

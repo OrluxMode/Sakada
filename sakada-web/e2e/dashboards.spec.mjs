@@ -802,8 +802,10 @@ test.describe("dashboards (fake sign-in)", () => {
     await page.goto("/dashboard/vendor/index.html#track");
     await expect(page.locator("#trackTitle")).toContainText("Pickup date");
     await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0); // it's the tab itself
-    await expect(page.locator("#trackPage").getByRole("button", { name: "Book a new date" })).toBeVisible();
+    // The fix sits in the status card, next to the note that explains it
+    await expect(page.locator("#trackPage .rq-track-status").getByRole("button", { name: "Book a new date" })).toBeVisible();
     await expect(page.locator("#trackPage").getByRole("button", { name: "Cancel request" })).toBeVisible();
+    await expect(page.locator("#trackPage .rq-track-help .rq-code")).toHaveCSS("white-space", "nowrap");
 
     const past = fixtures().deliveries.filter((d) => d.status === "delivered" || d.status === "cancelled");
     await mockSupabase(page, "farmer", { deliveries: past });
@@ -826,6 +828,33 @@ test.describe("dashboards (fake sign-in)", () => {
     // Tapping the card itself opens its details.
     await page.locator("#shipList [data-delivery-id]", { hasText: "SK-00001" }).locator(".rq-ship-ends").click();
     await expect(page.locator("#trackPage")).toContainText("Cabanatuan City, Nueva Ecija");
+  });
+
+  test("Maximize opens the live map: truck and B, zoom, close, and View details", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mockSupabase(page, "farmer");
+    await page.goto("/dashboard/farmer/index.html");
+    const first = page.locator("#shipList .rq-ship").first(); // on the road comes first
+    await first.getByRole("button", { name: "Maximize map" }).click();
+    const sheet = page.locator("#liveSheet");
+    await expect(sheet).toBeVisible();
+    await expect(page.locator("#liveCaption")).toContainText("Truck here");
+    await expect(page.locator("#liveMap.leaflet-container")).toBeVisible();
+    await expect(page.locator("#liveMap .rq-live-pin--truck")).toHaveCount(1);
+    await expect(page.locator("#liveMap .rq-live-pin--dropoff")).toHaveCount(1);
+    await expect(page.locator("#liveMap .rq-live-pin--pickup")).toHaveCount(0); // picked up: only the road ahead
+    await page.getByRole("button", { name: "Zoom in" }).click();
+    await sheet.getByRole("button", { name: "Close" }).click();
+    await expect(sheet).toBeHidden();
+
+    // Tapping the map itself opens it too; View details goes to Track, which has its own Maximize
+    const smallMap = first.locator(".rq-ship-map");
+    await smallMap.evaluate((el) => el.scrollIntoView({ block: "center" })); // out from under the tab bar
+    await smallMap.click({ position: { x: 40, y: 100 } });
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole("button", { name: "View details" }).click();
+    await expect(sheet).toBeHidden();
+    await expect(page.locator("#trackPage").getByRole("button", { name: "Maximize map" })).toBeVisible();
   });
 
   test("the Delivered tile opens History filtered to delivered", async ({ page }) => {

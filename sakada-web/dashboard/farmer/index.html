@@ -401,6 +401,33 @@
       </div>
     </dialog>
 
+    <!-- Live map, maximized (Figma 365:3008 phone, 365:3042 desktop) -->
+    <dialog class="rq-sheet rq-livesheet" id="liveSheet" aria-labelledby="liveTitle">
+      <div class="rq-live-area">
+        <div class="rq-map" id="liveMap"></div>
+        <p class="rq-live-problem" id="liveProblem" hidden></p>
+        <div class="rq-live-top">
+          <button type="button" class="rq-live-btn" data-close-sheet aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          <p class="rq-live-caption" id="liveCaption"></p>
+        </div>
+        <div class="rq-live-tools">
+          <div class="rq-live-zoom">
+            <button type="button" id="liveZoomIn" aria-label="Zoom in"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+            <button type="button" id="liveZoomOut" aria-label="Zoom out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+          </div>
+          <button type="button" class="rq-live-btn" id="liveCenter" aria-label="Center on the truck" aria-pressed="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+        </div>
+      </div>
+      <div class="rq-live-panel">
+        <h2 class="rq-live-what" id="liveTitle"></h2>
+        <div class="rq-live-facts">
+          <p><span class="rq-ship-label" id="liveStatusLabel"></span><strong class="rq-ship-value" id="liveStatusValue"></strong></p>
+          <p class="rq-live-to"><span class="rq-ship-label">To</span><span id="liveTo"></span></p>
+        </div>
+        <button type="button" class="rq-btn rq-live-details" id="liveDetails">View details</button>
+      </div>
+    </dialog>
+
     <dialog class="rq-sheet rq-bsheet" id="dateSheet" aria-labelledby="dateSheetTitle">
       <div class="rq-sheet-grab" aria-hidden="true"></div>
       <div class="rq-bsheet-head">

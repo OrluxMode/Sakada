@@ -169,12 +169,12 @@ export function staticMapUrl(
 }
 
 /**
- * The road a booking takes, as Mapbox's encoded polyline (simplified, so
- * the static map URL stays short), and the drive time in minutes. Line is
- * null if there's no route.
+ * The road between two points, as Mapbox's encoded polyline at full detail
+ * (it follows every bend; routeMapUrl thins it to fit the map URL), and the
+ * drive time in minutes. Line is null if there's no route.
  */
 export async function getRouteLine(origin, destination) {
-  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?access_token=${MAPBOX_TOKEN}&overview=simplified&geometries=polyline`;
+  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?access_token=${MAPBOX_TOKEN}&overview=full&geometries=polyline`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("Couldn't load the route.");
   const data = await res.json();
@@ -182,20 +182,147 @@ export async function getRouteLine(origin, destination) {
   return { line: route?.geometry || null, minutes: routeMinutes(route) };
 }
 
+/** Encoded polyline (precision 5) → [[lat, lng], …]. A broken string gives []. */
+export function decodeLine(text) {
+  const points = [];
+  let i = 0, lat = 0, lng = 0;
+  const next = () => {
+    let shift = 0, result = 0, byte;
+    do {
+      if (i >= text.length) return null;
+      byte = text.charCodeAt(i++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    return result & 1 ? ~(result >> 1) : result >> 1;
+  };
+  while (i < text.length) {
+    const dLat = next();
+    const dLng = next();
+    if (dLat === null || dLng === null) return [];
+    lat += dLat;
+    lng += dLng;
+    points.push([lat / 1e5, lng / 1e5]);
+  }
+  return points;
+}
+
+/** [[lat, lng], …] → encoded polyline (precision 5). */
+export function encodeLine(points) {
+  let out = "", lat = 0, lng = 0;
+  const put = (delta) => {
+    let v = delta < 0 ? ~(delta << 1) : delta << 1;
+    while (v >= 0x20) {
+      out += String.fromCharCode((0x20 | (v & 0x1f)) + 63);
+      v >>= 5;
+    }
+    out += String.fromCharCode(v + 63);
+  };
+  for (const [a, b] of points) {
+    const la = Math.round(a * 1e5), lo = Math.round(b * 1e5);
+    put(la - lat);
+    put(lo - lng);
+    lat = la;
+    lng = lo;
+  }
+  return out;
+}
+
+/** Douglas–Peucker: drop the points that sit within `tol` degrees of the road's shape. */
+function thin(points, tol) {
+  if (points.length < 3) return points;
+  const keep = new Uint8Array(points.length);
+  keep[0] = keep[points.length - 1] = 1;
+  const stack = [[0, points.length - 1]];
+  while (stack.length) {
+    const [from, to] = stack.pop();
+    const [ay, ax] = points[from], [by, bx] = points[to];
+    const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy) || 1e-12;
+    let far = -1, worst = tol;
+    for (let k = from + 1; k < to; k++) {
+      const [py, px] = points[k];
+      const off = Math.abs(dy * (px - ax) - dx * (py - ay)) / len;
+      if (off > worst) { worst = off; far = k; }
+    }
+    if (far > 0) {
+      keep[far] = 1;
+      stack.push([from, far], [far, to]);
+    }
+  }
+  return points.filter((_, k) => keep[k]);
+}
+
 /**
- * A static map of one booking: the road in amber, A at pickup, B at
- * drop-off, and the truck when its position is known. The view fits
- * whatever is drawn. A route too long for a URL is left out (pins only).
+ * The road thinned only as much as the map URL needs: the smallest
+ * tolerance (2 m and up) whose line fits in `budget` URL characters.
+ * Null when even a rough line won't fit or the line can't be read.
+ */
+const fitted = new Map();
+export function fitLine(line, budget) {
+  if (!line) return null;
+  if (encodeURIComponent(line).length <= budget) return line;
+  const key = `${budget}:${line}`;
+  if (fitted.has(key)) return fitted.get(key);
+  const points = decodeLine(line);
+  let best = null;
+  if (points.length >= 2) {
+    for (const tol of [0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005]) {
+      const short = encodeLine(thin(points, tol));
+      if (encodeURIComponent(short).length <= budget) { best = short; break; }
+    }
+  }
+  if (fitted.size > 50) fitted.clear();
+  fitted.set(key, best);
+  return best;
+}
+
+/**
+ * The part of a road still ahead of `at` (the truck): from `at` itself,
+ * joined to the road where it passes nearest, on to the end. `off` is how
+ * far `at` is from the road in metres, so a truck that left it can ask for
+ * a new one. Null when the line can't be read.
+ */
+export function roadFrom(line, at) {
+  const points = line ? decodeLine(line) : [];
+  if (points.length < 2) return null;
+  const kx = Math.cos((at.lat * Math.PI) / 180) * 111320, ky = 111320;
+  let off = Infinity, seg = 0;
+  for (let k = 0; k < points.length - 1; k++) {
+    const x1 = (points[k][1] - at.lng) * kx, y1 = (points[k][0] - at.lat) * ky;
+    const dx = (points[k + 1][1] - at.lng) * kx - x1, dy = (points[k + 1][0] - at.lat) * ky - y1;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 ? Math.max(0, Math.min(1, -(x1 * dx + y1 * dy) / len2)) : 0;
+    const d = Math.hypot(x1 + t * dx, y1 + t * dy);
+    if (d < off) { off = d; seg = k; }
+  }
+  return { line: encodeLine([[at.lat, at.lng], ...points.slice(seg + 1)]), off };
+}
+
+/**
+ * A static map of one booking. Before pickup: A, B and the planned road.
+ * Once the truck is on the road: only the truck, B and the road between
+ * them (`ahead`, starting at the truck), so the line moves with it and the
+ * view zooms to what's left. B is drawn last so the truck never hides it.
  */
 export function routeMapUrl(
-  { pickup, dropoff, truck = null, line = null },
+  { pickup, dropoff, truck = null, line = null, ahead = null },
   { width = 600, height = 300 } = {},
 ) {
   const at = (p) => `${Number(p.lng).toFixed(5)},${Number(p.lat).toFixed(5)}`;
-  const overlays = [];
-  const path = line ? `path-4+e0972f-0.95(${encodeURIComponent(line)})` : "";
-  if (path && path.length < 6000) overlays.push(path);
-  overlays.push(`pin-s-a+b8b4a6(${at(pickup)})`, `pin-s-b+f3efe4(${at(dropoff)})`);
-  if (truck) overlays.push(`pin-l-car+e0972f(${at(truck)})`);
-  return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${overlays.join(",")}/auto/${width}x${height}@2x?padding=36&access_token=${MAPBOX_TOKEN}`;
+  const path = (style, l) => {
+    const fit = fitLine(l, 6800);
+    return fit ? [`path-${style}(${encodeURIComponent(fit)})`] : [];
+  };
+  const overlays = truck
+    ? [...path("5+e0972f-0.95", ahead), `pin-l-car+e0972f(${at(truck)})`]
+    : [...path("4+e0972f-0.95", line), `pin-s-a+b8b4a6(${at(pickup)})`];
+  overlays.push(`pin-s-b+f3efe4(${at(dropoff)})`);
+  // Almost there: fitting two pins 100 m apart would zoom to single houses,
+  // so show the neighbourhood instead.
+  const near = truck && Math.hypot((truck.lat - dropoff.lat) * 111320,
+    (truck.lng - dropoff.lng) * 111320 * Math.cos((dropoff.lat * Math.PI) / 180)) < 800;
+  const view = near
+    ? `${((Number(truck.lng) + Number(dropoff.lng)) / 2).toFixed(5)},${((Number(truck.lat) + Number(dropoff.lat)) / 2).toFixed(5)},15/${width}x${height}@2x?`
+    : `auto/${width}x${height}@2x?padding=72,84,28,28&`; // top right leaves room for Maximize
+  return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${overlays.join(",")}/${view}access_token=${MAPBOX_TOKEN}`;
 }

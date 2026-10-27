@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { estimateCost, staticMapUrl, routeMapUrl, placeCity, routeMinutes, toSuggestion, pinnedPlace, mapTilesUrl } from "../js/mapbox-client.js";
+import { estimateCost, staticMapUrl, routeMapUrl, placeCity, routeMinutes, toSuggestion, pinnedPlace, mapTilesUrl, decodeLine, encodeLine, fitLine, roadFrom } from "../js/mapbox-client.js";
 
 describe("estimateCost", () => {
   it("calculates cost with base fare + distance + weight", () => {
@@ -66,21 +66,88 @@ describe("routeMapUrl", () => {
     const url = routeMapUrl({ pickup, dropoff });
     expect(url).toContain("pin-s-a+b8b4a6(120.96670,15.48650)");
     expect(url).toContain("pin-s-b+f3efe4(121.10290,14.65070)");
-    expect(url).toContain("/auto/600x300@2x?padding=36");
+    expect(url).toContain("/auto/600x300@2x?padding=72,84,28,28");
     expect(url).not.toContain("path-");
     expect(url).not.toContain("pin-l-car");
   });
 
-  it("adds the road and the truck when known", () => {
-    const url = routeMapUrl({ pickup, dropoff, truck: { lat: 15.1, lng: 121 }, line: "a~l~Fjk~uOwHJy@P" });
+  it("before pickup: the planned road from A to B", () => {
+    const url = routeMapUrl({ pickup, dropoff, line: "a~l~Fjk~uOwHJy@P" });
     expect(url).toContain(`path-4+e0972f-0.95(${encodeURIComponent("a~l~Fjk~uOwHJy@P")})`);
-    expect(url).toContain("pin-l-car+e0972f(121.00000,15.10000)");
+    expect(url).toContain("pin-s-a+b8b4a6");
   });
 
-  it("leaves out a road too long for a URL", () => {
+  it("leaves out a road it can't read", () => {
     const url = routeMapUrl({ pickup, dropoff, line: "x".repeat(7000) });
     expect(url).not.toContain("path-");
     expect(url).toContain("pin-s-a");
+  });
+
+  it("almost at drop-off: shows the neighbourhood, not single houses", () => {
+    const url = routeMapUrl({ pickup, dropoff, truck: { lat: 14.6515, lng: 121.1035 } });
+    expect(url).toContain("/121.10320,14.65110,15/600x300@2x?");
+    expect(url).not.toContain("/auto/");
+  });
+
+  it("draws B last, so the truck never hides where it's going", () => {
+    const url = routeMapUrl({ pickup, dropoff, truck: { lat: 14.651, lng: 121.103 } });
+    expect(url.indexOf("pin-l-car")).toBeLessThan(url.indexOf("pin-s-b"));
+  });
+
+  it("once the truck is moving: only the road from the truck to B, no pickup", () => {
+    const truck = { lat: 15.1, lng: 121 };
+    const url = routeMapUrl({ pickup, dropoff, truck, line: "a~l~Fjk~uOwHJy@P", ahead: "_p~iF~ps|U_ulLnnqC" });
+    expect(url).toContain(`path-5+e0972f-0.95(${encodeURIComponent("_p~iF~ps|U_ulLnnqC")})`);
+    expect(url).not.toContain(encodeURIComponent("a~l~Fjk~uOwHJy@P")); // the planned road from pickup is gone
+    expect(url).not.toContain("pin-s-a");
+    expect(url).toContain("pin-l-car+e0972f(121.00000,15.10000)");
+  });
+
+  it("thins a long road just enough to fit the map URL", () => {
+    // 3,000 points zig-zagging along a road: far too long for a URL as is
+    const road = Array.from({ length: 3000 }, (_, k) => [15.4865 - k * 0.0003, 120.9667 + k * 0.00005 + (k % 2) * 0.00001]);
+    const full = encodeLine(road);
+    expect(encodeURIComponent(full).length).toBeGreaterThan(6800);
+    const url = routeMapUrl({ pickup, dropoff, line: full });
+    expect(url).toContain("path-4+e0972f");
+    expect(url.length).toBeLessThan(8192); // Mapbox's limit
+    const kept = decodeLine(fitLine(full, 6800));
+    expect(kept[0]).toEqual(road[0]);
+    expect(kept.at(-1)).toEqual([Number(road.at(-1)[0].toFixed(5)), Number(road.at(-1)[1].toFixed(5))]);
+  });
+});
+
+describe("roadFrom", () => {
+  // A straight road south along longitude 121.0, from 15.0 to 14.9
+  const road = encodeLine([[15.0, 121.0], [14.98, 121.0], [14.96, 121.0], [14.94, 121.0], [14.92, 121.0], [14.9, 121.0]]);
+
+  it("starts the line at the truck and keeps only the road ahead", () => {
+    const { line, off } = roadFrom(road, { lat: 14.95, lng: 121.0001 });
+    expect(off).toBeLessThan(15);
+    expect(decodeLine(line)).toEqual([[14.95, 121.0001], [14.94, 121.0], [14.92, 121.0], [14.9, 121.0]]);
+  });
+
+  it("says how far a truck is off the road", () => {
+    expect(roadFrom(road, { lat: 14.95, lng: 121.01 }).off).toBeGreaterThan(1000);
+  });
+
+  it("at drop-off only the last bit is left", () => {
+    expect(decodeLine(roadFrom(road, { lat: 14.9, lng: 121.0 }).line)).toEqual([[14.9, 121.0], [14.9, 121.0]]);
+  });
+
+  it("gives nothing for a missing road", () => {
+    expect(roadFrom(null, { lat: 14.9, lng: 121 })).toBeNull();
+  });
+});
+
+describe("decodeLine / encodeLine", () => {
+  it("round-trips Google's example polyline", () => {
+    const points = [[38.5, -120.2], [40.7, -120.95], [43.252, -126.453]];
+    expect(encodeLine(points)).toBe("_p~iF~ps|U_ulLnnqC_mqNvxq`@");
+    expect(decodeLine("_p~iF~ps|U_ulLnnqC_mqNvxq`@")).toEqual(points);
+  });
+  it("gives no points for a broken line", () => {
+    expect(decodeLine("x".repeat(10))).toEqual([]);
   });
 });
 

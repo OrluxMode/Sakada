@@ -8,6 +8,7 @@ import {
   estimateCost,
   getRouteLine,
   routeMapUrl,
+  roadFrom,
 } from "./mapbox-client.js";
 import {
   cancelMyDelivery,
@@ -58,6 +59,7 @@ import { paginate } from "./pagination.js";
 import { initOfflineDetection, getIsOffline } from "./offline.js";
 import { attachPlaceSuggest } from "./place-suggest.js";
 import { createPinMap } from "./pin-map.js";
+import { createLiveMap } from "./live-map.js";
 import { createContactSheet, liftAboveKeyboard } from "./contact-sheet.js";
 import { createProfilePages } from "./profile-pages.js";
 import { paintAvatar } from "./avatar.js";
@@ -232,6 +234,21 @@ function closeSheet(dialog, { immediate = false } = {}) {
     finish();
     return done;
   }
+  if (dialog._leave) {
+    // A sheet with its own way out (the live map shrinks back into its small map)
+    const anim = dialog._leave();
+    const cancel = () => {
+      anim.cancel();
+      dialog._closing = null;
+    };
+    dialog._closing = { done, cancel };
+    anim.finished.then(() => {
+      if (dialog._closing?.cancel !== cancel) return;
+      finish();
+      anim.cancel();
+    }, () => {});
+    return done;
+  }
   dialog.addEventListener("transitionend", onEnd);
   timer = setTimeout(finish, 360);
   dialog._closing = {
@@ -255,7 +272,7 @@ document.querySelectorAll("dialog").forEach((dialog) => {
   });
   dialog.querySelectorAll("[data-close-sheet]").forEach((b) => b.addEventListener("click", () => closeSheet(dialog)));
   enableSheetDrag(dialog, {
-    canDrag: isPhone,
+    canDrag: () => isPhone() && dialog.id !== "liveSheet", // dragging the live map moves the map
     onGrab: () => cancelClose(dialog),
     onDismiss: ({ offscreen }) => closeSheet(dialog, { immediate: offscreen }),
   });
@@ -1090,6 +1107,8 @@ const shortRoute = (d) => `${esc(shortPlace(d.pickup_address))} → ${esc(shortP
 const lateList = () => deliveries.filter((d) => pickupPassed(d));
 
 const keep = (text) => text.replace(/ /g, "&nbsp;"); // "Next: Delivered", "Oct 22" never split
+/** A booking code inside a sentence, never split at its hyphen ("SK-" / "00142"). */
+const codeTag = (code) => `<span class="rq-code">${esc(code)}</span>`;
 /** The line under the bars on the Track page: when this stage started, and what's next. */
 function trackStatusLine(d) {
   const at = d.status_changed_at || d.updated_at;
@@ -1145,7 +1164,7 @@ function renderTiles(active) {
 const routeLines = new Map();
 const driveMins = new Map();
 const routeLoading = new Set();
-const ROUTE_KEY = (id) => `sakada.route.${id}`;
+const ROUTE_KEY = (id) => `sakada.road.${id}`; // full-detail road (was the simplified "route")
 const DRIVE_KEY = (id) => `sakada.drive.${id}`;
 const hasCoords = (d) => d.pickup_lat != null && d.pickup_lng != null && d.dropoff_lat != null && d.dropoff_lng != null;
 const truckAt = (d) => (d.status === "picked_up" || d.status === "in_transit") && d.current_lat && d.current_lng
@@ -1179,7 +1198,34 @@ function shipMapUrl(d) {
     dropoff: { lat: d.dropoff_lat, lng: d.dropoff_lng },
     truck: truckAt(d),
     line: cachedLine(d.id),
+    ahead: roadAhead(d),
   });
+}
+
+// The road from where the truck is now to drop-off, so the line moves with
+// the truck. Every new position trims the road we have (no Mapbox call); a
+// new road is asked for only when the truck is 60 m off it, at most every
+// 20 s (the driver sends a position every 20 s).
+const aheadLines = new Map(); // id → the last road Mapbox gave from the truck
+const aheadAsked = new Map(); // id → when we last asked
+const OFF_ROAD_M = 60;
+const ASK_EVERY_MS = 20000;
+function roadAhead(d) {
+  const truck = truckAt(d);
+  if (!truck) return null;
+  const at = { lat: Number(truck.lat), lng: Number(truck.lng) };
+  const live = roadFrom(aheadLines.get(d.id) ?? cachedLine(d.id), at);
+  if ((!live || live.off > OFF_ROAD_M) && Date.now() - (aheadAsked.get(d.id) || 0) > ASK_EVERY_MS) {
+    aheadAsked.set(d.id, Date.now());
+    getRouteLine(at, { lat: d.dropoff_lat, lng: d.dropoff_lng })
+      .then(({ line }) => {
+        if (!line) return;
+        aheadLines.set(d.id, line);
+        for (const img of [$(`shipmap-${d.id}`), $(`trackmap-${d.id}`)]) if (img) swapMap(img, shipMapUrl(d));
+        refreshLive(d);
+      }, () => {}); // no road from here: the line joins the nearest road until the next try
+  }
+  return live?.line ?? null;
 }
 /** Fetch the road for cards that don't have it yet, then redraw just their maps and drive time. */
 function loadRouteLines(list) {
@@ -1197,10 +1243,105 @@ function loadRouteLines(list) {
         showDrive(d.id);
         if (!line || line === had) return;
         for (const img of [$(`shipmap-${d.id}`), $(`trackmap-${d.id}`)]) if (img) swapMap(img, shipMapUrl(d));
+        refreshLive(d);
       }, () => {}) // no road: the pins alone still show where it goes
       .finally(() => routeLoading.delete(d.id));
   });
 }
+// ---------- Live map, maximized (Figma 365:3008 phone, 365:3042 desktop) ----------
+// Maximize on a small map (or a tap on the map) opens the real map: pinch,
+// drag, zoom. It grows out of the small map and shrinks back into it.
+const MAXIMIZE = `<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>`;
+const maxButton = (d) => `<button type="button" class="rq-map-max" data-live-map="${esc(d.id)}" aria-label="${t("Maximize map")}" aria-haspopup="dialog">${MAXIMIZE}</button>`;
+const liveSheet = $("liveSheet");
+const liveMap = createLiveMap({
+  mapEl: $("liveMap"),
+  zoomIn: $("liveZoomIn"),
+  zoomOut: $("liveZoomOut"),
+  centerBtn: $("liveCenter"),
+  isOffline: getIsOffline,
+  onProblem: (text) => {
+    $("liveProblem").textContent = text;
+    $("liveProblem").hidden = !text;
+  },
+});
+let liveFor = null;
+let liveSource = null;
+let liveTick = 0;
+const LIVE_EASE = "cubic-bezier(0.23, 1, 0.32, 1)";
+
+function liveView(d) {
+  const truck = truckAt(d);
+  return {
+    pickup: { lat: d.pickup_lat, lng: d.pickup_lng },
+    dropoff: { lat: d.dropoff_lat, lng: d.dropoff_lng },
+    truck,
+    line: truck ? roadAhead(d) : cachedLine(d.id),
+  };
+}
+function paintLive(d) {
+  const truck = truckAt(d);
+  const [label, value] = shipmentFact(d);
+  $("liveTitle").innerHTML = `${esc(d.delivery_code)} · ${titleLine(d)}`;
+  $("liveStatusLabel").textContent = label;
+  $("liveStatusValue").textContent = value;
+  $("liveTo").textContent = d.dropoff_address;
+  $("liveCaption").textContent = truck ? t("Truck here {ago}", { ago: timeAgo(d.updated_at) }) : t("Route");
+  // Green dot: the truck's spot is under 2 minutes old
+  $("liveCaption").classList.toggle("is-live", Boolean(truck) && Date.now() - new Date(d.updated_at).getTime() < 120000);
+}
+/** The small map's outline as a clip on the full map, or null when it's off screen. */
+function liveClip() {
+  const r = liveSource?.isConnected && liveSource.getBoundingClientRect();
+  if (!r || !r.width || r.bottom < 0 || r.top > innerHeight) return null;
+  const box = liveSheet.getBoundingClientRect();
+  return `inset(${r.top - box.top}px ${box.right - r.right}px ${box.bottom - r.bottom}px ${r.left - box.left}px round 12px)`;
+}
+const liveFull = () => `inset(0px 0px 0px 0px round ${isPhone() ? 0 : 22}px)`;
+liveSheet._leave = () => {
+  const to = liveClip();
+  return to
+    ? liveSheet.animate([{ clipPath: liveFull() }, { clipPath: to }], { duration: 180, easing: LIVE_EASE, fill: "forwards" })
+    : liveSheet.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: LIVE_EASE, fill: "forwards" });
+};
+function openLive(id, source) {
+  const d = deliveries.find((x) => x.id === id);
+  if (!d || !hasCoords(d)) return;
+  liveFor = id;
+  liveSource = source;
+  paintLive(d);
+  openSheet(liveSheet);
+  const from = !reduceMotion() && liveClip();
+  liveSheet.animate(from ? [{ clipPath: from }, { clipPath: liveFull() }] : [{ opacity: 0 }, { opacity: 1 }], {
+    duration: from ? 220 : 150,
+    easing: LIVE_EASE,
+  }).finished.then(() => liveMap.resize(), () => {});
+  liveMap.show(liveView(d));
+  clearInterval(liveTick);
+  liveTick = setInterval(() => {
+    const now = deliveries.find((x) => x.id === liveFor);
+    if (now) paintLive(now); // "Truck here 2m ago" keeps counting
+  }, 30000);
+}
+/** New truck position, road or status for the booking that's open in the live map. */
+function refreshLive(d) {
+  if (!d || d.id !== liveFor || !liveSheet.open) return;
+  paintLive(d);
+  liveMap.update(liveView(d));
+}
+liveSheet.addEventListener("close", () => {
+  liveFor = null;
+  clearInterval(liveTick);
+  liveMap.close();
+});
+$("liveDetails").addEventListener("click", async () => {
+  const id = liveFor;
+  liveSheet._returnFocus = null;
+  await closeSheet(liveSheet, { immediate: true });
+  openTrack(id);
+});
+addEventListener("resize", () => liveSheet.open && liveMap.resize());
+
 /** Load a new map image off-screen, then fade it in over the old one. */
 function swapMap(img, url) {
   const next = new Image();
@@ -1246,7 +1387,7 @@ function shipmentCard(d, i, all) {
         <p><span class="rq-ship-label">${t("From")}</span>${esc(shortPlace(d.pickup_address))}</p>
         <p><span class="rq-ship-label">${t("To")}</span>${esc(shortPlace(d.dropoff_address))}</p>
       </div>
-      ${map ? `<figure class="rq-ship-map"><img id="shipmap-${esc(d.id)}" class="rq-ship-map-img is-loading" src="${shipMapUrl(d)}" alt="${t(truckAt(d) ? "Map of the road from {where}, with the truck where it is now." : "Map of the road from {where}.", { where })} ${status}." width="600" height="300" loading="lazy" decoding="async" /></figure>` : ""}
+      ${map ? `<figure class="rq-ship-map" data-live-map="${esc(d.id)}">${maxButton(d)}<img id="shipmap-${esc(d.id)}" class="rq-ship-map-img is-loading" src="${shipMapUrl(d)}" alt="${t(truckAt(d) ? "Map of the road from {where}, with the truck where it is now." : "Map of the road from {where}.", { where })} ${status}." width="600" height="300" loading="lazy" decoding="async" /></figure>` : ""}
       <div class="rq-ship-route" style="--p: ${p}" role="img" aria-label="${t("Step {n} of 5, {status}", { n: step + 1, status })}">
         <span class="rq-ship-fill"></span>
         <span class="rq-ship-truck">${TRUCK}</span>
@@ -1285,7 +1426,7 @@ function renderHome() {
   $("homeLists").innerHTML = !any
     ? firstVisit()
     : ordered.length
-      ? `<section class="rq-section" aria-labelledby="shipTitle">
+      ? `<section class="rq-section rq-ship-section" aria-labelledby="shipTitle">
           <div class="rq-section-head">
             <h2 class="rq-section-title" id="shipTitle">${t(many ? "Active shipments" : "Active shipment")}</h2>
             ${many ? `<p class="rq-ship-pos" id="shipPos" aria-hidden="true">${t("{n} of {total}", { n: 1, total: ordered.length })}</p>` : ""}
@@ -1434,7 +1575,8 @@ function trackDriver(d) {
   const where = t("{from} to {to}", { from: esc(shortPlace(d.pickup_address)), to: esc(shortPlace(d.dropoff_address)) });
   // The caption says how old the truck's position is, on the map itself.
   const map = showMap ? `
-    <figure class="rq-track-map">
+    <figure class="rq-track-map" data-live-map="${esc(d.id)}">
+      ${maxButton(d)}
       <img id="trackmap-${esc(d.id)}" class="rq-ship-map-img is-loading" src="${shipMapUrl(d)}" alt="${t(truck ? "Map of the road from {where}, with the truck where it is now." : "Map of the road from {where}.", { where })}" width="600" height="300" decoding="async" />
       <figcaption id="track-caption-${esc(d.id)}">${truck ? t("Truck here {ago}", { ago: timeAgo(d.updated_at) }) : t("Route")}</figcaption>
     </figure>` : "";
@@ -1495,11 +1637,12 @@ function trackDetail(d, { back }) {
       ? "The pickup date has passed, so drivers can't see this request anymore. Book it again with a new date."
       : "Drivers can see your request now. You can cancel until one accepts.");
   }
+  // A late booking's fix sits with the note that explains it (Figma 357:2950).
+  const newDate = d.status === "pending" && late
+    ? `<button type="button" class="rq-btn" data-new-date="${esc(d.id)}">${t("Book a new date")}</button>` : "";
   let actions = "";
   if (d.status === "pending") {
-    actions = `
-      ${late ? `<button type="button" class="rq-btn" data-new-date="${esc(d.id)}">${t("Book a new date")}</button>` : ""}
-      <button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">${t("Cancel request")}</button>`;
+    actions = `<button type="button" class="rq-btn rq-btn--danger-line" data-cancel-id="${esc(d.id)}">${t("Cancel request")}</button>`;
   } else if (HISTORY_STATUSES.includes(d.status)) {
     actions = `<button type="button" class="rq-btn rq-btn--ghost" data-rebook-id="${esc(d.id)}">${t("Book again")}</button>`;
   }
@@ -1511,6 +1654,7 @@ function trackDetail(d, { back }) {
       ${renderStageStepper(d.status)}
       <p class="rq-track-line">${trackStatusLine(d)}</p>
       ${note ? `<p class="rq-track-note">${note}</p>` : ""}
+      ${newDate}
     </div>
     ${trackDriver(d)}
     ${trackRate(d)}
@@ -1523,7 +1667,7 @@ function trackDetail(d, { back }) {
         : t("Whoever receives the goods pays the driver this amount in cash at drop-off.")}</p>
     </div>
     ${actions ? `<div class="rq-track-actions">${actions}</div>` : ""}
-    <button type="button" class="rq-track-help" data-open-contact="${esc(d.delivery_code)}" aria-haspopup="dialog">${t("Something wrong? Contact Support about {code}", { code: esc(d.delivery_code) })}</button>`;
+    <button type="button" class="rq-track-help" data-open-contact="${esc(d.delivery_code)}" aria-haspopup="dialog"><span>${t("Something wrong? Contact Support about {code}", { code: codeTag(d.delivery_code) })}</span></button>`;
 }
 
 function trackRowStatus(d) {
@@ -1567,7 +1711,7 @@ function trackMissing(code) {
   return `
     ${trackTop("Shipment details", true)}
     ${trackHead(["Not", "found."])}
-    <p class="rq-track-sub">${t("We couldn't find {code} on your account. Codes look like SK-00142.", { code: esc(code) })}</p>
+    <p class="rq-track-sub">${t("We couldn't find {code} on your account. Codes look like SK-00142.", { code: codeTag(code) })}</p>
     <a class="rq-btn rq-btn--ghost" href="#track">${t("See your shipments")}</a>`;
 }
 
@@ -1662,7 +1806,7 @@ function renderHistory() {
   };
   document.querySelectorAll("[data-filter]").forEach((b) => {
     const f = b.dataset.filter;
-    b.textContent = `${t({ all: "All", delivered: "Delivered", cancelled: "Cancelled" }[f])} (${counts[f]})`;
+    b.innerHTML = `${t({ all: "All", delivered: "Delivered", cancelled: "Cancelled" }[f])} <span class="rq-filter-count">${counts[f]}</span>`;
     b.setAttribute("aria-pressed", String(f === historyFilter));
   });
   const shown = historyFilter === "all" ? history : history.filter((d) => d.status === historyFilter);
@@ -1703,6 +1847,7 @@ function renderRecentRoute() {
 }
 
 function renderAll() {
+  refreshLive(deliveries.find((d) => d.id === liveFor));
   refreshSent();
   renderHome();
   renderHistory();
@@ -1777,6 +1922,7 @@ function subscribeTracking() {
         }
         // …and the Track page swaps its map and caption the same way.
         if (trackShown?.key === d.id) renderTrack();
+        refreshLive(d);
         if (updated.status && updated.status !== d.status) loadDeliveries();
       });
       activeSubscriptions.set(d.id, channel);
@@ -1825,7 +1971,7 @@ function openNewDate(id) {
   const price = formatPeso(estimateCost(Number(d.distance_km), Number(d.quantity_kg)));
   $("newDateWhat").innerHTML = `<strong>${titleLine(d)}</strong><br />${esc(d.pickup_address)} → ${esc(d.dropoff_address)}`;
   $("newDateFare").textContent = price;
-  $("newDateOld").textContent = t("Your old request {code} will be cancelled.", { code: d.delivery_code });
+  $("newDateOld").innerHTML = t("Your old request {code} will be cancelled.", { code: codeTag(d.delivery_code) });
   $("newDateConfirm").textContent = `${t("Confirm booking")} · ${price}`;
   $("newDateConfirm").disabled = false;
   const input = $("newDateInput");
@@ -1898,13 +2044,15 @@ $("newDateConfirm").addEventListener("click", async () => {
     showView(location.hash.slice(1));
     $("trackTitle")?.focus({ preventScroll: true });
   }
-  if (cancelError) toastError(t("Your new booking is in, but {code} couldn't be cancelled. Cancel it from Home.", { code: d.delivery_code }));
+  if (cancelError) toastError(t("Your new booking is in, but {code} couldn't be cancelled. Cancel it from Home.", { code: d.delivery_code.replace("-", "-\u2060") }));
   else toastSuccess(t("Booked for {day}. Drivers can see it now.", { day: day(new Date(input.value).toISOString()) }));
 });
 
 // ---------- Card actions (one listener for every list) ----------
 let cancelTarget = null;
 document.addEventListener("click", async (e) => {
+  const live = e.target.closest("[data-live-map]");
+  if (live) return openLive(live.dataset.liveMap, live.closest("figure") || live);
   const el = e.target.closest("button, a");
   if (!el) {
     // The whole card opens its Track page, not just the pill (Home and History).
@@ -2028,7 +2176,7 @@ $("cancelConfirm").addEventListener("click", async () => {
         || document.querySelector(`[data-delivery-id="${CSS.escape(d.id)}"]`);
       card?.insertAdjacentHTML(
         "afterbegin",
-        `<div class="rq-banner rq-banner--warn" role="alert"><p><strong>${t("A driver accepted first.")}</strong> ${t("Your cancel didn't go through. Only Sakada can cancel now.")} <button type="button" class="rq-link" data-open-contact="${esc(d.delivery_code)}" aria-haspopup="dialog">${t("Contact Support about {code}", { code: esc(d.delivery_code) })}</button></p></div>`,
+        `<div class="rq-banner rq-banner--warn" role="alert"><p><strong>${t("A driver accepted first.")}</strong> ${t("Your cancel didn't go through. Only Sakada can cancel now.")} <button type="button" class="rq-link" data-open-contact="${esc(d.delivery_code)}" aria-haspopup="dialog"><span>${t("Contact Support about {code}", { code: codeTag(d.delivery_code) })}</span></button></p></div>`,
       );
       card?.focus();
     } else {
